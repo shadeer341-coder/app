@@ -1,3 +1,5 @@
+"use client";
+
 import Link from 'next/link';
 import {
   Avatar,
@@ -15,11 +17,24 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { User } from '@/lib/types';
+import { createSupabaseClient } from '@/lib/supabase/client';
+import { useRouter } from 'next/navigation';
 
 export function UserNav({ user }: { user: User }) {
+    const router = useRouter();
+    const supabase = createSupabaseClient();
+
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('');
   }
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push('/');
+    router.refresh();
+  }
+
+  if (!user) return null;
 
   return (
     <DropdownMenu>
@@ -53,8 +68,8 @@ export function UserNav({ user }: { user: User }) {
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-           <Link href="/">Logout</Link>
+        <DropdownMenuItem onClick={handleLogout}>
+           Logout
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

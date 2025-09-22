@@ -1,7 +1,10 @@
+import { redirect } from 'next/navigation';
 import { SidebarProvider, Sidebar, SidebarInset } from "@/components/ui/sidebar";
 import { Header } from "@/components/layout/header";
 import { MainSidebar } from "@/components/layout/main-sidebar";
 import { getCurrentUser } from "@/lib/auth";
+
+export const dynamic = 'force-dynamic';
 
 export default async function DashboardLayout({
   children,
@@ -9,6 +12,10 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }) {
   const user = await getCurrentUser();
+
+  if (!user) {
+    redirect('/');
+  }
 
   return (
     <SidebarProvider>

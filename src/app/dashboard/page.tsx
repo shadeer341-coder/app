@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, Bot, Building, HardHat, PlusCircle, Video } from "lucide-react";
+import { redirect } from 'next/navigation';
 
 import { getCurrentUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -9,8 +10,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
+export const dynamic = 'force-dynamic';
+
 export default async function DashboardPage() {
   const user = await getCurrentUser();
+
+  if (!user) {
+    redirect('/');
+  }
 
   const renderUserDashboard = () => {
     const userAttempts = interviewAttempts.filter(a => a.userId === user.id).slice(0, 3);
@@ -106,7 +113,7 @@ export default async function DashboardPage() {
           <CardHeader>
             <CardTitle>Recent Member Activity</CardTitle>
             <CardDescription>Latest interview attempts from your members.</CardDescription>
-          </CardHeader>
+          </Header>
           <CardContent>
           <Table>
               <TableHeader>

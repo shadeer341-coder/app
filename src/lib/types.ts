@@ -9,7 +9,7 @@ export type User = {
   role: UserRole;
   level: UserLevel;
   agencyId?: string;
-};
+} | null;
 
 export type QuestionCategory = {
   id: string;
@@ -42,5 +42,5 @@ export type InterviewAttempt = {
 export type Agency = {
   id: string;
   name: string;
-  members: User[];
+  members: (User & object)[];
 };

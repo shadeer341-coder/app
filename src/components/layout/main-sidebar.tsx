@@ -41,6 +41,8 @@ const adminLinks = [
 export function MainSidebar({ user }: { user: User }) {
   const pathname = usePathname();
 
+  if (!user) return null;
+
   const userLinks = [
     ...commonLinks,
     ...(user.role === 'agency_admin' ? agencyLinks : []),
