@@ -1,3 +1,29 @@
+
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "hero-image",
+      "description": "A person confidently participating in a video interview on a laptop.",
+      "imageUrl": "https://picsum.photos/seed/1/1200/800",
+      "imageHint": "interview laptop"
+    },
+    {
+      "id": "feature-recording",
+      "description": "Abstract visualization of audio and video recording waves.",
+      "imageUrl": "https://picsum.photos/seed/2/600/400",
+      "imageHint": "recording interface"
+    },
+    {
+      "id": "feature-feedback",
+      "description": "A dashboard showing AI-generated feedback charts and text.",
+      "imageUrl": "https://picsum.photos/seed/3/600/400",
+      "imageHint": "feedback dashboard"
+    },
+    {
+      "id": "feature-progress",
+      "description": "A line graph showing user's progress over time.",
+      "imageUrl": "https://picsum.photos/seed/4/600/400",
+      "imageHint": "progress chart"
+    }
+  ]
 }
