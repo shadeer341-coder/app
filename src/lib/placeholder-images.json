@@ -2,12 +2,6 @@
 {
   "placeholderImages": [
     {
-      "id": "hero-image",
-      "description": "A person confidently participating in a video interview on a laptop.",
-      "imageUrl": "https://picsum.photos/seed/1/1200/800",
-      "imageHint": "interview laptop"
-    },
-    {
       "id": "feature-recording",
       "description": "Abstract visualization of audio and video recording waves.",
       "imageUrl": "https://picsum.photos/seed/2/600/400",
