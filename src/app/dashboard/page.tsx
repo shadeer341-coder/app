@@ -88,6 +88,7 @@ export default async function DashboardPage() {
   };
 
   const renderAgencyAdminDashboard = () => {
+    if (!user.agencyId) return <p>No agency associated with this account.</p>;
     const agencyMembers = allUsers.filter(u => u.agencyId === user.agencyId);
     const memberAttempts = interviewAttempts.filter(a => agencyMembers.some(m => m.id === a.userId)).slice(0, 5);
     return (
@@ -113,7 +114,7 @@ export default async function DashboardPage() {
           <CardHeader>
             <CardTitle>Recent Member Activity</CardTitle>
             <CardDescription>Latest interview attempts from your members.</CardDescription>
-          </Header>
+          </CardHeader>
           <CardContent>
           <Table>
               <TableHeader>
