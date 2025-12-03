@@ -1,5 +1,3 @@
-
-import 'server-only';
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import type { User } from '@/lib/types';
@@ -21,15 +19,10 @@ export async function getCurrentUser(): Promise<User | null> {
         .eq('id', session.user.id)
         .single();
         
-    // If there was an error, but it wasn't a "not found" error, we should log it but can proceed.
-    // The most common error is `PGRST116`, where a row is not found for a .single() query.
-    // In this case, we want to treat the user as a new user who needs onboarding.
     if (profileError && profileError.code !== 'PGRST116') {
       console.error('Error fetching profile:', profileError);
     }
     
-    // If no profile exists, the user has an auth entry but is not onboarded.
-    // We create a default user object to send them to the onboarding flow.
     if (!profile) {
         return {
           id: session.user.id,
