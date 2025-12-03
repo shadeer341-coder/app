@@ -33,8 +33,8 @@ import { Loader2, ArrowLeft, Check, ChevronsUpDown } from 'lucide-react';
 import { Logo } from '@/components/icons';
 import nationalities from '@/lib/nationalities.json';
 import { cn } from '@/lib/utils';
-import { searchUniversities, type University } from './actions';
 
+type University = { name: string; country: string; };
 
 const formSchema = z.object({
   full_name: z.string().min(2, "Full name is required."),
@@ -83,18 +83,30 @@ export default function OnboardingPage() {
   });
 
   useEffect(() => {
-    // Debounce the search input
-    const timer = setTimeout(() => {
+    const search = async () => {
       if (universitySearch.length > 2) {
         setIsSearching(true);
-        searchUniversities(universitySearch).then((results) => {
-            setUniversities(results);
-            setIsSearching(false);
-        });
+        try {
+          const response = await fetch(`/api/universities?name=${encodeURIComponent(universitySearch)}`);
+          if (!response.ok) {
+            throw new Error('Failed to fetch universities');
+          }
+          const data = await response.json();
+          setUniversities(data);
+        } catch (error) {
+          console.error('Error fetching universities:', error);
+          setUniversities([]);
+        } finally {
+          setIsSearching(false);
+        }
       } else {
         setUniversities([]);
       }
-    }, 500); // 500ms delay
+    };
+
+    const timer = setTimeout(() => {
+      search();
+    }, 500);
 
     return () => clearTimeout(timer);
   }, [universitySearch]);
@@ -364,5 +376,3 @@ export default function OnboardingPage() {
     </div>
   );
 }
-
-    
