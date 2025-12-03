@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
+import { useForm, type FieldName } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { createSupabaseClient } from '@/lib/supabase/client';
@@ -26,10 +26,17 @@ const formSchema = z.object({
   nationality: z.string().min(1, "Nationality is required."),
   program: z.string().min(1, "Program choice is required."),
   university: z.string().min(2, "University is required."),
-  last_education: z.string().min(1, "Last completed education is required."),
+  last_education: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
+
+const stepFields: Record<number, FieldName<FormData>[]> = {
+    1: ['full_name', 'gender', 'age', 'nationality'],
+    2: ['program', 'university'],
+    3: ['last_education']
+};
+
 
 export default function OnboardingPage() {
   const [currentStep, setCurrentStep] = useState(1);
@@ -37,7 +44,7 @@ export default function OnboardingPage() {
   const router = useRouter();
   const { toast } = useToast();
   const supabase = createSupabaseClient();
-  const totalSteps = 3;
+  const totalSteps = 4;
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -52,7 +59,14 @@ export default function OnboardingPage() {
     },
   });
 
-  const nextStep = () => setCurrentStep(prev => Math.min(prev + 1, totalSteps));
+  const nextStep = async () => {
+    const fieldsToValidate = stepFields[currentStep];
+    const isValid = await form.trigger(fieldsToValidate);
+    
+    if (isValid) {
+      setCurrentStep(prev => Math.min(prev + 1, totalSteps));
+    }
+  };
   const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
 
   const onSubmit = async (data: FormData) => {
@@ -98,7 +112,7 @@ export default function OnboardingPage() {
                     <span className="text-2xl hidden sm:inline">precasprep</span>
                 </Link>
 
-                <Button variant="ghost" onClick={() => router.push('/dashboard')}>SKIP</Button>
+                <div className="w-10 h-10"></div>
             </div>
             <Progress value={progressValue} />
         </div>
@@ -110,7 +124,8 @@ export default function OnboardingPage() {
                     <p className="text-primary font-semibold mb-2">STEP {currentStep} / {totalSteps}</p>
                     {currentStep === 1 && <h1 className="font-headline text-3xl md:text-4xl font-bold">First, tell us about yourself.</h1>}
                     {currentStep === 2 && <h1 className="font-headline text-3xl md:text-4xl font-bold">What are your academic goals?</h1>}
-                    {currentStep === 3 && <h1 className="font-headline text-3xl md:text-4xl font-bold">Please review and confirm.</h1>}
+                    {currentStep === 3 && <h1 className="font-headline text-3xl md:text-4xl font-bold">What's your educational background?</h1>}
+                    {currentStep === 4 && <h1 className="font-headline text-3xl md:text-4xl font-bold">Please review and confirm.</h1>}
                 </div>
 
                 <div className="max-w-xl mx-auto">
@@ -187,6 +202,10 @@ export default function OnboardingPage() {
                                 <FormMessage />
                                 </FormItem>
                             )} />
+                        </div>
+                    )}
+                    {currentStep === 3 && (
+                         <div className="space-y-4">
                             <FormField control={form.control} name="last_education" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Last Completed Education</FormLabel>
@@ -204,9 +223,10 @@ export default function OnboardingPage() {
                                     <FormMessage />
                                 </FormItem>
                             )} />
+                             <p className="text-sm text-muted-foreground text-center pt-2">This step is optional. You can proceed without making a selection.</p>
                         </div>
                     )}
-                    {currentStep === 3 && (
+                    {currentStep === 4 && (
                         <div className="space-y-6">
                             <div className="space-y-2 rounded-md border p-4 bg-secondary/50">
                                 <h4 className="font-medium text-lg">Personal Information</h4>
@@ -216,10 +236,13 @@ export default function OnboardingPage() {
                                 <p><strong>Nationality:</strong> {form.getValues().nationality}</p>
                             </div>
                             <div className="space-y-2 rounded-md border p-4 bg-secondary/50">
-                                <h4 className="font-medium text-lg">Academic Background</h4>
+                                <h4 className="font-medium text-lg">Academic Goals</h4>
                                 <p><strong>Applying for:</strong> {form.getValues().program}</p>
                                 <p><strong>University:</strong> {form.getValues().university}</p>
-                                <p><strong>Last Education:</strong> {form.getValues().last_education}</p>
+                            </div>
+                            <div className="space-y-2 rounded-md border p-4 bg-secondary/50">
+                                <h4 className="font-medium text-lg">Educational Background</h4>
+                                <p><strong>Last Education:</strong> {form.getValues().last_education || 'Not provided'}</p>
                             </div>
                             <p className="text-sm text-muted-foreground text-center">Please review your information. By clicking "Submit," you confirm that the details are correct.</p>
                         </div>
@@ -244,5 +267,3 @@ export default function OnboardingPage() {
     </div>
   );
 }
-
-    
