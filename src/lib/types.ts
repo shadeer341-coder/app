@@ -9,6 +9,13 @@ export type User = {
   role: UserRole;
   level: UserLevel;
   agencyId?: string;
+  onboardingCompleted?: boolean;
+  gender?: string;
+  age?: number;
+  nationality?: string;
+  program?: string;
+  university?: string;
+  lastEducation?: string;
 } | null;
 
 export type QuestionCategory = {

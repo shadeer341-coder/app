@@ -15,32 +15,38 @@ export async function getCurrentUser(): Promise<User | null> {
       return null;
     }
 
-    const { data: user, error } = await supabase.auth.getUser();
+    const { data: { user: aUser }, error } = await supabase.auth.getUser();
 
     if (error) {
       console.error('Error getting user:', error);
       return null;
     }
 
-    if (!user?.user) {
+    if (!aUser) {
       return null;
     }
-
-    const aUser = user.user;
     
     // This is a placeholder to merge Supabase user with mock role data.
     // In a real app, you would fetch the user's role from your own database
     // based on the user.id.
     const mockUser = mockUsers.find(u => u.email === aUser.email);
+    const userMetadata = aUser.user_metadata;
 
     return {
       id: aUser.id,
-      name: aUser.user_metadata.full_name || aUser.email || 'Unknown User',
+      name: userMetadata.full_name || aUser.email || 'Unknown User',
       email: aUser.email || 'no-email@example.com',
-      avatarUrl: aUser.user_metadata.avatar_url || `https://picsum.photos/seed/${aUser.id}/100/100`,
+      avatarUrl: userMetadata.avatar_url || `https://picsum.photos/seed/${aUser.id}/100/100`,
       role: mockUser?.role || 'user', // Default to 'user' if not found in mock data
       level: mockUser?.level || 'UG', // Default level
       agencyId: mockUser?.agencyId,
+      onboardingCompleted: userMetadata.onboarding_completed || false,
+      gender: userMetadata.gender,
+      age: userMetadata.age,
+      nationality: userMetadata.nationality,
+      program: userMetadata.program,
+      university: userMetadata.university,
+      lastEducation: userMetadata.last_education,
     };
   } catch (error) {
     console.error('Error getting current user:', error);
