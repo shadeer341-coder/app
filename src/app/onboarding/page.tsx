@@ -29,10 +29,11 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, ArrowLeft, Check, ChevronsUpDown } from 'lucide-react';
+import { Loader2, ArrowLeft, Check, ChevronsUpDown, BookOpen, GraduationCap, ArrowUpRightFromSquare, Briefcase } from 'lucide-react';
 import { Logo } from '@/components/icons';
 import nationalities from '@/lib/nationalities.json';
 import { cn } from '@/lib/utils';
+import { Label } from '@/components/ui/label';
 
 type University = { name: string; country: string; };
 
@@ -54,6 +55,13 @@ const stepFields: Record<number, FieldName<FormData>[]> = {
     2: ['program', 'university'],
     3: [] // No validation for optional step 3
 };
+
+const programOptions = [
+    { value: "Foundation + Degree", label: "Foundation + Degree", icon: BookOpen },
+    { value: "Degree (Undergraduate)", label: "Degree (Undergraduate)", icon: GraduationCap },
+    { value: "Top-Up / Final Year", label: "Top-Up / Final Year", icon: ArrowUpRightFromSquare },
+    { value: "Masters (Postgraduate)", label: "Masters (Postgraduate)", icon: Briefcase }
+];
 
 
 export default function OnboardingPage() {
@@ -234,21 +242,41 @@ export default function OnboardingPage() {
                     )}
                     {currentStep === 2 && (
                         <div className="space-y-4">
-                            <FormField control={form.control} name="program" render={({ field }) => (
-                                <FormItem>
+                            <FormField
+                                control={form.control}
+                                name="program"
+                                render={({ field }) => (
+                                <FormItem className="space-y-3">
                                     <FormLabel>Program You Are Applying For</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <FormControl><SelectTrigger><SelectValue placeholder="Select a program" /></SelectTrigger></FormControl>
-                                        <SelectContent>
-                                            <SelectItem value="Foundation + Degree">Foundation + Degree</SelectItem>
-                                            <SelectItem value="Degree (Undergraduate)">Degree (Undergraduate)</SelectItem>
-                                            <SelectItem value="Top-Up / Final Year">Top-Up / Final Year</SelectItem>
-                                            <SelectItem value="Masters (Postgraduate)">Masters (Postgraduate)</SelectItem>
-                                        </SelectContent>
-                                    </Select>
+                                    <FormControl>
+                                    <RadioGroup
+                                        onValueChange={field.onChange}
+                                        defaultValue={field.value}
+                                        className="grid grid-cols-1 md:grid-cols-2 gap-4"
+                                    >
+                                        {programOptions.map(option => (
+                                        <FormItem key={option.value}>
+                                            <FormControl>
+                                            <RadioGroupItem value={option.value} className="sr-only" />
+                                            </FormControl>
+                                            <Label
+                                                htmlFor={field.name + option.value}
+                                                className={cn(
+                                                    "flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground cursor-pointer",
+                                                    field.value === option.value && "border-primary"
+                                                )}
+                                            >
+                                                <option.icon className="w-8 h-8 mb-3" />
+                                                {option.label}
+                                            </Label>
+                                        </FormItem>
+                                        ))}
+                                    </RadioGroup>
+                                    </FormControl>
                                     <FormMessage />
                                 </FormItem>
-                            )} />
+                                )}
+                            />
                            <FormField
                                 control={form.control}
                                 name="university"
