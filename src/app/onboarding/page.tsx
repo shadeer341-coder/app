@@ -18,13 +18,13 @@ import { Loader2, ArrowLeft } from 'lucide-react';
 import { Logo } from '@/components/icons';
 
 const formSchema = z.object({
-  fullName: z.string().min(2, "Full name is required."),
+  full_name: z.string().min(2, "Full name is required."),
   gender: z.string().min(1, "Gender is required."),
   age: z.coerce.number().min(16, "You must be at least 16 years old.").max(100),
   nationality: z.string().min(2, "Nationality is required."),
   program: z.string().min(1, "Program choice is required."),
   university: z.string().min(2, "University is required."),
-  lastEducation: z.string().min(1, "Last completed education is required."),
+  last_education: z.string().min(1, "Last completed education is required."),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -40,13 +40,13 @@ export default function OnboardingPage() {
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      fullName: '',
+      full_name: '',
       gender: '',
       age: undefined,
       nationality: '',
       program: '',
       university: '',
-      lastEducation: '',
+      last_education: '',
     },
   });
 
@@ -63,18 +63,10 @@ export default function OnboardingPage() {
       return;
     }
 
-    const { error } = await supabase.auth.updateUser({
-      data: {
-        full_name: data.fullName,
-        gender: data.gender,
-        age: data.age,
-        nationality: data.nationality,
-        program: data.program,
-        university: data.university,
-        last_education: data.lastEducation,
-        onboarding_completed: true,
-      },
-    });
+    const { error } = await supabase
+      .from('profiles')
+      .update({ ...data, onboarding_completed: true })
+      .eq('id', user.id);
 
     setLoading(false);
     if (error) {
@@ -122,7 +114,7 @@ export default function OnboardingPage() {
                 <div className="max-w-xl mx-auto">
                     {currentStep === 1 && (
                         <div className="space-y-4">
-                            <FormField control={form.control} name="fullName" render={({ field }) => (
+                            <FormField control={form.control} name="full_name" render={({ field }) => (
                                 <FormItem>
                                 <FormLabel>Full Name</FormLabel>
                                 <FormControl><Input placeholder="e.g., Alex Johnson" {...field} /></FormControl>
@@ -168,10 +160,10 @@ export default function OnboardingPage() {
                                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                                         <FormControl><SelectTrigger><SelectValue placeholder="Select a program" /></SelectTrigger></FormControl>
                                         <SelectContent>
-                                            <SelectItem value="foundation_degree">Foundation + Degree</SelectItem>
-                                            <SelectItem value="degree">Degree (Undergraduate)</SelectItem>
-                                            <SelectItem value="top_up">Top-Up / Final Year</SelectItem>
-                                            <SelectItem value="masters">Masters (Postgraduate)</SelectItem>
+                                            <SelectItem value="Foundation + Degree">Foundation + Degree</SelectItem>
+                                            <SelectItem value="Degree (Undergraduate)">Degree (Undergraduate)</SelectItem>
+                                            <SelectItem value="Top-Up / Final Year">Top-Up / Final Year</SelectItem>
+                                            <SelectItem value="Masters (Postgraduate)">Masters (Postgraduate)</SelectItem>
                                         </SelectContent>
                                     </Select>
                                     <FormMessage />
@@ -184,18 +176,18 @@ export default function OnboardingPage() {
                                 <FormMessage />
                                 </FormItem>
                             )} />
-                            <FormField control={form.control} name="lastEducation" render={({ field }) => (
+                            <FormField control={form.control} name="last_education" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Last Completed Education</FormLabel>
                                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                                         <FormControl><SelectTrigger><SelectValue placeholder="Select your last education level" /></SelectTrigger></FormControl>
                                         <SelectContent>
-                                            <SelectItem value="high_school">High School / O-Level</SelectItem>
-                                            <SelectItem value="a_level">A-Level</SelectItem>
-                                            <SelectItem value="foundation">University Foundation</SelectItem>
-                                            <SelectItem value="hnd">Higher National Diploma</SelectItem>
-                                            <SelectItem value="bachelor">Bachelor Degree</SelectItem>
-                                            <SelectItem value="master">Master’s Degree</SelectItem>
+                                            <SelectItem value="High School / O-Level">High School / O-Level</SelectItem>
+                                            <SelectItem value="A-Level">A-Level</SelectItem>
+                                            <SelectItem value="University Foundation">University Foundation</SelectItem>
+                                            <SelectItem value="Higher National Diploma">Higher National Diploma</SelectItem>
+                                            <SelectItem value="Bachelor Degree">Bachelor Degree</SelectItem>
+                                            <SelectItem value="Master’s Degree">Master’s Degree</SelectItem>
                                         </SelectContent>
                                     </Select>
                                     <FormMessage />
@@ -207,7 +199,7 @@ export default function OnboardingPage() {
                         <div className="space-y-6">
                             <div className="space-y-2 rounded-md border p-4 bg-secondary/50">
                                 <h4 className="font-medium text-lg">Personal Information</h4>
-                                <p><strong>Full Name:</strong> {form.getValues().fullName}</p>
+                                <p><strong>Full Name:</strong> {form.getValues().full_name}</p>
                                 <p><strong>Gender:</strong> {form.getValues().gender}</p>
                                 <p><strong>Age:</strong> {form.getValues().age}</p>
                                 <p><strong>Nationality:</strong> {form.getValues().nationality}</p>
@@ -216,7 +208,7 @@ export default function OnboardingPage() {
                                 <h4 className="font-medium text-lg">Academic Background</h4>
                                 <p><strong>Applying for:</strong> {form.getValues().program}</p>
                                 <p><strong>University:</strong> {form.getValues().university}</p>
-                                <p><strong>Last Education:</strong> {form.getValues().lastEducation}</p>
+                                <p><strong>Last Education:</strong> {form.getValues().last_education}</p>
                             </div>
                             <p className="text-sm text-muted-foreground text-center">Please review your information. By clicking "Submit," you confirm that the details are correct.</p>
                         </div>
