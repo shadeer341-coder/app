@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -56,17 +57,15 @@ export default function LoginPage() {
       password: values.password,
     });
 
+    setLoading(false);
     if (error) {
-      setLoading(false);
       toast({
         variant: 'destructive',
         title: 'Login Failed',
         description: error.message,
       });
     } else {
-      // router.push('/dashboard') is not enough, as the server-side
-      // rendering of the dashboard layout requires a full refresh to get the new session
-      router.push('/dashboard');
+      // Refresh the page to allow the server to detect the session
       router.refresh();
     }
   }
