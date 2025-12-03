@@ -7,7 +7,6 @@ import { useRouter } from 'next/navigation';
 import { useForm, type FieldName } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { createSupabaseClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -34,6 +33,8 @@ import { Logo } from '@/components/icons';
 import nationalities from '@/lib/nationalities.json';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
+import { createSupabaseClient } from '@/lib/supabase/client';
+
 
 type University = { name: string; country: string; };
 
@@ -257,7 +258,7 @@ export default function OnboardingPage() {
                                         {programOptions.map(option => (
                                         <FormItem key={option.value}>
                                             <FormControl>
-                                            <RadioGroupItem value={option.value} className="sr-only" />
+                                            <RadioGroupItem value={option.value} id={field.name + option.value} className="sr-only" />
                                             </FormControl>
                                             <Label
                                                 htmlFor={field.name + option.value}
