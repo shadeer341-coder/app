@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm, type FieldName } from 'react-hook-form';
@@ -32,6 +32,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, ArrowLeft, Check, ChevronsUpDown } from 'lucide-react';
 import { Logo } from '@/components/icons';
 import nationalities from '@/lib/nationalities.json';
+import universityData from '@/lib/universities.json';
 import { cn } from '@/lib/utils';
 
 
@@ -65,9 +66,6 @@ export default function OnboardingPage() {
   
   const [popoverOpen, setPopoverOpen] = useState(false)
   const [universitySearch, setUniversitySearch] = useState("");
-  const [universities, setUniversities] = useState<University[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -82,48 +80,13 @@ export default function OnboardingPage() {
     },
   });
 
-  useEffect(() => {
-    if (universitySearch.length < 3) {
-      setUniversities([]);
-      return;
+  const filteredUniversities = useMemo(() => {
+    if (!universitySearch) {
+      return universityData.slice(0, 50); // Show first 50 by default
     }
-
-    setIsSearching(true);
-    console.log(`[DEBUG] Searching for: "${universitySearch}"`);
-
-    const debounce = setTimeout(() => {
-      const fetchUrl = `https://universities.hipolabs.com/search?name=${universitySearch}`;
-      console.log(`[DEBUG] Fetching URL: ${fetchUrl}`);
-
-      fetch(fetchUrl)
-        .then(res => {
-            console.log('[DEBUG] Raw Response Status:', res.status);
-            if (!res.ok) {
-                throw new Error(`[DEBUG] HTTP error! status: ${res.status}`);
-            }
-            return res.json();
-        })
-        .then((data) => {
-          console.log('[DEBUG] Parsed Data Length:', data.length);
-          // Limit to 50 results and filter out duplicates by name
-          const uniqueNames = new Set<string>();
-          const filteredData = data.filter((uni: University) => {
-              if (!uniqueNames.has(uni.name)) {
-                  uniqueNames.add(uni.name);
-                  return true;
-              }
-              return false;
-          }).slice(0, 50);
-          console.log('[DEBUG] Filtered Data Length:', filteredData.length);
-          setUniversities(filteredData);
-        })
-        .catch(err => {
-            console.error('[DEBUG] Fetch operation failed:', err);
-        })
-        .finally(() => setIsSearching(false));
-    }, 500); // 500ms debounce
-
-    return () => clearTimeout(debounce);
+    return universityData
+      .filter(uni => uni.name.toLowerCase().includes(universitySearch.toLowerCase()))
+      .slice(0, 50); // Limit to 50 results
   }, [universitySearch]);
 
   const nextStep = async () => {
@@ -281,7 +244,11 @@ export default function OnboardingPage() {
                                                 !field.value && "text-muted-foreground"
                                             )}
                                             >
-                                            {field.value || "Select a university"}
+                                            {field.value
+                                                ? universityData.find(
+                                                    (uni) => uni.name === field.value
+                                                  )?.name
+                                                : "Select a university"}
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                             </Button>
                                         </FormControl>
@@ -294,10 +261,9 @@ export default function OnboardingPage() {
                                                 onValueChange={setUniversitySearch}
                                             />
                                             <CommandList>
-                                                {isSearching && <CommandItem>Searching...</CommandItem>}
-                                                {universities.length === 0 && !isSearching && universitySearch.length > 2 && <CommandEmpty>No university found.</CommandEmpty>}
+                                                <CommandEmpty>No university found.</CommandEmpty>
                                                 <CommandGroup>
-                                                {universities.map((uni) => (
+                                                {filteredUniversities.map((uni) => (
                                                     <CommandItem
                                                         value={uni.name}
                                                         key={uni.name}
@@ -314,7 +280,7 @@ export default function OnboardingPage() {
                                                             : "opacity-0"
                                                         )}
                                                     />
-                                                    {uni.name} ({uni.country})
+                                                    {uni.name}
                                                     </CommandItem>
                                                 ))}
                                                 </CommandGroup>
