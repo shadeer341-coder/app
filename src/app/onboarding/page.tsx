@@ -32,7 +32,6 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, ArrowLeft, Check, ChevronsUpDown } from 'lucide-react';
 import { Logo } from '@/components/icons';
 import nationalities from '@/lib/nationalities.json';
-import universityData from '@/lib/universities.json';
 import { cn } from '@/lib/utils';
 
 
@@ -66,6 +65,8 @@ export default function OnboardingPage() {
   
   const [popoverOpen, setPopoverOpen] = useState(false)
   const [universitySearch, setUniversitySearch] = useState("");
+  const [universities, setUniversities] = useState<University[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -80,14 +81,43 @@ export default function OnboardingPage() {
     },
   });
 
-  const filteredUniversities = useMemo(() => {
-    if (!universitySearch) {
-      return universityData.slice(0, 50); // Show first 50 by default
+  useEffect(() => {
+    if (universitySearch.length < 2) {
+      setUniversities([]);
+      return;
     }
-    return universityData
-      .filter(uni => uni.name.toLowerCase().includes(universitySearch.toLowerCase()))
-      .slice(0, 50); // Limit to 50 results
-  }, [universitySearch]);
+
+    setIsSearching(true);
+    const handler = setTimeout(() => {
+      fetch(`http://universities.hipolabs.com/search?name=${universitySearch}`)
+        .then(res => res.json())
+        .then((data: University[]) => {
+          const uniqueNames = new Set<string>();
+          const filteredData = data.filter(uni => {
+            if (!uniqueNames.has(uni.name)) {
+              uniqueNames.add(uni.name);
+              return true;
+            }
+            return false;
+          });
+          setUniversities(filteredData.slice(0, 50));
+        })
+        .catch(err => {
+          console.error("Failed to fetch universities:", err);
+          toast({
+            variant: "destructive",
+            title: "Could not fetch universities",
+            description: "There was an issue connecting to the university database. Please try again later."
+          })
+        })
+        .finally(() => setIsSearching(false));
+    }, 500); // 500ms debounce
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [universitySearch, toast]);
+
 
   const nextStep = async () => {
     const fieldsToValidate = stepFields[currentStep];
@@ -244,11 +274,7 @@ export default function OnboardingPage() {
                                                 !field.value && "text-muted-foreground"
                                             )}
                                             >
-                                            {field.value
-                                                ? universityData.find(
-                                                    (uni) => uni.name === field.value
-                                                  )?.name
-                                                : "Select a university"}
+                                            {field.value || "Select a university"}
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                             </Button>
                                         </FormControl>
@@ -261,9 +287,10 @@ export default function OnboardingPage() {
                                                 onValueChange={setUniversitySearch}
                                             />
                                             <CommandList>
-                                                <CommandEmpty>No university found.</CommandEmpty>
+                                                {isSearching && <CommandEmpty>Searching...</CommandEmpty>}
+                                                {!isSearching && universities.length === 0 && universitySearch.length > 1 && <CommandEmpty>No university found.</CommandEmpty>}
                                                 <CommandGroup>
-                                                {filteredUniversities.map((uni) => (
+                                                {universities.map((uni) => (
                                                     <CommandItem
                                                         value={uni.name}
                                                         key={uni.name}
