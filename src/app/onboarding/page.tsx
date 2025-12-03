@@ -32,8 +32,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, ArrowLeft, Check, ChevronsUpDown } from 'lucide-react';
 import { Logo } from '@/components/icons';
 import nationalities from '@/lib/nationalities.json';
-import allUniversities from '@/lib/universities.json';
 import { cn } from '@/lib/utils';
+import { searchUniversities, type University } from './actions';
 
 
 const formSchema = z.object({
@@ -47,7 +47,7 @@ const formSchema = z.object({
 });
 
 type FormData = z.infer<typeof formSchema>;
-type University = { name: string; country: string; };
+
 
 const stepFields: Record<number, FieldName<FormData>[]> = {
     1: ['full_name', 'gender', 'age', 'nationality'],
@@ -66,6 +66,8 @@ export default function OnboardingPage() {
   
   const [popoverOpen, setPopoverOpen] = useState(false)
   const [universitySearch, setUniversitySearch] = useState("");
+  const [universities, setUniversities] = useState<University[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -80,14 +82,22 @@ export default function OnboardingPage() {
     },
   });
 
-  const filteredUniversities =
-    universitySearch === ""
-      ? allUniversities.slice(0, 50)
-      : allUniversities
-          .filter((uni) =>
-            uni.name.toLowerCase().includes(universitySearch.toLowerCase())
-          )
-          .slice(0, 50);
+  useEffect(() => {
+    // Debounce the search input
+    const timer = setTimeout(() => {
+      if (universitySearch.length > 2) {
+        setIsSearching(true);
+        searchUniversities(universitySearch).then((results) => {
+            setUniversities(results);
+            setIsSearching(false);
+        });
+      } else {
+        setUniversities([]);
+      }
+    }, 500); // 500ms delay
+
+    return () => clearTimeout(timer);
+  }, [universitySearch]);
 
   const nextStep = async () => {
     const fieldsToValidate = stepFields[currentStep];
@@ -257,9 +267,10 @@ export default function OnboardingPage() {
                                                 onValueChange={setUniversitySearch}
                                             />
                                             <CommandList>
-                                                <CommandEmpty>No university found.</CommandEmpty>
+                                                {isSearching && <CommandItem>Searching...</CommandItem>}
+                                                {!isSearching && universities.length === 0 && universitySearch.length > 2 && <CommandEmpty>No university found.</CommandEmpty>}
                                                 <CommandGroup>
-                                                {filteredUniversities.map((uni) => (
+                                                {universities.map((uni) => (
                                                     <CommandItem
                                                         value={uni.name}
                                                         key={uni.name}
@@ -353,3 +364,5 @@ export default function OnboardingPage() {
     </div>
   );
 }
+
+    
