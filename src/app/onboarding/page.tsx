@@ -18,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, ArrowLeft } from 'lucide-react';
 import { Logo } from '@/components/icons';
 import nationalities from '@/lib/nationalities.json';
+import universities from '@/lib/universities.json';
 
 const formSchema = z.object({
   full_name: z.string().min(2, "Full name is required."),
@@ -34,7 +35,7 @@ type FormData = z.infer<typeof formSchema>;
 const stepFields: Record<number, FieldName<FormData>[]> = {
     1: ['full_name', 'gender', 'age', 'nationality'],
     2: ['program', 'university'],
-    3: ['last_education']
+    3: [] // No validation for optional step 3
 };
 
 
@@ -61,11 +62,13 @@ export default function OnboardingPage() {
 
   const nextStep = async () => {
     const fieldsToValidate = stepFields[currentStep];
-    const isValid = await form.trigger(fieldsToValidate);
-    
-    if (isValid) {
-      setCurrentStep(prev => Math.min(prev + 1, totalSteps));
+    if (fieldsToValidate && fieldsToValidate.length > 0) {
+        const isValid = await form.trigger(fieldsToValidate);
+        if (!isValid) {
+            return;
+        }
     }
+    setCurrentStep(prev => Math.min(prev + 1, totalSteps));
   };
   const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
 
@@ -197,9 +200,18 @@ export default function OnboardingPage() {
                             )} />
                             <FormField control={form.control} name="university" render={({ field }) => (
                                 <FormItem>
-                                <FormLabel>Which University Are You Applying To?</FormLabel>
-                                <FormControl><Input placeholder="e.g., University of London" {...field} /></FormControl>
-                                <FormMessage />
+                                    <FormLabel>Which University Are You Applying To?</FormLabel>
+                                     <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <FormControl><SelectTrigger><SelectValue placeholder="Select a university" /></SelectTrigger></FormControl>
+                                        <SelectContent>
+                                            {universities.map((uni) => (
+                                                <SelectItem key={uni.value} value={uni.value}>
+                                                    {uni.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
                                 </FormItem>
                             )} />
                         </div>
