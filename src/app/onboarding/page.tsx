@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm, type FieldName } from 'react-hook-form';
@@ -32,7 +32,6 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, ArrowLeft, Check, ChevronsUpDown } from 'lucide-react';
 import { Logo } from '@/components/icons';
 import nationalities from '@/lib/nationalities.json';
-import universities from '@/lib/universities.json';
 import { cn } from '@/lib/utils';
 
 
@@ -47,6 +46,7 @@ const formSchema = z.object({
 });
 
 type FormData = z.infer<typeof formSchema>;
+type University = { name: string; country: string; };
 
 const stepFields: Record<number, FieldName<FormData>[]> = {
     1: ['full_name', 'gender', 'age', 'nationality'],
@@ -62,7 +62,11 @@ export default function OnboardingPage() {
   const { toast } = useToast();
   const supabase = createSupabaseClient();
   const totalSteps = 4;
+  
   const [popoverOpen, setPopoverOpen] = useState(false)
+  const [universitySearch, setUniversitySearch] = useState("");
+  const [universities, setUniversities] = useState<University[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
 
   const form = useForm<FormData>({
@@ -77,6 +81,35 @@ export default function OnboardingPage() {
       last_education: '',
     },
   });
+
+  useEffect(() => {
+    if (universitySearch.length < 3) {
+      setUniversities([]);
+      return;
+    }
+
+    setIsSearching(true);
+    const debounce = setTimeout(() => {
+      fetch(`http://universities.hipolabs.com/search?name=${universitySearch}`)
+        .then(res => res.json())
+        .then((data) => {
+          // Limit to 50 results and filter out duplicates
+          const uniqueNames = new Set<string>();
+          const filteredData = data.filter((uni: University) => {
+              if (!uniqueNames.has(uni.name)) {
+                  uniqueNames.add(uni.name);
+                  return true;
+              }
+              return false;
+          });
+          setUniversities(filteredData.slice(0, 50));
+        })
+        .catch(console.error)
+        .finally(() => setIsSearching(false));
+    }, 500); // 500ms debounce
+
+    return () => clearTimeout(debounce);
+  }, [universitySearch]);
 
   const nextStep = async () => {
     const fieldsToValidate = stepFields[currentStep];
@@ -216,7 +249,7 @@ export default function OnboardingPage() {
                                     <FormMessage />
                                 </FormItem>
                             )} />
-                            <FormField
+                           <FormField
                                 control={form.control}
                                 name="university"
                                 render={({ field }) => (
@@ -233,39 +266,40 @@ export default function OnboardingPage() {
                                                 !field.value && "text-muted-foreground"
                                             )}
                                             >
-                                            {field.value
-                                                ? universities.find(
-                                                    (uni) => uni.value === field.value
-                                                )?.label
-                                                : "Select a university"}
+                                            {field.value || "Select a university"}
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                             </Button>
                                         </FormControl>
                                         </PopoverTrigger>
                                         <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                                         <Command>
-                                            <CommandInput placeholder="Search university..." />
-                                            <CommandEmpty>No university found.</CommandEmpty>
+                                            <CommandInput 
+                                                placeholder="Search university..." 
+                                                value={universitySearch}
+                                                onValueChange={setUniversitySearch}
+                                            />
                                             <CommandList>
+                                                {isSearching && <CommandItem>Searching...</CommandItem>}
+                                                {universities.length === 0 && !isSearching && universitySearch.length > 2 && <CommandEmpty>No university found.</CommandEmpty>}
                                                 <CommandGroup>
                                                 {universities.map((uni) => (
                                                     <CommandItem
-                                                    value={uni.label}
-                                                    key={uni.value}
-                                                    onSelect={() => {
-                                                        form.setValue("university", uni.value)
-                                                        setPopoverOpen(false)
-                                                    }}
+                                                        value={uni.name}
+                                                        key={uni.name}
+                                                        onSelect={() => {
+                                                            form.setValue("university", uni.name)
+                                                            setPopoverOpen(false)
+                                                        }}
                                                     >
                                                     <Check
                                                         className={cn(
                                                         "mr-2 h-4 w-4",
-                                                        uni.value === field.value
+                                                         uni.name === field.value
                                                             ? "opacity-100"
                                                             : "opacity-0"
                                                         )}
                                                     />
-                                                    {uni.label}
+                                                    {uni.name} ({uni.country})
                                                     </CommandItem>
                                                 ))}
                                                 </CommandGroup>
@@ -342,3 +376,5 @@ export default function OnboardingPage() {
     </div>
   );
 }
+
+    
