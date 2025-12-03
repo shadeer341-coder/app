@@ -18,12 +18,10 @@ export default async function DashboardLayout({
     redirect('/');
   }
 
-  // If onboarding is not complete, DashboardInitializer will handle the redirect.
-  // We just need to pass the status.
+  // DashboardInitializer will handle the redirect if onboarding is not complete.
   if (!user.onboardingCompleted) {
-    redirect('/onboarding');
+    return <DashboardInitializer onboardingCompleted={false}>{children}</DashboardInitializer>;
   }
-
 
   return (
     <SidebarProvider>
@@ -32,7 +30,9 @@ export default async function DashboardLayout({
         <div className="flex min-h-screen flex-col">
         <Header user={user} />
         <main className="flex-1 p-4 md:p-8 pt-6">
-            {children}
+            <DashboardInitializer onboardingCompleted={true}>
+              {children}
+            </DashboardInitializer>
         </main>
         </div>
       </SidebarInset>
