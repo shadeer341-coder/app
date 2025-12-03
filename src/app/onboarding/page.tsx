@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm, type FieldName } from 'react-hook-form';
@@ -32,6 +32,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, ArrowLeft, Check, ChevronsUpDown } from 'lucide-react';
 import { Logo } from '@/components/icons';
 import nationalities from '@/lib/nationalities.json';
+import allUniversities from '@/lib/universities.json';
 import { cn } from '@/lib/utils';
 
 
@@ -65,9 +66,7 @@ export default function OnboardingPage() {
   
   const [popoverOpen, setPopoverOpen] = useState(false)
   const [universitySearch, setUniversitySearch] = useState("");
-  const [universities, setUniversities] = useState<University[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-
+  
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -81,43 +80,14 @@ export default function OnboardingPage() {
     },
   });
 
-  useEffect(() => {
-    if (universitySearch.length < 2) {
-      setUniversities([]);
-      return;
-    }
-
-    setIsSearching(true);
-    const handler = setTimeout(() => {
-      fetch(`https://universities.hipolabs.com/search?name=${universitySearch}`)
-        .then(res => res.json())
-        .then((data: University[]) => {
-          const uniqueNames = new Set<string>();
-          const filteredData = data.filter(uni => {
-            if (!uniqueNames.has(uni.name)) {
-              uniqueNames.add(uni.name);
-              return true;
-            }
-            return false;
-          });
-          setUniversities(filteredData.slice(0, 50));
-        })
-        .catch(err => {
-          console.error("Failed to fetch universities:", err);
-          toast({
-            variant: "destructive",
-            title: "Could not fetch universities",
-            description: "There was an issue connecting to the university database. Please try again later."
-          })
-        })
-        .finally(() => setIsSearching(false));
-    }, 500); // 500ms debounce
-
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [universitySearch, toast]);
-
+  const filteredUniversities =
+    universitySearch === ""
+      ? allUniversities.slice(0, 50)
+      : allUniversities
+          .filter((uni) =>
+            uni.name.toLowerCase().includes(universitySearch.toLowerCase())
+          )
+          .slice(0, 50);
 
   const nextStep = async () => {
     const fieldsToValidate = stepFields[currentStep];
@@ -287,10 +257,9 @@ export default function OnboardingPage() {
                                                 onValueChange={setUniversitySearch}
                                             />
                                             <CommandList>
-                                                {isSearching && <CommandEmpty>Searching...</CommandEmpty>}
-                                                {!isSearching && universities.length === 0 && universitySearch.length > 1 && <CommandEmpty>No university found.</CommandEmpty>}
+                                                <CommandEmpty>No university found.</CommandEmpty>
                                                 <CommandGroup>
-                                                {universities.map((uni) => (
+                                                {filteredUniversities.map((uni) => (
                                                     <CommandItem
                                                         value={uni.name}
                                                         key={uni.name}
