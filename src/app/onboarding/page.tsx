@@ -90,7 +90,7 @@ export default function OnboardingPage() {
 
     setIsSearching(true);
     const debounce = setTimeout(() => {
-      fetch(`http://universities.hipolabs.com/search?name=${universitySearch}`)
+      fetch(`https://universities.hipolabs.com/search?name=${universitySearch}`)
         .then(res => res.json())
         .then((data) => {
           // Limit to 50 results and filter out duplicates
