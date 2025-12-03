@@ -144,8 +144,7 @@ export function OnboardingPageClient() {
 
     const { error } = await supabase
       .from('profiles')
-      .update({ ...data, onboarding_completed: true })
-      .eq('id', user.id);
+      .upsert({ id: user.id, ...data, onboarding_completed: true });
 
     setLoading(false);
     if (error) {
@@ -405,3 +404,5 @@ export function OnboardingPageClient() {
     </div>
   );
 }
+
+    
