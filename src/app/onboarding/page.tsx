@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { createSupabaseClient } from '@/lib/supabase/client';
@@ -15,6 +16,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { Logo } from '@/components/icons';
 
 const steps = [
   { id: 1, title: 'Personal Information' },
@@ -93,7 +95,11 @@ export default function OnboardingPage() {
   const progressValue = (currentStep / steps.length) * 100;
 
   return (
-    <div className="flex min-h-full items-center justify-center bg-background">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-secondary p-4">
+        <Link href="/" className="flex items-center justify-center gap-2 font-headline text-2xl font-bold mb-6">
+            <Logo className="h-10 w-10 text-primary" />
+            <span className="text-3xl">precasprep</span>
+        </Link>
         <Card className="w-full max-w-2xl">
             <CardHeader>
             <CardTitle className="text-2xl font-headline">Welcome! Let's get you set up.</CardTitle>

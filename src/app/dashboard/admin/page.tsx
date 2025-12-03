@@ -1,4 +1,9 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { users } from "@/lib/mock-data";
+import { User } from "lucide-react";
 
 export default function AdminPage() {
   return (
@@ -13,13 +18,44 @@ export default function AdminPage() {
         </div>
       <Card>
         <CardHeader>
-          <CardTitle>Admin Dashboard</CardTitle>
+          <CardTitle>User Management</CardTitle>
           <CardDescription>
-            This page will contain interfaces for managing question categories, questions, users, and agencies.
+            View and manage all users in the system.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <p>Admin features (CRUD for questions, etc.) will be implemented here.</p>
+          <Table>
+            <TableHeader>
+                <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead>Level</TableHead>
+                    <TableHead>Agency ID</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {users.map(user => (
+                    <TableRow key={user.id}>
+                        <TableCell>
+                            <div className="flex items-center gap-3">
+                                <Avatar className="h-9 w-9">
+                                    <AvatarImage src={user.avatarUrl} alt={user.name} />
+                                    <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <div className="font-medium">{user.name}</div>
+                            </div>
+                        </TableCell>
+                        <TableCell>{user.email}</TableCell>
+                        <TableCell>
+                            <Badge variant={user.role === 'admin' ? 'destructive' : 'secondary'}>{user.role}</Badge>
+                        </TableCell>
+                        <TableCell>{user.level}</TableCell>
+                        <TableCell>{user.agencyId || 'N/A'}</TableCell>
+                    </TableRow>
+                ))}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
     </div>
