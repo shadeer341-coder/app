@@ -264,7 +264,7 @@ export default function OnboardingPage() {
                                                 htmlFor={field.name + option.value}
                                                 className={cn(
                                                     "flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors",
-                                                    field.value === option.value && "border-primary"
+                                                    field.value === option.value && "border-primary bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
                                                 )}
                                             >
                                                 <option.icon className="w-8 h-8 mb-3" />
@@ -405,3 +405,5 @@ export default function OnboardingPage() {
     </div>
   );
 }
+
+    
