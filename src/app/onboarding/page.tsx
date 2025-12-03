@@ -263,7 +263,7 @@ export default function OnboardingPage() {
                                             <Label
                                                 htmlFor={field.name + option.value}
                                                 className={cn(
-                                                    "flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground cursor-pointer",
+                                                    "flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors",
                                                     field.value === option.value && "border-primary"
                                                 )}
                                             >

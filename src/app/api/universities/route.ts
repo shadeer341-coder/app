@@ -28,7 +28,7 @@ export async function GET(request: Request) {
         }
     }
 
-    return NextResponse.json(uniqueUniversities.slice(0, 50));
+    return NextResponse.json(uniqueUniversities.slice(0, 10));
   } catch (error) {
     if (error instanceof Error) {
         console.error("Failed to fetch from universities API:", error.message);
