@@ -19,23 +19,20 @@ export default async function DashboardLayout({
   }
 
   // DashboardInitializer will handle the redirect if onboarding is not complete.
-  if (!user.onboardingCompleted) {
-    return <DashboardInitializer onboardingCompleted={false}>{children}</DashboardInitializer>;
-  }
-
+  // The children passed here will only be rendered if onboarding IS complete.
   return (
-    <SidebarProvider>
-      <MainSidebar user={user} />
-      <SidebarInset>
-        <div className="flex min-h-screen flex-col">
-        <Header user={user} />
-        <main className="flex-1 p-4 md:p-8 pt-6">
-            <DashboardInitializer onboardingCompleted={true}>
+    <DashboardInitializer onboardingCompleted={user.onboardingCompleted}>
+      <SidebarProvider>
+        <MainSidebar user={user} />
+        <SidebarInset>
+          <div className="flex min-h-screen flex-col">
+          <Header user={user} />
+          <main className="flex-1 p-4 md:p-8 pt-6">
               {children}
-            </DashboardInitializer>
-        </main>
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+          </main>
+          </div>
+        </SidebarInset>
+      </SidebarProvider>
+    </DashboardInitializer>
   );
 }
