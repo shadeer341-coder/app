@@ -89,7 +89,7 @@ export default function OnboardingPage() {
 
     setIsSearching(true);
     const handler = setTimeout(() => {
-      fetch(`http://universities.hipolabs.com/search?name=${universitySearch}`)
+      fetch(`https://universities.hipolabs.com/search?name=${universitySearch}`)
         .then(res => res.json())
         .then((data: University[]) => {
           const uniqueNames = new Set<string>();
