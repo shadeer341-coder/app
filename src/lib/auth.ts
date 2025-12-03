@@ -22,6 +22,7 @@ export async function getCurrentUser(): Promise<User | null> {
 
     if (profileError) {
       console.error('Error fetching profile:', profileError);
+      // If profile doesn't exist, it could be a new user, but we can't proceed without a profile
       return null;
     }
     

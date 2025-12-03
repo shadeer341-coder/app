@@ -4,7 +4,7 @@ export type UserLevel = 'UG' | 'PG';
 export type User = {
   id: string;
   name: string;
-  email: string;
+  email: string; // This will come from the auth session, not the profile table
   avatarUrl: string;
   role: UserRole;
   level: UserLevel;
@@ -16,7 +16,7 @@ export type User = {
   program?: string;
   university?: string;
   lastEducation?: string;
-} | null;
+};
 
 export type QuestionCategory = {
   id: string;
@@ -49,5 +49,5 @@ export type InterviewAttempt = {
 export type Agency = {
   id: string;
   name: string;
-  members: (User & object)[];
+  members: User[];
 };
