@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -16,12 +17,13 @@ import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, ArrowLeft } from 'lucide-react';
 import { Logo } from '@/components/icons';
+import nationalities from '@/lib/nationalities.json';
 
 const formSchema = z.object({
   full_name: z.string().min(2, "Full name is required."),
   gender: z.string().min(1, "Gender is required."),
   age: z.coerce.number().min(16, "You must be at least 16 years old.").max(100),
-  nationality: z.string().min(2, "Nationality is required."),
+  nationality: z.string().min(1, "Nationality is required."),
   program: z.string().min(1, "Program choice is required."),
   university: z.string().min(2, "University is required."),
   last_education: z.string().min(1, "Last completed education is required."),
@@ -144,9 +146,18 @@ export default function OnboardingPage() {
                                 )} />
                                 <FormField control={form.control} name="nationality" render={({ field }) => (
                                     <FormItem>
-                                    <FormLabel>Nationality</FormLabel>
-                                    <FormControl><Input placeholder="e.g., British" {...field} /></FormControl>
-                                    <FormMessage />
+                                        <FormLabel>Nationality</FormLabel>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <FormControl><SelectTrigger><SelectValue placeholder="Select a nationality" /></SelectTrigger></FormControl>
+                                            <SelectContent>
+                                                {nationalities.map((nat) => (
+                                                    <SelectItem key={nat.value} value={nat.value}>
+                                                        {nat.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
                                     </FormItem>
                                 )} />
                             </div>
@@ -233,3 +244,5 @@ export default function OnboardingPage() {
     </div>
   );
 }
+
+    
