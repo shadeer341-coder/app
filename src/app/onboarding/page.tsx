@@ -89,10 +89,22 @@ export default function OnboardingPage() {
     }
 
     setIsSearching(true);
+    console.log(`[DEBUG] Searching for: "${universitySearch}"`);
+
     const debounce = setTimeout(() => {
-      fetch(`https://universities.hipolabs.com/search?name=${universitySearch}`)
-        .then(res => res.json())
+      const fetchUrl = `https://universities.hipolabs.com/search?name=${universitySearch}`;
+      console.log(`[DEBUG] Fetching URL: ${fetchUrl}`);
+
+      fetch(fetchUrl)
+        .then(res => {
+            console.log('[DEBUG] Raw Response:', res);
+            if (!res.ok) {
+                throw new Error(`[DEBUG] HTTP error! status: ${res.status}`);
+            }
+            return res.json();
+        })
         .then((data) => {
+          console.log('[DEBUG] Parsed Data:', data);
           // Limit to 50 results and filter out duplicates
           const uniqueNames = new Set<string>();
           const filteredData = data.filter((uni: University) => {
@@ -104,7 +116,9 @@ export default function OnboardingPage() {
           });
           setUniversities(filteredData.slice(0, 50));
         })
-        .catch(console.error)
+        .catch(err => {
+            console.error('[DEBUG] Fetch failed:', err);
+        })
         .finally(() => setIsSearching(false));
     }, 500); // 500ms debounce
 
@@ -376,5 +390,7 @@ export default function OnboardingPage() {
     </div>
   );
 }
+
+    
 
     
