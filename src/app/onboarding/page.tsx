@@ -97,15 +97,15 @@ export default function OnboardingPage() {
 
       fetch(fetchUrl)
         .then(res => {
-            console.log('[DEBUG] Raw Response:', res);
+            console.log('[DEBUG] Raw Response Status:', res.status);
             if (!res.ok) {
                 throw new Error(`[DEBUG] HTTP error! status: ${res.status}`);
             }
             return res.json();
         })
         .then((data) => {
-          console.log('[DEBUG] Parsed Data:', data);
-          // Limit to 50 results and filter out duplicates
+          console.log('[DEBUG] Parsed Data Length:', data.length);
+          // Limit to 50 results and filter out duplicates by name
           const uniqueNames = new Set<string>();
           const filteredData = data.filter((uni: University) => {
               if (!uniqueNames.has(uni.name)) {
@@ -113,11 +113,12 @@ export default function OnboardingPage() {
                   return true;
               }
               return false;
-          });
-          setUniversities(filteredData.slice(0, 50));
+          }).slice(0, 50);
+          console.log('[DEBUG] Filtered Data Length:', filteredData.length);
+          setUniversities(filteredData);
         })
         .catch(err => {
-            console.error('[DEBUG] Fetch failed:', err);
+            console.error('[DEBUG] Fetch operation failed:', err);
         })
         .finally(() => setIsSearching(false));
     }, 500); // 500ms debounce
@@ -390,7 +391,3 @@ export default function OnboardingPage() {
     </div>
   );
 }
-
-    
-
-    
