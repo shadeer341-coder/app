@@ -12,13 +12,29 @@ import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, ArrowLeft } from 'lucide-react';
+import { Loader2, ArrowLeft, Check, ChevronsUpDown } from 'lucide-react';
 import { Logo } from '@/components/icons';
 import nationalities from '@/lib/nationalities.json';
 import universities from '@/lib/universities.json';
+import { cn } from '@/lib/utils';
+
 
 const formSchema = z.object({
   full_name: z.string().min(2, "Full name is required."),
@@ -46,6 +62,8 @@ export default function OnboardingPage() {
   const { toast } = useToast();
   const supabase = createSupabaseClient();
   const totalSteps = 4;
+  const [popoverOpen, setPopoverOpen] = useState(false)
+
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -198,22 +216,67 @@ export default function OnboardingPage() {
                                     <FormMessage />
                                 </FormItem>
                             )} />
-                            <FormField control={form.control} name="university" render={({ field }) => (
-                                <FormItem>
+                            <FormField
+                                control={form.control}
+                                name="university"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-col">
                                     <FormLabel>Which University Are You Applying To?</FormLabel>
-                                     <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <FormControl><SelectTrigger><SelectValue placeholder="Select a university" /></SelectTrigger></FormControl>
-                                        <SelectContent>
-                                            {universities.map((uni) => (
-                                                <SelectItem key={uni.value} value={uni.value}>
+                                    <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+                                        <PopoverTrigger asChild>
+                                        <FormControl>
+                                            <Button
+                                            variant="outline"
+                                            role="combobox"
+                                            className={cn(
+                                                "w-full justify-between",
+                                                !field.value && "text-muted-foreground"
+                                            )}
+                                            >
+                                            {field.value
+                                                ? universities.find(
+                                                    (uni) => uni.value === field.value
+                                                )?.label
+                                                : "Select a university"}
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </FormControl>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                        <Command>
+                                            <CommandInput placeholder="Search university..." />
+                                            <CommandEmpty>No university found.</CommandEmpty>
+                                            <CommandList>
+                                                <CommandGroup>
+                                                {universities.map((uni) => (
+                                                    <CommandItem
+                                                    value={uni.label}
+                                                    key={uni.value}
+                                                    onSelect={() => {
+                                                        form.setValue("university", uni.value)
+                                                        setPopoverOpen(false)
+                                                    }}
+                                                    >
+                                                    <Check
+                                                        className={cn(
+                                                        "mr-2 h-4 w-4",
+                                                        uni.value === field.value
+                                                            ? "opacity-100"
+                                                            : "opacity-0"
+                                                        )}
+                                                    />
                                                     {uni.label}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                                    </CommandItem>
+                                                ))}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                        </PopoverContent>
+                                    </Popover>
                                     <FormMessage />
-                                </FormItem>
-                            )} />
+                                    </FormItem>
+                                )}
+                                />
                         </div>
                     )}
                     {currentStep === 3 && (
