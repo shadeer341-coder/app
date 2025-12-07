@@ -149,18 +149,15 @@ export function OnboardingPageClient() {
       const { data: userTypeData, error: userTypeError } = await supabase
         .from('user_type')
         .select('group_name')
-        .eq('group_id', groupId)
-        .single();
+        .eq('group_id', groupId);
   
       if (userTypeError) {
         console.error('Error fetching user type:', userTypeError);
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not determine user role.' });
-        setLoading(false);
-        return;
+        // Don't block submission, just fall back to default role
       }
   
-      if (userTypeData) {
-        userRole = userTypeData.group_name;
+      if (userTypeData && userTypeData.length > 0) {
+        userRole = userTypeData[0].group_name;
       }
     }
   
