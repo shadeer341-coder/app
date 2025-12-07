@@ -1,4 +1,4 @@
-export type UserRole = 'user' | 'agency_admin' | 'admin';
+export type UserRole = 'user' | 'agency_admin' | 'admin' | 'super_admin' | 'agency' | 'individual';
 export type UserLevel = 'UG' | 'PG';
 
 export type User = {

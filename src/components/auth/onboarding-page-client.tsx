@@ -135,17 +135,46 @@ export function OnboardingPageClient() {
   const onSubmit = async (data: FormData) => {
     setLoading(true);
     const { data: { user }, error: userError } = await supabase.auth.getUser();
-
+  
     if (userError || !user) {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not find user. Please log in again.' });
       setLoading(false);
       return;
     }
-
+  
+    let userRole = 'user'; // Default role
+    const groupId = user.user_metadata?.group_id;
+  
+    if (groupId) {
+      const { data: userTypeData, error: userTypeError } = await supabase
+        .from('user_type')
+        .select('group_name')
+        .eq('group_id', groupId)
+        .single();
+  
+      if (userTypeError) {
+        console.error('Error fetching user type:', userTypeError);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not determine user role.' });
+        setLoading(false);
+        return;
+      }
+  
+      if (userTypeData) {
+        userRole = userTypeData.group_name;
+      }
+    }
+  
+    const profileData = {
+      ...data,
+      id: user.id,
+      role: userRole,
+      onboarding_completed: true,
+    };
+  
     const { error } = await supabase
       .from('profiles')
-      .upsert({ id: user.id, ...data, onboarding_completed: true });
-
+      .upsert(profileData, { onConflict: 'id' });
+  
     setLoading(false);
     if (error) {
       toast({ variant: 'destructive', title: 'Update failed', description: error.message });
