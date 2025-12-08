@@ -10,7 +10,8 @@ import {
   Settings,
   Building,
   HardHat,
-  HelpCircle
+  HelpCircle,
+  AreaChart
 } from "lucide-react";
 import {
   Sidebar,
@@ -36,8 +37,11 @@ const agencyLinks = [
 ];
 
 const adminLinks = [
+  { href: "/dashboard", label: "Dashboard", icon: Home },
   { href: "/dashboard/questions", label: "Questions", icon: HelpCircle },
-  { href: "/dashboard/admin", label: "Admin", icon: HardHat },
+  { href: "/dashboard/admin", label: "Users", icon: Users },
+  { href: "/dashboard/admin/agencies", label: "Agencies", icon: Building },
+  { href: "/dashboard/admin/analytics", label: "Analytics", icon: AreaChart },
 ];
 
 export function MainSidebar({ user }: { user: User }) {
@@ -45,11 +49,14 @@ export function MainSidebar({ user }: { user: User }) {
 
   if (!user) return null;
 
-  const userLinks = [
-    ...commonLinks,
-    ...(user.role === 'agency_admin' ? agencyLinks : []),
-    ...(user.role === 'admin' ? adminLinks : []),
-  ];
+  let userLinks = commonLinks;
+
+  if (user.role === 'admin') {
+    userLinks = adminLinks;
+  } else if (user.role === 'agency_admin') {
+    userLinks = [...commonLinks, ...agencyLinks];
+  }
+
 
   return (
     <Sidebar>

@@ -152,10 +152,10 @@ export default async function DashboardPage() {
         <CardDescription>Manage system-wide settings and content.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4 md:grid-cols-2">
-        <Button asChild size="lg" variant="outline"><Link href="/dashboard/admin#category-management">Manage Questions</Link></Button>
+        <Button asChild size="lg" variant="outline"><Link href="/dashboard/questions">Manage Questions</Link></Button>
         <Button asChild size="lg" variant="outline"><Link href="/dashboard/admin">Manage Users</Link></Button>
-        <Button asChild size="lg" variant="outline"><Link href="#">Manage Agencies</Link></Button>
-        <Button asChild size="lg" variant="outline"><Link href="#">System Analytics</Link></Button>
+        <Button asChild size="lg" variant="outline"><Link href="/dashboard/admin/agencies">Manage Agencies</Link></Button>
+        <Button asChild size="lg" variant="outline"><Link href="/dashboard/admin/analytics">System Analytics</Link></Button>
       </CardContent>
     </Card>
   );
@@ -177,13 +177,15 @@ export default async function DashboardPage() {
             Here's what's happening with your interview prep today.
           </p>
         </div>
-        <Button asChild size="lg">
-          {/* This would link to the new interview flow */}
-          <Link href="#">
-            <PlusCircle className="mr-2 h-5 w-5" />
-            Start New Interview
-          </Link>
-        </Button>
+        {user.role !== 'admin' && (
+            <Button asChild size="lg">
+            {/* This would link to the new interview flow */}
+            <Link href="#">
+                <PlusCircle className="mr-2 h-5 w-5" />
+                Start New Interview
+            </Link>
+            </Button>
+        )}
       </div>
 
       {roleDashboards[user.role]}
