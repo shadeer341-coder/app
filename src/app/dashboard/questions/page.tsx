@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import type { QuestionCategory, Question } from "@/lib/types";
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { Badge } from '@/components/ui/badge';
@@ -59,8 +58,8 @@ export default async function QuestionsPage() {
     const questionData = {
         text: String(formData.get('question-text')),
         category_id: Number(formData.get('question-category')),
-        level: String(formData.get('question-level')),
-        is_mandatory: formData.get('is-mandatory') === 'on',
+        level: 'Both', // Defaulting level
+        is_mandatory: false, // Defaulting mandatory status
     };
 
     const { error } = await supabase.from('questions').insert(questionData);
@@ -156,37 +155,18 @@ export default async function QuestionsPage() {
                     <Label htmlFor="question-text">Question Text</Label>
                     <Textarea id="question-text" name="question-text" placeholder="e.g., Tell me about a time you faced a challenge." required />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="question-category">Category</Label>
-                        <Select name="question-category" required>
-                            <SelectTrigger id="question-category">
-                                <SelectValue placeholder="Select a category" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {categories?.map(cat => (
-                                    <SelectItem key={cat.id} value={String(cat.id)}>{cat.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="question-level">Level</Label>
-                        <Select name="question-level" required>
-                            <SelectTrigger id="question-level">
-                                <SelectValue placeholder="Select a level" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="UG">Undergraduate (UG)</SelectItem>
-                                <SelectItem value="PG">Postgraduate (PG)</SelectItem>
-                                <SelectItem value="Both">Both</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </div>
-                <div className="flex items-center space-x-2">
-                    <Checkbox id="is-mandatory" name="is-mandatory" />
-                    <Label htmlFor="is-mandatory" className="font-normal">Is this question mandatory?</Label>
+                <div className="space-y-2">
+                    <Label htmlFor="question-category">Category</Label>
+                    <Select name="question-category" required>
+                        <SelectTrigger id="question-category">
+                            <SelectValue placeholder="Select a category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {categories?.map(cat => (
+                                <SelectItem key={cat.id} value={String(cat.id)}>{cat.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
                 <Button>Create Question</Button>
               </form>
@@ -199,8 +179,6 @@ export default async function QuestionsPage() {
                             <TableRow>
                                 <TableHead>Question</TableHead>
                                 <TableHead>Category</TableHead>
-                                <TableHead>Level</TableHead>
-                                <TableHead>Mandatory</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -208,13 +186,11 @@ export default async function QuestionsPage() {
                                 <TableRow key={q.id}>
                                     <TableCell className="font-medium max-w-sm truncate">{q.text}</TableCell>
                                     <TableCell><Badge variant="outline">{q.question_categories.name}</Badge></TableCell>
-                                    <TableCell><Badge variant="secondary">{q.level}</Badge></TableCell>
-                                    <TableCell>{q.is_mandatory ? 'Yes' : 'No'}</TableCell>
                                 </TableRow>
                             ))}
                             {(!questions || questions.length === 0) && (
                                 <TableRow>
-                                    <TableCell colSpan={4} className="text-center">No questions found.</TableCell>
+                                    <TableCell colSpan={2} className="text-center">No questions found.</TableCell>
                                 </TableRow>
                             )}
                         </TableBody>
