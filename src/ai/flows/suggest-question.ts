@@ -16,7 +16,7 @@ export async function suggestQuestion(
 
     if (!apiKey) {
         console.error("GEMINI_API_KEY is not set.");
-        return { suggestion: "API key is not configured. Please contact support." };
+        return { suggestion: "API key is not configured. Please set GEMINI_API_KEY in your .env file." };
     }
 
     try {
@@ -33,6 +33,6 @@ export async function suggestQuestion(
 
     } catch (error) {
         console.error("Error calling Gemini API:", error);
-        return { suggestion: "There was an error generating a suggestion. Please try again." };
+        return { suggestion: "There was an error generating a suggestion. Please check your API key and try again." };
     }
 }
