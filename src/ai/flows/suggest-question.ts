@@ -22,7 +22,7 @@ export async function suggestQuestion(
 
     try {
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-pro"});
+        const model = genAI.getGenerativeModel({ model: "gemini-pro", apiVersion: 'v1' });
 
         const prompt = `You are an expert in creating interview questions. Suggest one concise, high-quality interview question for the following category: "${input.categoryName}". The question should be suitable for a job interview. Do not add any preamble, just provide the question text.`;
 
