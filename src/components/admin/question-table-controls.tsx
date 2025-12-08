@@ -43,7 +43,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import type { QuestionCategory } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -208,11 +207,7 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                                 variant={sortBy === option.value ? 'default' : 'outline'}
                                 size="sm"
                                 onClick={() => handleSortBy(option.value)}
-                                className={cn("rounded-full px-3 py-1 text-xs h-auto font-normal", 
-                                    sortBy === option.value 
-                                    ? "bg-primary text-primary-foreground border-primary" 
-                                    : "bg-background border-border"
-                                )}
+                                className="rounded-full px-3 py-1 text-xs h-auto font-normal"
                             >
                                 {option.label}
                             </Button>
@@ -228,11 +223,7 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                                 variant={order === option.value ? 'default' : 'outline'}
                                 size="sm"
                                 onClick={() => handleSortOrder(option.value)}
-                                className={cn("rounded-full px-3 py-1 text-xs h-auto font-normal",
-                                    order === option.value
-                                    ? "bg-primary text-primary-foreground border-primary"
-                                    : "bg-background border-border"
-                                )}
+                                className="rounded-full px-3 py-1 text-xs h-auto font-normal"
                             >
                                 {option.label}
                             </Button>
@@ -344,6 +335,5 @@ export function QuestionTableControls({ questions, categories, createAction, upd
             )}
 
         </div>
-    )
-
-    
+    );
+}
