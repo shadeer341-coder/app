@@ -58,7 +58,7 @@ export function QuestionTableControls({ questions, categories, createAction, upd
         } else {
             params.delete('q');
         }
-        replace(`${pathname}?${params.toString()}`);
+        replace(`${pathname}?${params.toString()}`, { scroll: false });
     }, 300);
 
     const handleFilter = (categoryId: string) => {
@@ -68,19 +68,19 @@ export function QuestionTableControls({ questions, categories, createAction, upd
         } else {
             params.delete('category');
         }
-        replace(`${pathname}?${params.toString()}`);
+        replace(`${pathname}?${params.toString()}`, { scroll: false });
     }
 
     const handleSort = (order: string) => {
         const params = new URLSearchParams(searchParams);
         params.set('order', order);
-        replace(`${pathname}?${params.toString()}`);
+        replace(`${pathname}?${params.toString()}`, { scroll: false });
     }
     
     const handleSortBy = (sortBy: string) => {
         const params = new URLSearchParams(searchParams);
         params.set('sortBy', sortBy);
-        replace(`${pathname}?${params.toString()}`);
+        replace(`${pathname}?${params.toString()}`, { scroll: false });
     }
 
     const handleEditClick = (question: any) => {
