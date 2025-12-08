@@ -46,6 +46,7 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import type { QuestionCategory } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 
 type QuestionTableControlsProps = {
@@ -66,6 +67,9 @@ export function QuestionTableControls({ questions, categories, createAction, upd
     const [addDialogOpen, setAddDialogOpen] = useState(false);
     const [editDialogOpen, setEditDialogOpen] = useState(false);
     const [editingQuestion, setEditingQuestion] = useState<any | null>(null);
+
+    const [sortBy, setSortBy] = useState(searchParams.get('sortBy') || 'created_at');
+    const [order, setOrder] = useState(searchParams.get('order') || 'desc');
 
     const handleFormAction = (action: (formData: FormData) => Promise<{ success: boolean, message: string }>, formData: FormData, closeDialog: () => void) => {
         startTransition(async () => {
@@ -99,15 +103,17 @@ export function QuestionTableControls({ questions, categories, createAction, upd
         replace(`${pathname}?${params.toString()}`, { scroll: false });
     }
 
-    const handleSort = (order: string) => {
+    const handleSortOrder = (newOrder: string) => {
+        setOrder(newOrder);
         const params = new URLSearchParams(searchParams);
-        params.set('order', order);
+        params.set('order', newOrder);
         replace(`${pathname}?${params.toString()}`, { scroll: false });
     }
     
-    const handleSortBy = (sortBy: string) => {
+    const handleSortBy = (newSortBy: string) => {
+        setSortBy(newSortBy);
         const params = new URLSearchParams(searchParams);
-        params.set('sortBy', sortBy);
+        params.set('sortBy', newSortBy);
         replace(`${pathname}?${params.toString()}`, { scroll: false });
     }
 
@@ -115,6 +121,18 @@ export function QuestionTableControls({ questions, categories, createAction, upd
         setEditingQuestion(question);
         setEditDialogOpen(true);
     };
+    
+    const sortOptions = [
+        { value: 'created_at', label: 'Date' },
+        { value: 'text', label: 'Question Text' },
+        { value: 'category_id', label: 'Category' },
+    ];
+
+    const orderOptions = [
+        { value: 'asc', label: 'Asc' },
+        { value: 'desc', label: 'Desc' },
+    ];
+
 
     return (
         <div className="space-y-4">
@@ -183,33 +201,43 @@ export function QuestionTableControls({ questions, categories, createAction, upd
             <div className="flex gap-8 items-center border rounded-md p-4 bg-muted/50">
                 <div className="flex items-center gap-2">
                     <Label className="text-sm">Sort by</Label>
-                    <RadioGroup defaultValue={searchParams.get('sortBy') || 'created_at'} onValueChange={handleSortBy} className="flex flex-row gap-2">
-                        <Label htmlFor="sort-date" className="font-normal border rounded-full px-3 py-1 text-xs cursor-pointer peer-data-[state=checked]:bg-primary peer-data-[state=checked]:text-primary-foreground peer-data-[state=checked]:border-primary transition-colors">
-                            <RadioGroupItem value="created_at" id="sort-date" className="sr-only peer" />
-                            Date
-                        </Label>
-                        <Label htmlFor="sort-text" className="font-normal border rounded-full px-3 py-1 text-xs cursor-pointer peer-data-[state=checked]:bg-primary peer-data-[state=checked]:text-primary-foreground peer-data-[state=checked]:border-primary transition-colors">
-                            <RadioGroupItem value="text" id="sort-text" className="sr-only peer" />
-                            Question Text
-                        </Label>
-                        <Label htmlFor="sort-category" className="font-normal border rounded-full px-3 py-1 text-xs cursor-pointer peer-data-[state=checked]:bg-primary peer-data-[state=checked]:text-primary-foreground peer-data-[state=checked]:border-primary transition-colors">
-                            <RadioGroupItem value="category_id" id="sort-category" className="sr-only peer" />
-                           Category
-                        </Label>
-                    </RadioGroup>
+                     <div className="flex flex-row gap-2">
+                        {sortOptions.map(option => (
+                            <Button
+                                key={option.value}
+                                variant={sortBy === option.value ? 'default' : 'outline'}
+                                size="sm"
+                                onClick={() => handleSortBy(option.value)}
+                                className={cn("rounded-full px-3 py-1 text-xs h-auto font-normal", 
+                                    sortBy === option.value 
+                                    ? "bg-primary text-primary-foreground border-primary" 
+                                    : "bg-background border-border"
+                                )}
+                            >
+                                {option.label}
+                            </Button>
+                        ))}
+                    </div>
                 </div>
                  <div className="flex items-center gap-2">
                     <Label className="text-sm">Order</Label>
-                    <RadioGroup defaultValue={searchParams.get('order') || 'desc'} onValueChange={handleSort} className="flex flex-row gap-2">
-                         <Label htmlFor="order-asc" className="font-normal border rounded-full px-3 py-1 text-xs cursor-pointer peer-data-[state=checked]:bg-primary peer-data-[state=checked]:text-primary-foreground peer-data-[state=checked]:border-primary transition-colors">
-                            <RadioGroupItem value="asc" id="order-asc" className="sr-only peer" />
-                            Asc
-                        </Label>
-                         <Label htmlFor="order-desc" className="font-normal border rounded-full px-3 py-1 text-xs cursor-pointer peer-data-[state=checked]:bg-primary peer-data-[state=checked]:text-primary-foreground peer-data-[state=checked]:border-primary transition-colors">
-                            <RadioGroupItem value="desc" id="order-desc" className="sr-only peer" />
-                            Desc
-                        </Label>
-                    </RadioGroup>
+                    <div className="flex flex-row gap-2">
+                         {orderOptions.map(option => (
+                            <Button
+                                key={option.value}
+                                variant={order === option.value ? 'default' : 'outline'}
+                                size="sm"
+                                onClick={() => handleSortOrder(option.value)}
+                                className={cn("rounded-full px-3 py-1 text-xs h-auto font-normal",
+                                    order === option.value
+                                    ? "bg-primary text-primary-foreground border-primary"
+                                    : "bg-background border-border"
+                                )}
+                            >
+                                {option.label}
+                            </Button>
+                        ))}
+                    </div>
                 </div>
             </div>
 
@@ -317,4 +345,5 @@ export function QuestionTableControls({ questions, categories, createAction, upd
 
         </div>
     )
-}
+
+    
