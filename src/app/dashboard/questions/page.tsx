@@ -58,8 +58,6 @@ export default async function QuestionsPage() {
     const questionData = {
         text: String(formData.get('question-text')),
         category_id: Number(formData.get('question-category')),
-        level: 'Both', // Defaulting level
-        is_mandatory: false, // Defaulting mandatory status
     };
 
     const { error } = await supabase.from('questions').insert(questionData);

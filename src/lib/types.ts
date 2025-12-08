@@ -31,8 +31,6 @@ export type Question = {
   id: number;
   text: string;
   category_id: number;
-  level: UserLevel;
-  is_mandatory: boolean;
   created_at: string;
   question_categories: { name: string }; // For joining data
 };
