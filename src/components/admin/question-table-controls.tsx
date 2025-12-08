@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState } from 'react';
@@ -23,7 +24,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, Edit } from 'lucide-react';
+import { PlusCircle, Edit, Trash2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -31,6 +32,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import type { Question, QuestionCategory } from '@/lib/types';
 
@@ -40,9 +52,10 @@ type QuestionTableControlsProps = {
     categories: QuestionCategory[];
     createAction: (formData: FormData) => Promise<void>;
     updateAction: (formData: FormData) => Promise<void>;
+    deleteAction: (formData: FormData) => Promise<void>;
 };
 
-export function QuestionTableControls({ questions, categories, createAction, updateAction }: QuestionTableControlsProps) {
+export function QuestionTableControls({ questions, categories, createAction, updateAction, deleteAction }: QuestionTableControlsProps) {
     const searchParams = useSearchParams();
     const { replace } = useRouter();
     const pathname = usePathname();
@@ -213,6 +226,30 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                             <Button variant="ghost" size="icon" onClick={() => handleEditClick(q)}>
                                 <Edit className="h-4 w-4" />
                             </Button>
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            This action cannot be undone. This will permanently delete this question.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <form action={deleteAction}>
+                                            <input type="hidden" name="question-id" value={q.id} />
+                                            <AlertDialogAction asChild>
+                                                <Button type="submit" variant="destructive">Delete</Button>
+                                            </AlertDialogAction>
+                                        </form>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
                         </TableCell>
                     </TableRow>
                     ))}

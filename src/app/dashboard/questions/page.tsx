@@ -1,4 +1,5 @@
 
+
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
@@ -137,6 +138,22 @@ async function updateQuestion(formData: FormData) {
     }
 }
 
+async function deleteQuestion(formData: FormData) {
+    'use server';
+
+    const supabase = createSupabaseServerClient();
+    const questionId = Number(formData.get('question-id'));
+
+    const { error } = await supabase.from('questions').delete().eq('id', questionId);
+
+    if (error) {
+        console.error('Error deleting question:', error.message);
+        redirect('/dashboard/questions?error=' + encodeURIComponent(error.message));
+    } else {
+        revalidatePath('/dashboard/questions');
+    }
+}
+
 
 export default async function QuestionsPage({ searchParams }: { searchParams: { [key: string]: string | undefined }}) {
   const supabase = createSupabaseServerClient();
@@ -211,6 +228,7 @@ export default async function QuestionsPage({ searchParams }: { searchParams: { 
               questions={questions}
               createAction={createQuestion}
               updateAction={updateQuestion}
+              deleteAction={deleteQuestion}
             />
         </CardContent>
       </Card>
