@@ -136,8 +136,12 @@ export function QuestionTableControls({ questions, categories, createAction, upd
         try {
             const categoryName = categories.find(c => String(c.id) === selectedCategory)?.name || '';
             const { suggestion } = await suggestQuestion({ categoryName });
-            if (suggestion && questionTextRef.current) {
-                questionTextRef.current.value = suggestion;
+            if (suggestion) {
+                if (suggestion.startsWith("AI suggestion is temporarily disabled")) {
+                    toast({ variant: 'default', title: 'AI Suggestion', description: suggestion, duration: 5000 });
+                } else if (questionTextRef.current) {
+                    questionTextRef.current.value = suggestion;
+                }
             } else {
                  toast({ variant: 'destructive', title: 'Error', description: 'Could not generate a suggestion.' });
             }
