@@ -2,7 +2,7 @@
 
 /**
  * @fileOverview AI-driven question suggestion for admins.
- * This functionality is temporarily disabled.
+ * This functionality is temporarily disabled to resolve dependency issues.
  */
 
 export type SuggestQuestionInput = {
@@ -15,6 +15,8 @@ export type SuggestQuestionOutput = {
 export async function suggestQuestion(
   input: SuggestQuestionInput
 ): Promise<SuggestQuestionOutput> {
-  console.log("AI question suggestion is temporarily disabled.");
-  return { suggestion: "AI suggestion is temporarily disabled. Please enter a question manually." };
+  console.log("suggestQuestion is temporarily disabled.");
+  return {
+    suggestion: "AI suggestion is temporarily disabled. Please enter a question manually."
+  };
 }

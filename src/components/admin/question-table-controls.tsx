@@ -71,7 +71,7 @@ export function QuestionTableControls({ questions, categories, createAction, upd
     const [order, setOrder] = useState(searchParams.get('order') || 'desc');
     
     const [isSuggesting, setIsSuggesting] = useState(false);
-    const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+    const [selectedCategory, setSelectedCategory] = useState<{id: string, name: string} | null>(null);
     const questionTextRef = useRef<HTMLTextAreaElement>(null);
 
 
@@ -133,15 +133,22 @@ export function QuestionTableControls({ questions, categories, createAction, upd
         }
         setIsSuggesting(true);
         try {
-            const result = await suggestQuestion({ categoryName: '' });
+            // const result = await suggestQuestion({ categoryName: selectedCategory.name });
+            // if (questionTextRef.current) {
+            //     questionTextRef.current.value = result.suggestion;
+            //      toast({
+            //         title: 'Suggestion Ready',
+            //         description: 'An AI-powered suggestion has been added.',
+            //     });
+            // }
             toast({
                 variant: 'destructive',
                 title: 'Feature Disabled',
-                description: result.suggestion,
+                description: 'AI question suggestion is temporarily disabled due to a technical issue.',
             });
         } catch (error) {
             console.error(error);
-            toast({ variant: 'destructive', title: 'Error', description: 'An unexpected error occurred.' });
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch an AI suggestion.' });
         } finally {
             setIsSuggesting(false);
         }
@@ -204,7 +211,16 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                                 <div className="space-y-2">
                                 <Label htmlFor="question-category">Category</Label>
                                 <div className="flex gap-2">
-                                    <Select name="question-category" required onValueChange={setSelectedCategory}>
+                                    <Select 
+                                        name="question-category" 
+                                        required 
+                                        onValueChange={(value) => {
+                                            const category = categories.find(c => String(c.id) === value);
+                                            if (category) {
+                                                setSelectedCategory({id: String(category.id), name: category.name});
+                                            }
+                                        }}
+                                    >
                                         <SelectTrigger id="question-category">
                                         <SelectValue placeholder="Select a category" />
                                         </SelectTrigger>
