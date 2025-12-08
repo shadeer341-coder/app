@@ -5,17 +5,28 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { QuestionCategory } from "@/lib/types";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import type { QuestionCategory, Question } from "@/lib/types";
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 
 export const dynamic = 'force-dynamic';
 
 export default async function QuestionsPage() {
   const supabase = createSupabaseServerClient();
-  const { data: categories, error } = await supabase.from('question_categories').select('*');
+  const { data: categories, error: categoriesError } = await supabase.from('question_categories').select('*');
+  const { data: questions, error: questionsError } = await supabase
+    .from('questions')
+    .select(`*, question_categories(name)`);
 
-  if (error) {
-    console.error("Error fetching categories:", error);
+  if (categoriesError) {
+    console.error("Error fetching categories:", categoriesError);
+  }
+  if (questionsError) {
+    console.error("Error fetching questions:", questionsError);
   }
 
   async function createCategory(formData: FormData) {
@@ -24,8 +35,6 @@ export default async function QuestionsPage() {
     const name = String(formData.get('category-name'));
     const limit = Number(formData.get('question-limit'));
     
-    // NOTE: We use createSupabaseServerClient() here again to get a client
-    // specifically for this server action's scope.
     const supabase = createSupabaseServerClient();
 
     const { error } = await supabase
@@ -34,10 +43,32 @@ export default async function QuestionsPage() {
 
     if (error) {
       console.error('Error creating category:', error.message);
-      // We will redirect even on error to show any potential row-level security issues
-      // in the server logs or to just refresh the page state.
       redirect('/dashboard/questions?error=' + encodeURIComponent(error.message));
       return;
+    }
+
+    revalidatePath('/dashboard/questions');
+    redirect('/dashboard/questions');
+  }
+
+  async function createQuestion(formData: FormData) {
+    'use server'
+
+    const supabase = createSupabaseServerClient();
+    
+    const questionData = {
+        text: String(formData.get('question-text')),
+        category_id: Number(formData.get('question-category')),
+        level: String(formData.get('question-level')),
+        is_mandatory: formData.get('is-mandatory') === 'on',
+    };
+
+    const { error } = await supabase.from('questions').insert(questionData);
+
+    if (error) {
+        console.error('Error creating question:', error.message);
+        redirect('/dashboard/questions?error=' + encodeURIComponent(error.message));
+        return;
     }
 
     revalidatePath('/dashboard/questions');
@@ -48,7 +79,7 @@ export default async function QuestionsPage() {
     <div className="space-y-6">
        <div>
           <h1 className="font-headline text-3xl font-bold tracking-tight">
-            Question Management
+            Question Bank
           </h1>
           <p className="text-muted-foreground">
             Manage interview question categories and the questions within them.
@@ -59,7 +90,7 @@ export default async function QuestionsPage() {
         <CardHeader>
           <CardTitle>Question Categories</CardTitle>
           <CardDescription>
-            Create and manage the categories for interview questions.
+            Create and manage the categories for interview questions. Each category can have a limit on how many questions are asked from it.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -105,6 +136,91 @@ export default async function QuestionsPage() {
               </div>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      <Separator />
+
+      <Card id="question-management">
+        <CardHeader>
+          <CardTitle>Question Management</CardTitle>
+          <CardDescription>
+            Create new questions and assign them to a category.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid md:grid-cols-2 gap-8">
+            <div>
+              <h3 className="font-semibold text-lg mb-4">Create New Question</h3>
+              <form action={createQuestion} className="space-y-4">
+                <div className="space-y-2">
+                    <Label htmlFor="question-text">Question Text</Label>
+                    <Textarea id="question-text" name="question-text" placeholder="e.g., Tell me about a time you faced a challenge." required />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="question-category">Category</Label>
+                        <Select name="question-category" required>
+                            <SelectTrigger id="question-category">
+                                <SelectValue placeholder="Select a category" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {categories?.map(cat => (
+                                    <SelectItem key={cat.id} value={String(cat.id)}>{cat.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="question-level">Level</Label>
+                        <Select name="question-level" required>
+                            <SelectTrigger id="question-level">
+                                <SelectValue placeholder="Select a level" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="UG">Undergraduate (UG)</SelectItem>
+                                <SelectItem value="PG">Postgraduate (PG)</SelectItem>
+                                <SelectItem value="Both">Both</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                    <Checkbox id="is-mandatory" name="is-mandatory" />
+                    <Label htmlFor="is-mandatory" className="font-normal">Is this question mandatory?</Label>
+                </div>
+                <Button>Create Question</Button>
+              </form>
+            </div>
+            <div>
+              <h3 className="font-semibold text-lg mb-4">Existing Questions</h3>
+                <div className="border rounded-md">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Question</TableHead>
+                                <TableHead>Category</TableHead>
+                                <TableHead>Level</TableHead>
+                                <TableHead>Mandatory</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {(questions as Question[] | null)?.map(q => (
+                                <TableRow key={q.id}>
+                                    <TableCell className="font-medium max-w-sm truncate">{q.text}</TableCell>
+                                    <TableCell><Badge variant="outline">{q.question_categories.name}</Badge></TableCell>
+                                    <TableCell><Badge variant="secondary">{q.level}</Badge></TableCell>
+                                    <TableCell>{q.is_mandatory ? 'Yes' : 'No'}</TableCell>
+                                </TableRow>
+                            ))}
+                            {(!questions || questions.length === 0) && (
+                                <TableRow>
+                                    <TableCell colSpan={4} className="text-center">No questions found.</TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
+            </div>
         </CardContent>
       </Card>
     </div>

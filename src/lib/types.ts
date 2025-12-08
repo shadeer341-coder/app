@@ -1,4 +1,5 @@
 
+
 export type UserRole = string;
 export type UserLevel = 'UG' | 'PG' | 'Both';
 
@@ -27,12 +28,15 @@ export type QuestionCategory = {
 };
 
 export type Question = {
-  id: string;
+  id: number;
   text: string;
-  category: QuestionCategory;
+  category_id: number;
   level: UserLevel;
-  isMandatory: boolean;
+  is_mandatory: boolean;
+  created_at: string;
+  question_categories: { name: string }; // For joining data
 };
+
 
 export type InterviewAttempt = {
   id: string;
