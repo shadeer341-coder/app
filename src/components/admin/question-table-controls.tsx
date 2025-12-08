@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useRef } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useDebouncedCallback } from 'use-debounce';
 import {
@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, Edit, Trash2, Loader2 } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, Sparkles } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -46,6 +46,7 @@ import {
 import type { QuestionCategory } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { suggestQuestion } from '@/ai/flows/suggest-question';
 
 
 type QuestionTableControlsProps = {
@@ -69,6 +70,11 @@ export function QuestionTableControls({ questions, categories, createAction, upd
 
     const [sortBy, setSortBy] = useState(searchParams.get('sortBy') || 'created_at');
     const [order, setOrder] = useState(searchParams.get('order') || 'desc');
+    
+    const [isSuggesting, setIsSuggesting] = useState(false);
+    const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+    const questionTextRef = useRef<HTMLTextAreaElement>(null);
+
 
     const handleFormAction = (action: (formData: FormData) => Promise<{ success: boolean, message: string }>, formData: FormData, closeDialog: () => void) => {
         startTransition(async () => {
@@ -119,6 +125,28 @@ export function QuestionTableControls({ questions, categories, createAction, upd
     const handleEditClick = (question: any) => {
         setEditingQuestion(question);
         setEditDialogOpen(true);
+    };
+
+    const handleSuggestQuestion = async () => {
+        if (!selectedCategory) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Please select a category first.'});
+            return;
+        }
+        setIsSuggesting(true);
+        try {
+            const categoryName = categories.find(c => String(c.id) === selectedCategory)?.name || '';
+            const { suggestion } = await suggestQuestion({ categoryName });
+            if (suggestion && questionTextRef.current) {
+                questionTextRef.current.value = suggestion;
+            } else {
+                 toast({ variant: 'destructive', title: 'Error', description: 'Could not generate a suggestion.' });
+            }
+        } catch (error) {
+            console.error(error);
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to get AI suggestion.' });
+        } finally {
+            setIsSuggesting(false);
+        }
     };
     
     const sortOptions = [
@@ -173,20 +201,26 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                             <form action={(formData) => handleFormAction(createAction, formData, () => setAddDialogOpen(false))} className="space-y-4">
                                 <div className="space-y-2">
                                 <Label htmlFor="question-text">Question Text</Label>
-                                <Textarea id="question-text" name="question-text" placeholder="e.g., Tell me about a time you faced a challenge." required />
+                                <Textarea id="question-text" name="question-text" placeholder="e.g., Tell me about a time you faced a challenge." required ref={questionTextRef} />
                                 </div>
                                 <div className="space-y-2">
                                 <Label htmlFor="question-category">Category</Label>
-                                <Select name="question-category" required>
-                                    <SelectTrigger id="question-category">
-                                    <SelectValue placeholder="Select a category" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                    {categories?.map(cat => (
-                                        <SelectItem key={cat.id} value={String(cat.id)}>{cat.name}</SelectItem>
-                                    ))}
-                                    </SelectContent>
-                                </Select>
+                                <div className="flex gap-2">
+                                    <Select name="question-category" required onValueChange={setSelectedCategory}>
+                                        <SelectTrigger id="question-category">
+                                        <SelectValue placeholder="Select a category" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                        {categories?.map(cat => (
+                                            <SelectItem key={cat.id} value={String(cat.id)}>{cat.name}</SelectItem>
+                                        ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <Button type="button" variant="outline" size="icon" onClick={handleSuggestQuestion} disabled={isSuggesting || !selectedCategory}>
+                                        {isSuggesting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                                        <span className="sr-only">Suggest Question</span>
+                                    </Button>
+                                </div>
                                 </div>
                                 <Button type="submit" disabled={isPending}>
                                     {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

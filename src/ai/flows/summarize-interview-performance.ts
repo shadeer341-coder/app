@@ -9,7 +9,7 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import {z} from 'zod';
 
 const SummarizeInterviewPerformanceInputSchema = z.object({
   feedback: z.string().describe('The AI-generated feedback on the interview.'),
@@ -28,28 +28,30 @@ export type SummarizeInterviewPerformanceOutput = z.infer<
 export async function summarizeInterviewPerformance(
   input: SummarizeInterviewPerformanceInput
 ): Promise<SummarizeInterviewPerformanceOutput> {
-  return summarizeInterviewPerformanceFlow(input);
+  // return summarizeInterviewPerformanceFlow(input);
+  console.log("AI summarization is temporarily disabled.");
+  return { summary: "AI summarization is temporarily disabled." };
 }
 
-const prompt = ai.definePrompt({
-  name: 'summarizeInterviewPerformancePrompt',
-  input: {schema: SummarizeInterviewPerformanceInputSchema},
-  output: {schema: SummarizeInterviewPerformanceOutputSchema},
-  prompt: `You are an expert interview coach. Summarize the following feedback into key areas of improvement:
+// const prompt = ai.definePrompt({
+//   name: 'summarizeInterviewPerformancePrompt',
+//   input: {schema: SummarizeInterviewPerformanceInputSchema},
+//   output: {schema: SummarizeInterviewPerformanceOutputSchema},
+//   prompt: `You are an expert interview coach. Summarize the following feedback into key areas of improvement:
 
-Feedback: {{{feedback}}}
+// Feedback: {{{feedback}}}
 
-Focus on providing actionable insights that the user can implement to improve their interview skills.`,
-});
+// Focus on providing actionable insights that the user can implement to improve their interview skills.`,
+// });
 
-const summarizeInterviewPerformanceFlow = ai.defineFlow(
-  {
-    name: 'summarizeInterviewPerformanceFlow',
-    inputSchema: SummarizeInterviewPerformanceInputSchema,
-    outputSchema: SummarizeInterviewPerformanceOutputSchema,
-  },
-  async input => {
-    const {output} = await prompt(input);
-    return output!;
-  }
-);
+// const summarizeInterviewPerformanceFlow = ai.defineFlow(
+//   {
+//     name: 'summarizeInterviewPerformanceFlow',
+//     inputSchema: SummarizeInterviewPerformanceInputSchema,
+//     outputSchema: SummarizeInterviewPerformanceOutputSchema,
+//   },
+//   async input => {
+//     const {output} = await prompt(input);
+//     return output!;
+//   }
+// );
