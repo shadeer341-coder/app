@@ -1,5 +1,4 @@
 
-
 export type UserRole = string;
 export type UserLevel = 'UG' | 'PG' | 'Both';
 
@@ -56,3 +55,5 @@ export type Agency = {
   name: string;
   members: User[];
 };
+
+    
