@@ -184,16 +184,16 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                 <div className="flex items-center gap-2">
                     <Label className="text-sm">Sort by</Label>
                     <RadioGroup defaultValue={searchParams.get('sortBy') || 'created_at'} onValueChange={handleSortBy} className="flex flex-row gap-2">
-                        <Label htmlFor="sort-date" className="font-normal border rounded-full px-3 py-1 text-xs cursor-pointer data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary transition-colors">
-                            <RadioGroupItem value="created_at" id="sort-date" className="sr-only" />
+                        <Label htmlFor="sort-date" className="font-normal border rounded-full px-3 py-1 text-xs cursor-pointer peer-data-[state=checked]:bg-primary peer-data-[state=checked]:text-primary-foreground peer-data-[state=checked]:border-primary transition-colors">
+                            <RadioGroupItem value="created_at" id="sort-date" className="sr-only peer" />
                             Date
                         </Label>
-                        <Label htmlFor="sort-text" className="font-normal border rounded-full px-3 py-1 text-xs cursor-pointer data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary transition-colors">
-                            <RadioGroupItem value="text" id="sort-text" className="sr-only" />
+                        <Label htmlFor="sort-text" className="font-normal border rounded-full px-3 py-1 text-xs cursor-pointer peer-data-[state=checked]:bg-primary peer-data-[state=checked]:text-primary-foreground peer-data-[state=checked]:border-primary transition-colors">
+                            <RadioGroupItem value="text" id="sort-text" className="sr-only peer" />
                             Question Text
                         </Label>
-                        <Label htmlFor="sort-category" className="font-normal border rounded-full px-3 py-1 text-xs cursor-pointer data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary transition-colors">
-                            <RadioGroupItem value="category_id" id="sort-category" className="sr-only" />
+                        <Label htmlFor="sort-category" className="font-normal border rounded-full px-3 py-1 text-xs cursor-pointer peer-data-[state=checked]:bg-primary peer-data-[state=checked]:text-primary-foreground peer-data-[state=checked]:border-primary transition-colors">
+                            <RadioGroupItem value="category_id" id="sort-category" className="sr-only peer" />
                            Category
                         </Label>
                     </RadioGroup>
@@ -201,12 +201,12 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                  <div className="flex items-center gap-2">
                     <Label className="text-sm">Order</Label>
                     <RadioGroup defaultValue={searchParams.get('order') || 'desc'} onValueChange={handleSort} className="flex flex-row gap-2">
-                         <Label htmlFor="order-asc" className="font-normal border rounded-full px-3 py-1 text-xs cursor-pointer data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary transition-colors">
-                            <RadioGroupItem value="asc" id="order-asc" className="sr-only" />
+                         <Label htmlFor="order-asc" className="font-normal border rounded-full px-3 py-1 text-xs cursor-pointer peer-data-[state=checked]:bg-primary peer-data-[state=checked]:text-primary-foreground peer-data-[state=checked]:border-primary transition-colors">
+                            <RadioGroupItem value="asc" id="order-asc" className="sr-only peer" />
                             Asc
                         </Label>
-                         <Label htmlFor="order-desc" className="font-normal border rounded-full px-3 py-1 text-xs cursor-pointer data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary transition-colors">
-                            <RadioGroupItem value="desc" id="order-desc" className="sr-only" />
+                         <Label htmlFor="order-desc" className="font-normal border rounded-full px-3 py-1 text-xs cursor-pointer peer-data-[state=checked]:bg-primary peer-data-[state=checked]:text-primary-foreground peer-data-[state=checked]:border-primary transition-colors">
+                            <RadioGroupItem value="desc" id="order-desc" className="sr-only peer" />
                             Desc
                         </Label>
                     </RadioGroup>
