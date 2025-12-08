@@ -10,19 +10,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
-import { PlusCircle, Edit } from 'lucide-react';
 import { QuestionTableControls } from '@/components/admin/question-table-controls';
+import { CategoryTableControls } from '@/components/admin/category-table-controls';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,6 +34,69 @@ async function createCategory(formData: FormData) {
     redirect('/dashboard/questions');
   }
 }
+
+async function updateCategory(formData: FormData) {
+    'use server';
+
+    const id = Number(formData.get('category-id'));
+    const name = String(formData.get('category-name'));
+    const limit = Number(formData.get('question-limit'));
+
+    const supabase = createSupabaseServerClient();
+    const { error } = await supabase
+        .from('question_categories')
+        .update({ name, question_limit: limit })
+        .eq('id', id);
+
+    if (error) {
+        console.error('Error updating category:', error.message);
+        redirect('/dashboard/questions?error=' + encodeURIComponent(error.message));
+    } else {
+        revalidatePath('/dashboard/questions');
+        redirect('/dashboard/questions');
+    }
+}
+
+async function deleteCategory(formData: FormData) {
+    'use server';
+
+    const id = Number(formData.get('category-id'));
+
+    const supabase = createSupabaseServerClient();
+    
+    // Check if any questions are associated with this category
+    const { data: questions, error: questionsError } = await supabase
+        .from('questions')
+        .select('id')
+        .eq('category_id', id)
+        .limit(1);
+
+    if (questionsError) {
+        console.error('Error checking for questions in category:', questionsError.message);
+        return redirect('/dashboard/questions?error=' + encodeURIComponent(questionsError.message));
+    }
+
+    if (questions.length > 0) {
+        const errorMessage = "Cannot delete category: it is currently associated with one or more questions.";
+        console.error(errorMessage);
+        return redirect('/dashboard/questions?error=' + encodeURIComponent(errorMessage));
+    }
+
+    // If no questions, proceed with deletion
+    const { error: deleteError } = await supabase
+        .from('question_categories')
+        .delete()
+        .eq('id', id);
+
+    if (deleteError) {
+        console.error('Error deleting category:', deleteError.message);
+        redirect('/dashboard/questions?error=' + encodeURIComponent(deleteError.message));
+    } else {
+        revalidatePath('/dashboard/questions');
+        redirect('/dashboard/questions');
+    }
+}
+
 
 async function createQuestion(formData: FormData) {
   'use server';
@@ -135,52 +187,12 @@ export default async function QuestionsPage({ searchParams }: { searchParams: { 
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <form action={createCategory} className="flex items-end gap-4">
-            <div className="flex-1 space-y-2">
-              <Label htmlFor="category-name">Category Name</Label>
-              <Input id="category-name" name="category-name" placeholder="e.g., About United Kingdom" required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="question-limit">Question Limit</Label>
-              <Input id="question-limit" name="question-limit" type="number" placeholder="e.g., 1" defaultValue="1" required className="w-24"/>
-            </div>
-            <Button type="submit">
-              <PlusCircle className="mr-2 h-4 w-4"/>
-              Add Category
-            </Button>
-          </form>
-          <Separator />
-          <div className="border rounded-md">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableCell>Name</TableCell>
-                  <TableCell>Question Limit</TableCell>
-                  <TableCell className="w-[100px]">Actions</TableCell>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {categories.map((cat: QuestionCategory) => (
-                  <TableRow key={cat.id}>
-                    <TableCell>{cat.name}</TableCell>
-                    <TableCell>{cat.question_limit}</TableCell>
-                     <TableCell>
-                       <Button variant="ghost" size="icon" disabled>
-                         <Edit className="h-4 w-4" />
-                       </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {(!categories || categories.length === 0) && (
-                  <TableRow>
-                    <TableCell colSpan={3} className="text-center">
-                      No categories found.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+            <CategoryTableControls
+                categories={categories}
+                createAction={createCategory}
+                updateAction={updateCategory}
+                deleteAction={deleteCategory}
+            />
         </CardContent>
       </Card>
 
