@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useState } from 'react';
@@ -85,6 +84,7 @@ export function CategoryTableControls({ categories, createAction, updateAction, 
                 <TableCell>{cat.name}</TableCell>
                 <TableCell>{cat.question_limit}</TableCell>
                 <TableCell className="text-right">
+                  <div className="inline-flex items-center">
                     <Button variant="ghost" size="icon" onClick={() => handleEditClick(cat)}>
                         <Edit className="h-4 w-4" />
                     </Button>
@@ -113,6 +113,7 @@ export function CategoryTableControls({ categories, createAction, updateAction, 
                             </AlertDialogFooter>
                         </AlertDialogContent>
                     </AlertDialog>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
