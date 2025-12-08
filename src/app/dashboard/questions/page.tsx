@@ -196,11 +196,18 @@ export default async function QuestionsPage({ searchParams }: { searchParams: { 
       </div>
 
       <Card id="category-management">
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Question Categories</CardTitle>
+          <CategoryTableControls
+                categories={categories}
+                createAction={createCategory}
+                updateAction={updateCategory}
+                deleteAction={deleteCategory}
+            />
         </CardHeader>
-        <CardContent className="space-y-6">
-            <CategoryTableControls
+        <CardContent>
+             <CategoryTableControls
+                isTable
                 categories={categories}
                 createAction={createCategory}
                 updateAction={updateCategory}
@@ -212,7 +219,7 @@ export default async function QuestionsPage({ searchParams }: { searchParams: { 
       <Card id="question-management">
         <CardHeader>
             <div>
-              <CardTitle>Question Management</CardTitle>
+              <CardTitle>Questions</CardTitle>
             </div>
         </CardHeader>
         <CardContent>

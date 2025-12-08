@@ -27,9 +27,10 @@ type CategoryTableControlsProps = {
   createAction: (formData: FormData) => Promise<{ success: boolean, message: string }>;
   updateAction: (formData: FormData) => Promise<{ success: boolean, message: string }>;
   deleteAction: (formData: FormData) => Promise<{ success: boolean, message: string }>;
+  isTable?: boolean;
 };
 
-export function CategoryTableControls({ categories, createAction, updateAction, deleteAction }: CategoryTableControlsProps) {
+export function CategoryTableControls({ categories, createAction, updateAction, deleteAction, isTable = false }: CategoryTableControlsProps) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
@@ -53,38 +54,42 @@ export function CategoryTableControls({ categories, createAction, updateAction, 
       }
     });
   }
+  
+  if (!isTable) {
+    return (
+        <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+            <DialogTrigger asChild>
+            <Button>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Add Category
+            </Button>
+            </DialogTrigger>
+            <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Add New Category</DialogTitle>
+            </DialogHeader>
+            <form action={(formData) => handleFormAction(createAction, formData, () => setAddDialogOpen(false))} className="space-y-4">
+                <div className="space-y-2">
+                <Label htmlFor="category-name">Category Name</Label>
+                <Input id="category-name" name="category-name" placeholder="e.g., About United Kingdom" required />
+                </div>
+                <div className="space-y-2">
+                <Label htmlFor="question-limit">Question Limit</Label>
+                <Input id="question-limit" name="question-limit" type="number" placeholder="e.g., 1" defaultValue="1" required className="w-24" />
+                </div>
+                <Button type="submit" disabled={isPending}>
+                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Create Category
+                </Button>
+            </form>
+            </DialogContent>
+        </Dialog>
+    )
+  }
+
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Add Category
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add New Category</DialogTitle>
-            </DialogHeader>
-            <form action={(formData) => handleFormAction(createAction, formData, () => setAddDialogOpen(false))} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="category-name">Category Name</Label>
-                <Input id="category-name" name="category-name" placeholder="e.g., About United Kingdom" required />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="question-limit">Question Limit</Label>
-                <Input id="question-limit" name="question-limit" type="number" placeholder="e.g., 1" defaultValue="1" required className="w-24" />
-              </div>
-              <Button type="submit" disabled={isPending}>
-                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Create Category
-              </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
       <div className="border rounded-md">
         <Table>
           <TableHeader>
