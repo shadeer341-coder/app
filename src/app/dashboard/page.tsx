@@ -1,3 +1,4 @@
+
 import Link from "next/link";
 import { ArrowRight, Bot, Building, HardHat, PlusCircle, Video } from "lucide-react";
 import { redirect } from 'next/navigation';
@@ -179,8 +180,7 @@ export default async function DashboardPage() {
         </div>
         {user.role !== 'admin' && (
             <Button asChild size="lg">
-            {/* This would link to the new interview flow */}
-            <Link href="#">
+            <Link href="/dashboard/practice">
                 <PlusCircle className="mr-2 h-5 w-5" />
                 Start New Interview
             </Link>
