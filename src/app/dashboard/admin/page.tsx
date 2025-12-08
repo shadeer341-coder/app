@@ -4,6 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { users } from "@/lib/mock-data";
 import { User } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function AdminPage() {
   return (
@@ -16,6 +19,62 @@ export default function AdminPage() {
             System-wide content and user management.
           </p>
         </div>
+
+      <Card id="category-management">
+        <CardHeader>
+          <CardTitle>Question Category Management</CardTitle>
+          <CardDescription>
+            Create and manage the categories for interview questions.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid md:grid-cols-2 gap-8">
+            <div>
+              <h3 className="font-semibold text-lg mb-4">Create New Category</h3>
+              <form className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="category-name">Category Name</Label>
+                  <Input id="category-name" placeholder="e.g., About United Kingdom" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="question-limit">Question Limit</Label>
+                  <Input id="question-limit" type="number" placeholder="e.g., 1" defaultValue="1" />
+                </div>
+                <Button>Create Category</Button>
+              </form>
+            </div>
+            <div>
+              <h3 className="font-semibold text-lg mb-4">Existing Categories</h3>
+              <div className="border rounded-md">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead className="text-right">Question Limit</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {/* This will be populated with data from the database */}
+                    <TableRow>
+                      <TableCell>Mandatory</TableCell>
+                      <TableCell className="text-right">2</TableCell>
+                    </TableRow>
+                     <TableRow>
+                      <TableCell>Semi Mandatory</TableCell>
+                      <TableCell className="text-right">1</TableCell>
+                    </TableRow>
+                     <TableRow>
+                      <TableCell>UK</TableCell>
+                      <TableCell className="text-right">1</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>User Management</CardTitle>

@@ -152,8 +152,8 @@ export default async function DashboardPage() {
         <CardDescription>Manage system-wide settings and content.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4 md:grid-cols-2">
-        <Button asChild size="lg" variant="outline"><Link href="/dashboard/admin">Manage Questions</Link></Button>
-        <Button asChild size="lg" variant="outline"><Link href="#">Manage Users</Link></Button>
+        <Button asChild size="lg" variant="outline"><Link href="/dashboard/admin#category-management">Manage Questions</Link></Button>
+        <Button asChild size="lg" variant="outline"><Link href="/dashboard/admin">Manage Users</Link></Button>
         <Button asChild size="lg" variant="outline"><Link href="#">Manage Agencies</Link></Button>
         <Button asChild size="lg" variant="outline"><Link href="#">System Analytics</Link></Button>
       </CardContent>
