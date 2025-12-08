@@ -20,8 +20,10 @@ export type User = {
 };
 
 export type QuestionCategory = {
-  id: string;
+  id: number;
   name: string;
+  question_limit: number;
+  created_at: string;
 };
 
 export type Question = {

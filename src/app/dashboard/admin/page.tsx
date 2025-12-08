@@ -1,14 +1,49 @@
+import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
+import { cookies } from "next/headers";
+import { revalidatePath } from 'next/cache';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { users } from "@/lib/mock-data";
-import { User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { QuestionCategory } from "@/lib/types";
 
-export default function AdminPage() {
+export const dynamic = 'force-dynamic';
+
+async function createCategory(formData: FormData) {
+  'use server'
+  const name = String(formData.get('category-name'))
+  const limit = Number(formData.get('question-limit'))
+
+  const cookieStore = cookies()
+  const supabase = createServerComponentClient({ cookies: () => cookieStore })
+
+  const { error } = await supabase
+    .from('question_categories')
+    .insert({ name: name, question_limit: limit })
+
+  if (error) {
+    console.error('Error creating category:', error)
+    // Optionally handle error feedback to the user
+    return
+  }
+
+  revalidatePath('/dashboard/admin')
+}
+
+
+export default async function AdminPage() {
+  const cookieStore = cookies()
+  const supabase = createServerComponentClient({ cookies: () => cookieStore })
+  const { data: categories, error } = await supabase.from('question_categories').select('*');
+
+  if (error) {
+    console.error("Error fetching categories:", error);
+  }
+
   return (
     <div className="space-y-6">
        <div>
@@ -31,14 +66,14 @@ export default function AdminPage() {
           <div className="grid md:grid-cols-2 gap-8">
             <div>
               <h3 className="font-semibold text-lg mb-4">Create New Category</h3>
-              <form className="space-y-4">
+              <form action={createCategory} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="category-name">Category Name</Label>
-                  <Input id="category-name" placeholder="e.g., About United Kingdom" />
+                  <Input id="category-name" name="category-name" placeholder="e.g., About United Kingdom" required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="question-limit">Question Limit</Label>
-                  <Input id="question-limit" type="number" placeholder="e.g., 1" defaultValue="1" />
+                  <Input id="question-limit" name="question-limit" type="number" placeholder="e.g., 1" defaultValue="1" required/>
                 </div>
                 <Button>Create Category</Button>
               </form>
@@ -54,19 +89,17 @@ export default function AdminPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {/* This will be populated with data from the database */}
-                    <TableRow>
-                      <TableCell>Mandatory</TableCell>
-                      <TableCell className="text-right">2</TableCell>
-                    </TableRow>
-                     <TableRow>
-                      <TableCell>Semi Mandatory</TableCell>
-                      <TableCell className="text-right">1</TableCell>
-                    </TableRow>
-                     <TableRow>
-                      <TableCell>UK</TableCell>
-                      <TableCell className="text-right">1</TableCell>
-                    </TableRow>
+                    {categories && categories.map((cat: QuestionCategory) => (
+                      <TableRow key={cat.id}>
+                        <TableCell>{cat.name}</TableCell>
+                        <TableCell className="text-right">{cat.question_limit}</TableCell>
+                      </TableRow>
+                    ))}
+                    {(!categories || categories.length === 0) && (
+                        <TableRow>
+                            <TableCell colSpan={2} className="text-center">No categories found.</TableCell>
+                        </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </div>

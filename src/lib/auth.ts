@@ -35,12 +35,15 @@ export async function getCurrentUser(): Promise<User | null> {
         };
     }
 
+    // Map super_admin to admin for consistent role checking in the app
+    const role = profile.role === 'super_admin' ? 'admin' : profile.role;
+
     return {
       id: session.user.id,
       email: session.user.email || 'no-email@example.com',
       name: profile.full_name || 'Unknown User',
       avatarUrl: profile.avatar_url || `https://picsum.photos/seed/${session.user.id}/100/100`,
-      role: profile.role || 'user',
+      role: role || 'user',
       level: profile.level || 'UG',
       agencyId: profile.agency_id,
       onboardingCompleted: profile.onboarding_completed || false,
