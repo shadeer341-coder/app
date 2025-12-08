@@ -1,5 +1,3 @@
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,12 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { QuestionCategory } from "@/lib/types";
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
 export default async function QuestionsPage() {
-  const cookieStore = cookies()
-  const supabase = createServerComponentClient({ cookies: () => cookieStore })
+  const supabase = createSupabaseServerClient();
   const { data: categories, error } = await supabase.from('question_categories').select('*');
 
   if (error) {
@@ -25,21 +23,20 @@ export default async function QuestionsPage() {
     const name = String(formData.get('category-name'))
     const limit = Number(formData.get('question-limit'))
 
-    const cookieStore = cookies()
-    const supabase = createServerComponentClient({ cookies: () => cookieStore })
+    const supabase = createSupabaseServerClient();
 
     const { error } = await supabase
       .from('question_categories')
-      .insert({ name: name, question_limit: limit })
+      .insert({ name: name, question_limit: limit });
 
     if (error) {
-      console.error('Error creating category:', error)
+      console.error('Error creating category:', error);
       // TODO: Handle error feedback to the user
-      return
+      return;
     }
 
-    revalidatePath('/dashboard/questions')
-    redirect('/dashboard/questions')
+    revalidatePath('/dashboard/questions');
+    redirect('/dashboard/questions');
   }
 
   return (

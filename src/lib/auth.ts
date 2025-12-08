@@ -1,10 +1,10 @@
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import type { User } from '@/lib/types';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export async function getCurrentUser(): Promise<User | null> {
-  const cookieStore = cookies();
-  const supabase = createServerComponentClient({ cookies: () => cookieStore });
+  const supabase = createSupabaseServerClient();
 
   try {
     const { data: { session } } = await supabase.auth.getSession();
