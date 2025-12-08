@@ -133,19 +133,14 @@ export function QuestionTableControls({ questions, categories, createAction, upd
         }
         setIsSuggesting(true);
         try {
-            // const result = await suggestQuestion({ categoryName: selectedCategory.name });
-            // if (questionTextRef.current) {
-            //     questionTextRef.current.value = result.suggestion;
-            //      toast({
-            //         title: 'Suggestion Ready',
-            //         description: 'An AI-powered suggestion has been added.',
-            //     });
-            // }
-            toast({
-                variant: 'destructive',
-                title: 'Feature Disabled',
-                description: 'AI question suggestion is temporarily disabled due to a technical issue.',
-            });
+            const result = await suggestQuestion({ categoryName: selectedCategory.name });
+            if (questionTextRef.current) {
+                questionTextRef.current.value = result.suggestion;
+                 toast({
+                    title: 'Suggestion Ready',
+                    description: 'An AI-powered suggestion has been added.',
+                });
+            }
         } catch (error) {
             console.error(error);
             toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch an AI suggestion.' });
