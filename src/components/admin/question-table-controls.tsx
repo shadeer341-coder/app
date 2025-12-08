@@ -208,7 +208,7 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                     <TableRow>
                     <TableHead>Question</TableHead>
                     <TableHead>Category</TableHead>
-                    <TableHead className="w-[100px]">Actions</TableHead>
+                    <TableHead className="w-[100px] text-right">Actions</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -222,34 +222,36 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                             {q.question_categories?.name || 'N/A'}
                         </Badge>
                         </TableCell>
-                        <TableCell>
-                            <Button variant="ghost" size="icon" onClick={() => handleEditClick(q)}>
-                                <Edit className="h-4 w-4" />
-                            </Button>
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
-                                        <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            This action cannot be undone. This will permanently delete this question.
-                                        </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                        <form action={deleteAction}>
-                                            <input type="hidden" name="question-id" value={q.id} />
-                                            <AlertDialogAction asChild>
-                                                <Button type="submit" variant="destructive">Delete</Button>
-                                            </AlertDialogAction>
-                                        </form>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
+                        <TableCell className="text-right">
+                           <div className="inline-flex items-center">
+                                <Button variant="ghost" size="icon" onClick={() => handleEditClick(q)}>
+                                    <Edit className="h-4 w-4" />
+                                </Button>
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                This action cannot be undone. This will permanently delete this question.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            <form action={deleteAction}>
+                                                <input type="hidden" name="question-id" value={q.id} />
+                                                <AlertDialogAction asChild>
+                                                    <Button type="submit" variant="destructive">Delete</Button>
+                                                </AlertDialogAction>
+                                            </form>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </div>
                         </TableCell>
                     </TableRow>
                     ))}
