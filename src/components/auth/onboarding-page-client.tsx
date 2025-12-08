@@ -148,16 +148,18 @@ export function OnboardingPageClient() {
     const groupId = user.user_metadata?.group_id;
   
     if (groupId) {
-      const { data: userTypeData, error: userTypeError } = await supabase
-        .from('user_type')
-        .select('group_name')
-        .eq('group_id', groupId);
-  
-      if (userTypeError) {
-        console.error('Error fetching user type:', userTypeError);
-        // Don't block submission, just fall back to default role
-      } else if (userTypeData && userTypeData.length > 0) {
-        userRole = userTypeData[0].group_name;
+      const parsedGroupId = parseInt(String(groupId), 10);
+      if (!isNaN(parsedGroupId)) {
+        const { data: userTypeData, error: userTypeError } = await supabase
+          .from('user_type')
+          .select('group_name')
+          .eq('group_id', parsedGroupId);
+    
+        if (userTypeError) {
+          console.error('Error fetching user type:', userTypeError);
+        } else if (userTypeData && userTypeData.length > 0) {
+          userRole = userTypeData[0].group_name;
+        }
       }
     }
 
@@ -437,3 +439,4 @@ export function OnboardingPageClient() {
     
 
     
+
