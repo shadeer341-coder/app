@@ -9,7 +9,8 @@ import {
   Users,
   Settings,
   Building,
-  HardHat
+  HardHat,
+  HelpCircle
 } from "lucide-react";
 import {
   Sidebar,
@@ -35,6 +36,7 @@ const agencyLinks = [
 ];
 
 const adminLinks = [
+  { href: "/dashboard/questions", label: "Questions", icon: HelpCircle },
   { href: "/dashboard/admin", label: "Admin", icon: HardHat },
 ];
 
@@ -63,7 +65,7 @@ export function MainSidebar({ user }: { user: User }) {
             <SidebarMenuItem key={link.href}>
               <SidebarMenuButton
                 asChild
-                isActive={pathname === link.href}
+                isActive={pathname.startsWith(link.href) && (link.href !== '/dashboard' || pathname === '/dashboard')}
                 tooltip={link.label}
               >
                 <Link href={link.href}>
