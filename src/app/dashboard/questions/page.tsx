@@ -28,10 +28,10 @@ async function createCategory(formData: FormData) {
 
   if (error) {
     console.error('Error creating category:', error.message);
-    redirect('/dashboard/questions?error=' + encodeURIComponent(error.message));
+    return { success: false, message: error.message };
   } else {
     revalidatePath('/dashboard/questions');
-    redirect('/dashboard/questions');
+    return { success: true, message: "Category created successfully." };
   }
 }
 
@@ -50,10 +50,10 @@ async function updateCategory(formData: FormData) {
 
     if (error) {
         console.error('Error updating category:', error.message);
-        redirect('/dashboard/questions?error=' + encodeURIComponent(error.message));
+        return { success: false, message: error.message };
     } else {
         revalidatePath('/dashboard/questions');
-        redirect('/dashboard/questions');
+        return { success: true, message: "Category updated successfully." };
     }
 }
 
@@ -73,13 +73,13 @@ async function deleteCategory(formData: FormData) {
 
     if (questionsError) {
         console.error('Error checking for questions in category:', questionsError.message);
-        return redirect('/dashboard/questions?error=' + encodeURIComponent(questionsError.message));
+        return { success: false, message: questionsError.message };
     }
 
     if (questions.length > 0) {
         const errorMessage = "Cannot delete category: it is currently associated with one or more questions.";
         console.error(errorMessage);
-        return redirect('/dashboard/questions?error=' + encodeURIComponent(errorMessage));
+        return { success: false, message: errorMessage };
     }
 
     // If no questions, proceed with deletion
@@ -90,10 +90,10 @@ async function deleteCategory(formData: FormData) {
 
     if (deleteError) {
         console.error('Error deleting category:', deleteError.message);
-        redirect('/dashboard/questions?error=' + encodeURIComponent(deleteError.message));
+        return { success: false, message: deleteError.message };
     } else {
         revalidatePath('/dashboard/questions');
-        redirect('/dashboard/questions');
+        return { success: true, message: "Category deleted successfully." };
     }
 }
 
@@ -111,9 +111,10 @@ async function createQuestion(formData: FormData) {
 
   if (error) {
     console.error('Error creating question:', error.message);
-    redirect('/dashboard/questions?error=' + encodeURIComponent(error.message));
+    return { success: false, message: error.message };
   } else {
     revalidatePath('/dashboard/questions');
+    return { success: true, message: "Question created successfully." };
   }
 }
 
@@ -131,9 +132,10 @@ async function updateQuestion(formData: FormData) {
 
     if (error) {
         console.error('Error updating question:', error.message);
-        redirect('/dashboard/questions?error=' + encodeURIComponent(error.message));
+        return { success: false, message: error.message };
     } else {
         revalidatePath('/dashboard/questions');
+        return { success: true, message: "Question updated successfully." };
     }
 }
 
@@ -147,9 +149,10 @@ async function deleteQuestion(formData: FormData) {
 
     if (error) {
         console.error('Error deleting question:', error.message);
-        redirect('/dashboard/questions?error=' + encodeURIComponent(error.message));
+        return { success: false, message: error.message };
     } else {
         revalidatePath('/dashboard/questions');
+        return { success: true, message: "Question deleted successfully." };
     }
 }
 

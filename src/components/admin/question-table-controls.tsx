@@ -1,7 +1,7 @@
 
 "use client"
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useDebouncedCallback } from 'use-debounce';
 import {
@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, Edit, Trash2 } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -44,25 +44,40 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import type { Question, QuestionCategory } from '@/lib/types';
+import type { QuestionCategory } from '@/lib/types';
+import { useToast } from '@/hooks/use-toast';
 
 
 type QuestionTableControlsProps = {
     questions: any[];
     categories: QuestionCategory[];
-    createAction: (formData: FormData) => Promise<void>;
-    updateAction: (formData: FormData) => Promise<void>;
-    deleteAction: (formData: FormData) => Promise<void>;
+    createAction: (formData: FormData) => Promise<{ success: boolean, message: string }>;
+    updateAction: (formData: FormData) => Promise<{ success: boolean, message: string }>;
+    deleteAction: (formData: FormData) => Promise<{ success: boolean, message: string }>;
 };
 
 export function QuestionTableControls({ questions, categories, createAction, updateAction, deleteAction }: QuestionTableControlsProps) {
     const searchParams = useSearchParams();
     const { replace } = useRouter();
     const pathname = usePathname();
+    const { toast } = useToast();
+    const [isPending, startTransition] = useTransition();
 
     const [addDialogOpen, setAddDialogOpen] = useState(false);
     const [editDialogOpen, setEditDialogOpen] = useState(false);
     const [editingQuestion, setEditingQuestion] = useState<any | null>(null);
+
+    const handleFormAction = (action: (formData: FormData) => Promise<{ success: boolean, message: string }>, formData: FormData, closeDialog: () => void) => {
+        startTransition(async () => {
+          const result = await action(formData);
+          if (result.success) {
+            toast({ title: 'Success', description: result.message });
+            closeDialog();
+          } else {
+            toast({ variant: 'destructive', title: 'Error', description: result.message });
+          }
+        });
+      }
 
     const handleSearch = useDebouncedCallback((term: string) => {
         const params = new URLSearchParams(searchParams);
@@ -103,9 +118,8 @@ export function QuestionTableControls({ questions, categories, createAction, upd
 
     return (
         <div className="space-y-4">
-            <div className="flex flex-col md:flex-row gap-4">
-                <div className="flex-1">
-                    <Label htmlFor="search-questions">Search Questions</Label>
+            <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
+                 <div className="flex-1 w-full md:w-auto">
                     <Input
                         id="search-questions"
                         placeholder="Search by question text..."
@@ -113,13 +127,12 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                         onChange={(e) => handleSearch(e.target.value)}
                     />
                 </div>
-                <div className="flex-1 md:flex-none md:w-48">
-                    <Label htmlFor="filter-category">Filter by Category</Label>
-                    <Select
+                <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
+                     <Select
                         defaultValue={searchParams.get('category') || 'all'}
                         onValueChange={handleFilter}
                     >
-                        <SelectTrigger id="filter-category">
+                        <SelectTrigger id="filter-category" className="w-full md:w-48">
                             <SelectValue placeholder="Select a category" />
                         </SelectTrigger>
                         <SelectContent>
@@ -129,43 +142,9 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                             ))}
                         </SelectContent>
                     </Select>
-                </div>
-            </div>
-            <div className="flex flex-col md:flex-row gap-8 items-start">
-                <div className="space-y-2">
-                    <Label>Sort by</Label>
-                    <RadioGroup defaultValue={searchParams.get('sortBy') || 'created_at'} onValueChange={handleSortBy} className="flex flex-row md:flex-col gap-2">
-                        <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="created_at" id="sort-date" />
-                            <Label htmlFor="sort-date">Date</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="text" id="sort-text" />
-                            <Label htmlFor="sort-text">Question Text</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="category_id" id="sort-category" />
-                            <Label htmlFor="sort-category">Category</Label>
-                        </div>
-                    </RadioGroup>
-                </div>
-                <div className="space-y-2">
-                    <Label>Order</Label>
-                    <RadioGroup defaultValue={searchParams.get('order') || 'desc'} onValueChange={handleSort} className="flex flex-row gap-2">
-                         <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="asc" id="order-asc" />
-                            <Label htmlFor="order-asc">Asc</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="desc" id="order-desc" />
-                            <Label htmlFor="order-desc">Desc</Label>
-                        </div>
-                    </RadioGroup>
-                </div>
-                <div className="md:ml-auto">
                      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
                         <DialogTrigger asChild>
-                            <Button>
+                            <Button className="w-full md:w-auto">
                             <PlusCircle className="mr-2" />
                             Add Question
                             </Button>
@@ -174,10 +153,7 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                             <DialogHeader>
                                 <DialogTitle>Create New Question</DialogTitle>
                             </DialogHeader>
-                            <form action={async (formData) => {
-                                await createAction(formData);
-                                setAddDialogOpen(false);
-                            }} className="space-y-4">
+                            <form action={(formData) => handleFormAction(createAction, formData, () => setAddDialogOpen(false))} className="space-y-4">
                                 <div className="space-y-2">
                                 <Label htmlFor="question-text">Question Text</Label>
                                 <Textarea id="question-text" name="question-text" placeholder="e.g., Tell me about a time you faced a challenge." required />
@@ -195,10 +171,45 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                                     </SelectContent>
                                 </Select>
                                 </div>
-                                <Button type="submit">Create Question</Button>
+                                <Button type="submit" disabled={isPending}>
+                                    {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Create Question
+                                </Button>
                             </form>
                         </DialogContent>
                     </Dialog>
+                </div>
+            </div>
+            <div className="flex gap-8 items-center border rounded-md p-4 bg-muted/50">
+                <div className="flex items-center gap-2">
+                    <Label className="text-sm">Sort by</Label>
+                    <RadioGroup defaultValue={searchParams.get('sortBy') || 'created_at'} onValueChange={handleSortBy} className="flex flex-row gap-2">
+                        <Label htmlFor="sort-date" className="font-normal border rounded-full px-3 py-1 text-xs cursor-pointer has-[:checked]:bg-primary has-[:checked]:text-primary-foreground has-[:checked]:border-primary transition-colors">
+                            <RadioGroupItem value="created_at" id="sort-date" className="sr-only" />
+                            Date
+                        </Label>
+                        <Label htmlFor="sort-text" className="font-normal border rounded-full px-3 py-1 text-xs cursor-pointer has-[:checked]:bg-primary has-[:checked]:text-primary-foreground has-[:checked]:border-primary transition-colors">
+                            <RadioGroupItem value="text" id="sort-text" className="sr-only" />
+                            Question Text
+                        </Label>
+                        <Label htmlFor="sort-category" className="font-normal border rounded-full px-3 py-1 text-xs cursor-pointer has-[:checked]:bg-primary has-[:checked]:text-primary-foreground has-[:checked]:border-primary transition-colors">
+                            <RadioGroupItem value="category_id" id="sort-category" className="sr-only" />
+                           Category
+                        </Label>
+                    </RadioGroup>
+                </div>
+                 <div className="flex items-center gap-2">
+                    <Label className="text-sm">Order</Label>
+                    <RadioGroup defaultValue={searchParams.get('order') || 'desc'} onValueChange={handleSort} className="flex flex-row gap-2">
+                         <Label htmlFor="order-asc" className="font-normal border rounded-full px-3 py-1 text-xs cursor-pointer has-[:checked]:bg-primary has-[:checked]:text-primary-foreground has-[:checked]:border-primary transition-colors">
+                            <RadioGroupItem value="asc" id="order-asc" className="sr-only" />
+                            Asc
+                        </Label>
+                         <Label htmlFor="order-desc" className="font-normal border rounded-full px-3 py-1 text-xs cursor-pointer has-[:checked]:bg-primary has-[:checked]:text-primary-foreground has-[:checked]:border-primary transition-colors">
+                            <RadioGroupItem value="desc" id="order-desc" className="sr-only" />
+                            Desc
+                        </Label>
+                    </RadioGroup>
                 </div>
             </div>
 
@@ -242,10 +253,13 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                                         </AlertDialogHeader>
                                         <AlertDialogFooter>
                                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                            <form action={deleteAction}>
+                                            <form action={(formData) => handleFormAction(deleteAction, formData, () => {})}>
                                                 <input type="hidden" name="question-id" value={q.id} />
                                                 <AlertDialogAction asChild>
-                                                    <Button type="submit" variant="destructive">Delete</Button>
+                                                    <Button type="submit" variant="destructive" disabled={isPending}>
+                                                        {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                                        Delete
+                                                    </Button>
                                                 </AlertDialogAction>
                                             </form>
                                         </AlertDialogFooter>
@@ -273,10 +287,7 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                         <DialogHeader>
                             <DialogTitle>Edit Question</DialogTitle>
                         </DialogHeader>
-                        <form action={async (formData) => {
-                            await updateAction(formData);
-                            setEditDialogOpen(false);
-                        }} className="space-y-4">
+                        <form action={(formData) => handleFormAction(updateAction, formData, () => setEditDialogOpen(false))} className="space-y-4">
                             <input type="hidden" name="question-id" value={editingQuestion.id} />
                             <div className="space-y-2">
                                 <Label htmlFor="question-text-edit">Question Text</Label>
@@ -295,7 +306,10 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <Button type="submit">Save Changes</Button>
+                            <Button type="submit" disabled={isPending}>
+                                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Save Changes
+                            </Button>
                         </form>
                     </DialogContent>
                 </Dialog>
