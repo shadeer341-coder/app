@@ -7,7 +7,6 @@ import type { Question, QuestionCategory } from '@/lib/types';
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -191,17 +190,11 @@ export default async function QuestionsPage({ searchParams }: { searchParams: { 
         <h1 className="font-headline text-3xl font-bold tracking-tight">
           Question Bank
         </h1>
-        <p className="text-muted-foreground">
-          Manage interview question categories and the questions within them.
-        </p>
       </div>
 
       <Card id="category-management">
         <CardHeader>
           <CardTitle>Question Categories</CardTitle>
-          <CardDescription>
-            Create and manage the categories for interview questions.
-          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
             <CategoryTableControls
@@ -217,9 +210,6 @@ export default async function QuestionsPage({ searchParams }: { searchParams: { 
         <CardHeader>
             <div>
               <CardTitle>Question Management</CardTitle>
-              <CardDescription>
-                Create, edit, search and sort interview questions.
-              </CardDescription>
             </div>
         </CardHeader>
         <CardContent>
