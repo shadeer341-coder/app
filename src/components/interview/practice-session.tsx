@@ -21,7 +21,7 @@ type Stage = 'select_category' | 'show_question' | 'recording' | 'reviewing' | '
 export function PracticeSession({ categories, questions, user }: PracticeSessionProps) {
   const [stage, setStage] = useState<Stage>('select_category');
   const [selectedCategory, setSelectedCategory] = useState<QuestionCategory | null>(null);
-  const [currentQuestion, setCurrentQuestion] = useState<Pick<Question, 'id' | 'text'>>_id'> | null>(null);
+  const [currentQuestion, setCurrentQuestion] = useState<Pick<Question, 'id' | 'text' | 'category_id'> | null>(null);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recordedVideo, setRecordedVideo] = useState<string | null>(null);
