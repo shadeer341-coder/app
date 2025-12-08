@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState, useTransition, useRef } from 'react';
@@ -134,20 +133,15 @@ export function QuestionTableControls({ questions, categories, createAction, upd
         }
         setIsSuggesting(true);
         try {
-            const categoryName = categories.find(c => String(c.id) === selectedCategory)?.name || '';
-            const { suggestion } = await suggestQuestion({ categoryName });
-            if (suggestion) {
-                if (suggestion.startsWith("AI suggestion is temporarily disabled")) {
-                    toast({ variant: 'default', title: 'AI Suggestion', description: suggestion, duration: 5000 });
-                } else if (questionTextRef.current) {
-                    questionTextRef.current.value = suggestion;
-                }
-            } else {
-                 toast({ variant: 'destructive', title: 'Error', description: 'Could not generate a suggestion.' });
-            }
+            const result = await suggestQuestion({ categoryName: '' });
+            toast({
+                variant: 'destructive',
+                title: 'Feature Disabled',
+                description: result.suggestion,
+            });
         } catch (error) {
             console.error(error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Failed to get AI suggestion.' });
+            toast({ variant: 'destructive', title: 'Error', description: 'An unexpected error occurred.' });
         } finally {
             setIsSuggesting(false);
         }
