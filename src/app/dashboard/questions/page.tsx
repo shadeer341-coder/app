@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { QuestionCategory } from "@/lib/types";
-import { createSupabaseServerClient, createSupabaseServerActionClient } from '@/lib/supabase/server';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,18 +20,23 @@ export default async function QuestionsPage() {
 
   async function createCategory(formData: FormData) {
     'use server'
-    const name = String(formData.get('category-name'))
-    const limit = Number(formData.get('question-limit'))
-
-    const supabase = createSupabaseServerActionClient();
+    
+    const name = String(formData.get('category-name'));
+    const limit = Number(formData.get('question-limit'));
+    
+    // NOTE: We use createSupabaseServerClient() here again to get a client
+    // specifically for this server action's scope.
+    const supabase = createSupabaseServerClient();
 
     const { error } = await supabase
       .from('question_categories')
       .insert({ name: name, question_limit: limit });
 
     if (error) {
-      console.error('Error creating category:', error);
-      // TODO: Handle error feedback to the user
+      console.error('Error creating category:', error.message);
+      // We will redirect even on error to show any potential row-level security issues
+      // in the server logs or to just refresh the page state.
+      redirect('/dashboard/questions?error=' + encodeURIComponent(error.message));
       return;
     }
 
