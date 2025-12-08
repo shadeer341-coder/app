@@ -54,6 +54,7 @@ export function SignupPageClient() {
       email: values.email,
       password: values.password,
       options: {
+        emailRedirectTo: `${location.origin}/auth/callback`,
         data: {
           full_name: values.fullName,
         },

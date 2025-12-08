@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { QuestionCategory } from "@/lib/types";
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseServerClient, createSupabaseServerActionClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,7 +23,7 @@ export default async function QuestionsPage() {
     const name = String(formData.get('category-name'))
     const limit = Number(formData.get('question-limit'))
 
-    const supabase = createSupabaseServerClient();
+    const supabase = createSupabaseServerActionClient();
 
     const { error } = await supabase
       .from('question_categories')
