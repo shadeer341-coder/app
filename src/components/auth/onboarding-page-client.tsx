@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -34,6 +35,7 @@ import nationalities from '@/lib/nationalities.json';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { createSupabaseClient } from '@/lib/supabase/client';
+import type { UserLevel } from '@/lib/types';
 
 
 type University = { name: string; country: string; };
@@ -58,10 +60,10 @@ const stepFields: Record<number, FieldName<FormData>[]> = {
 };
 
 const programOptions = [
-    { value: "Foundation + Degree", label: "Foundation + Degree", icon: BookOpen },
-    { value: "Degree (Undergraduate)", label: "Degree (Undergraduate)", icon: GraduationCap },
-    { value: "Top-Up / Final Year", label: "Top-Up / Final Year", icon: ArrowUpRightFromSquare },
-    { value: "Masters (Postgraduate)", label: "Masters (Postgraduate)", icon: Briefcase }
+    { value: "Foundation + Degree", label: "Foundation + Degree", icon: BookOpen, level: 'UG' },
+    { value: "Degree (Undergraduate)", label: "Degree (Undergraduate)", icon: GraduationCap, level: 'UG' },
+    { value: "Top-Up / Final Year", label: "Top-Up / Final Year", icon: ArrowUpRightFromSquare, level: 'UG' },
+    { value: "Masters (Postgraduate)", label: "Masters (Postgraduate)", icon: Briefcase, level: 'PG' }
 ];
 
 
@@ -154,17 +156,18 @@ export function OnboardingPageClient() {
       if (userTypeError) {
         console.error('Error fetching user type:', userTypeError);
         // Don't block submission, just fall back to default role
-      }
-  
-      if (userTypeData && userTypeData.length > 0) {
+      } else if (userTypeData && userTypeData.length > 0) {
         userRole = userTypeData[0].group_name;
       }
     }
+
+    const selectedProgram = programOptions.find(p => p.value === data.program);
   
     const profileData = {
       ...data,
       id: user.id,
       role: userRole,
+      level: selectedProgram?.level || 'UG',
       onboarding_completed: true,
     };
   

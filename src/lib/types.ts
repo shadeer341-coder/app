@@ -1,5 +1,6 @@
-export type UserRole = 'user' | 'agency_admin' | 'admin' | 'super_admin' | 'agency' | 'individual';
-export type UserLevel = 'UG' | 'PG';
+
+export type UserRole = string;
+export type UserLevel = 'UG' | 'PG' | 'Both';
 
 export type User = {
   id: string;
@@ -27,7 +28,7 @@ export type Question = {
   id: string;
   text: string;
   category: QuestionCategory;
-  level: 'UG' | 'PG' | 'Both';
+  level: UserLevel;
   isMandatory: boolean;
 };
 

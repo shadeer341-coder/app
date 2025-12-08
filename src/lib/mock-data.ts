@@ -1,4 +1,4 @@
-import type { User, Agency, QuestionCategory, Question, InterviewAttempt } from './types';
+import type { User, Agency, QuestionCategory, Question, InterviewAttempt, UserLevel } from './types';
 
 export const users: User[] = [
   { id: 'user-1', name: 'Alex Johnson', email: 'alex@example.com', avatarUrl: 'https://picsum.photos/seed/u1/100/100', role: 'user', level: 'PG' },
