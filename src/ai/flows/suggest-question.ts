@@ -12,11 +12,11 @@ export type SuggestQuestionOutput = {
 export async function suggestQuestion(
   input: SuggestQuestionInput
 ): Promise<SuggestQuestionOutput> {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
 
     if (!apiKey) {
-        console.error("GEMINI_API_KEY is not set.");
-        return { suggestion: "API key is not configured. Please set GEMINI_API_KEY in your .env file." };
+        console.error("NEXT_PUBLIC_GEMINI_API_KEY is not set.");
+        return { suggestion: "API key is not configured. Please set NEXT_PUBLIC_GEMINI_API_KEY in your .env file." };
     }
 
     try {
