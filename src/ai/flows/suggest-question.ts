@@ -15,8 +15,9 @@ export async function suggestQuestion(
     const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
 
     if (!apiKey) {
-        console.error("NEXT_PUBLIC_GEMINI_API_KEY is not set.");
-        return { suggestion: "API key is not configured. Please set NEXT_PUBLIC_GEMINI_API_KEY in your .env file." };
+        const errorMessage = "API key is not configured. Please set NEXT_PUBLIC_GEMINI_API_KEY in your .env file.";
+        console.error(errorMessage);
+        return { suggestion: errorMessage };
     }
 
     try {
@@ -31,8 +32,9 @@ export async function suggestQuestion(
         
         return { suggestion: text.trim() };
 
-    } catch (error) {
-        console.error("Error calling Gemini API:", error);
-        return { suggestion: "There was an error generating a suggestion. Please check your API key and try again." };
+    } catch (error: any) {
+        const errorMessage = `Error calling Gemini API: ${error.message || 'An unknown error occurred'}`;
+        console.error(errorMessage);
+        return { suggestion: `There was an error generating a suggestion. Please check your API key and network connection. Details: ${error.message || 'Unknown'}` };
     }
 }
