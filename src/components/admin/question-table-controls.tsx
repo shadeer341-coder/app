@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, Edit, Trash2, Loader2, Sparkles } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, Sparkles, Tag } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -217,8 +217,13 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                             </DialogHeader>
                             <form action={(formData) => handleFormAction(createAction, formData, () => setAddDialogOpen(false))} className="space-y-4">
                                 <div className="space-y-2">
-                                <Label htmlFor="question-text">Question Text</Label>
-                                <Textarea id="question-text" name="question-text" placeholder="e.g., Tell me about a time you faced a challenge." required ref={questionTextRef} />
+                                    <Label htmlFor="question-text">Question Text</Label>
+                                    <Textarea id="question-text" name="question-text" placeholder="e.g., Tell me about a time you faced a challenge." required ref={questionTextRef} />
+                                </div>
+                                 <div className="space-y-2">
+                                    <Label htmlFor="question-tags">Tags</Label>
+                                    <Input id="question-tags" name="question-tags" placeholder="e.g., cost, location, research" />
+                                    <p className="text-xs text-muted-foreground">Comma-separated keywords expected in the answer.</p>
                                 </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-2">
@@ -314,6 +319,7 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                     <TableHead>Question</TableHead>
                     <TableHead>Category</TableHead>
                     <TableHead>Level</TableHead>
+                    <TableHead>Tags</TableHead>
                     <TableHead className="w-[100px] text-right">Actions</TableHead>
                     </TableRow>
                 </TableHeader>
@@ -330,6 +336,16 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                         </TableCell>
                         <TableCell>
                            <Badge variant={q.level === 'All Levels' ? 'secondary' : 'default'} className={cn(q.level?.includes('Postgraduate') && 'bg-accent text-accent-foreground')}>{q.level || 'All Levels'}</Badge>
+                        </TableCell>
+                         <TableCell>
+                            <div className="flex flex-wrap gap-1">
+                                {q.tags?.map((tag: string) => (
+                                    <Badge key={tag} variant="secondary" className="font-normal">
+                                        <Tag className="w-3 h-3 mr-1" />
+                                        {tag}
+                                    </Badge>
+                                ))}
+                            </div>
                         </TableCell>
                         <TableCell className="text-right">
                            <div className="inline-flex items-center">
@@ -370,7 +386,7 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                     {!questions ||
                     (questions.length === 0 && (
                         <TableRow>
-                        <TableCell colSpan={4} className="text-center">
+                        <TableCell colSpan={5} className="text-center">
                             No questions found.
                         </TableCell>
                         </TableRow>
@@ -390,6 +406,11 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                             <div className="space-y-2">
                                 <Label htmlFor="question-text-edit">Question Text</Label>
                                 <Textarea id="question-text-edit" name="question-text" defaultValue={editingQuestion.text} required />
+                            </div>
+                             <div className="space-y-2">
+                                <Label htmlFor="question-tags-edit">Tags</Label>
+                                <Input id="question-tags-edit" name="question-tags" placeholder="e.g., cost, location, research" defaultValue={editingQuestion.tags?.join(', ')} />
+                                <p className="text-xs text-muted-foreground">Comma-separated keywords expected in the answer.</p>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-2">

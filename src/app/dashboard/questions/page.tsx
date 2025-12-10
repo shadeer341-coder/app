@@ -1,6 +1,7 @@
 
 
 
+
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
@@ -103,10 +104,15 @@ async function createQuestion(formData: FormData) {
   'use server';
 
   const supabase = createSupabaseServerClient();
+  
+  const tagsRaw = String(formData.get('question-tags') || '');
+  const tags = tagsRaw.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
+
   const questionData = {
     text: String(formData.get('question-text')),
     category_id: Number(formData.get('question-category')),
     level: String(formData.get('question-level')) as QuestionLevel,
+    tags: tags.length > 0 ? tags : null,
   };
 
   const { error } = await supabase.from('questions').insert(questionData);
@@ -125,10 +131,15 @@ async function updateQuestion(formData: FormData) {
 
     const supabase = createSupabaseServerClient();
     const questionId = Number(formData.get('question-id'));
+
+    const tagsRaw = String(formData.get('question-tags') || '');
+    const tags = tagsRaw.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
+
     const questionData = {
       text: String(formData.get('question-text')),
       category_id: Number(formData.get('question-category')),
       level: String(formData.get('question-level')) as QuestionLevel,
+      tags: tags.length > 0 ? tags : null,
     };
 
     const { error } = await supabase.from('questions').update(questionData).eq('id', questionId);
