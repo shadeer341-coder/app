@@ -12,12 +12,12 @@ type TagInputProps = {
   id?: string;
   name?: string;
   placeholder?: string;
-  defaultValue?: string[];
+  defaultValue?: string[] | null;
   className?: string;
 };
 
 export function TagInput({ id, name, placeholder, defaultValue = [], className }: TagInputProps) {
-  const [tags, setTags] = useState<string[]>(defaultValue);
+  const [tags, setTags] = useState<string[]>(defaultValue || []);
   const [inputValue, setInputValue] = useState('');
   const hiddenInputRef = useRef<HTMLInputElement>(null);
 
@@ -75,7 +75,7 @@ export function TagInput({ id, name, placeholder, defaultValue = [], className }
           className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 min-w-[60px]"
         />
       </div>
-      <input type="hidden" name={name} ref={hiddenInputRef} defaultValue={JSON.stringify(defaultValue)} />
+      <input type="hidden" name={name} ref={hiddenInputRef} defaultValue={JSON.stringify(defaultValue || [])} />
     </div>
   );
 }

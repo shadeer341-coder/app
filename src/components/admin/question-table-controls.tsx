@@ -414,7 +414,7 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                             </div>
                              <div className="space-y-2">
                                 <Label htmlFor="question-tags-edit">Tags</Label>
-                                <TagInput id="question-tags-edit" name="question-tags" placeholder="Add a tag and press Enter" defaultValue={editingQuestion.tags} />
+                                <TagInput id="question-tags-edit" name="question-tags" placeholder="Add a tag and press Enter" defaultValue={editingQuestion.tags || []} />
                                 <p className="text-xs text-muted-foreground">Keywords expected in the answer.</p>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -457,5 +457,3 @@ export function QuestionTableControls({ questions, categories, createAction, upd
         </div>
     );
 }
-
-    
