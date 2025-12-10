@@ -149,12 +149,6 @@ export default async function QuestionsPage({ searchParams }: { searchParams: { 
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-headline text-3xl font-bold tracking-tight">
-          Question Bank
-        </h1>
-        <p className="text-muted-foreground">Create, view, and manage all interview questions.</p>
-      </div>
       <Card id="question-management">
         <CardHeader>
             <div>
