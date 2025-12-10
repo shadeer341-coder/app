@@ -329,7 +329,7 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                         </Badge>
                         </TableCell>
                         <TableCell>
-                           <Badge variant={q.level === 'All Levels' ? 'secondary' : 'default'} className={cn(q.level.includes('Postgraduate') && 'bg-accent text-accent-foreground')}>{q.level}</Badge>
+                           <Badge variant={q.level === 'All Levels' ? 'secondary' : 'default'} className={cn(q.level?.includes('Postgraduate') && 'bg-accent text-accent-foreground')}>{q.level || 'All Levels'}</Badge>
                         </TableCell>
                         <TableCell className="text-right">
                            <div className="inline-flex items-center">
