@@ -42,10 +42,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import type { QuestionCategory } from '@/lib/types';
+import type { QuestionCategory, QuestionLevel } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { suggestQuestion } from '@/ai/flows/suggest-question';
+import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 
 
 type QuestionTableControlsProps = {
@@ -136,14 +137,22 @@ export function QuestionTableControls({ questions, categories, createAction, upd
             const result = await suggestQuestion({ categoryName: selectedCategory.name });
             if (questionTextRef.current) {
                 questionTextRef.current.value = result.suggestion;
+            }
+             if (result.suggestion.startsWith('There was an error')) {
+                toast({
+                    variant: 'destructive',
+                    title: 'AI Suggestion Failed',
+                    description: result.suggestion,
+                });
+            } else {
                  toast({
                     title: 'Suggestion Ready',
                     description: 'An AI-powered suggestion has been added.',
                 });
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch an AI suggestion.' });
+            toast({ variant: 'destructive', title: 'Error', description: `Could not fetch an AI suggestion. ${error.message}` });
         } finally {
             setIsSuggesting(false);
         }
@@ -194,7 +203,7 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                             Add Question
                             </Button>
                         </DialogTrigger>
-                        <DialogContent>
+                        <DialogContent className="sm:max-w-[525px]">
                             <DialogHeader>
                                 <DialogTitle>Create New Question</DialogTitle>
                             </DialogHeader>
@@ -230,6 +239,23 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                                         <span className="sr-only">Suggest Question</span>
                                     </Button>
                                 </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Level</Label>
+                                    <RadioGroup name="question-level" defaultValue="Both" className="flex gap-4">
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem value="UG" id="level-ug" />
+                                            <Label htmlFor="level-ug">Undergraduate</Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem value="PG" id="level-pg" />
+                                            <Label htmlFor="level-pg">Postgraduate</Label>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <RadioGroupItem value="Both" id="level-both" />
+                                            <Label htmlFor="level-both">Both</Label>
+                                        </div>
+                                    </RadioGroup>
                                 </div>
                                 <Button type="submit" disabled={isPending}>
                                     {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -281,6 +307,7 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                     <TableRow>
                     <TableHead>Question</TableHead>
                     <TableHead>Category</TableHead>
+                    <TableHead>Level</TableHead>
                     <TableHead className="w-[100px] text-right">Actions</TableHead>
                     </TableRow>
                 </TableHeader>
@@ -294,6 +321,9 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                         <Badge variant="outline">
                             {q.question_categories?.name || 'N/A'}
                         </Badge>
+                        </TableCell>
+                        <TableCell>
+                           <Badge variant={q.level === 'Both' ? 'secondary' : 'default'} className={cn(q.level === 'PG' && 'bg-accent text-accent-foreground')}>{q.level}</Badge>
                         </TableCell>
                         <TableCell className="text-right">
                            <div className="inline-flex items-center">
@@ -334,7 +364,7 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                     {!questions ||
                     (questions.length === 0 && (
                         <TableRow>
-                        <TableCell colSpan={3} className="text-center">
+                        <TableCell colSpan={4} className="text-center">
                             No questions found.
                         </TableCell>
                         </TableRow>
@@ -345,7 +375,7 @@ export function QuestionTableControls({ questions, categories, createAction, upd
             
             {editingQuestion && (
                 <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-                    <DialogContent>
+                    <DialogContent className="sm:max-w-[525px]">
                         <DialogHeader>
                             <DialogTitle>Edit Question</DialogTitle>
                         </DialogHeader>
@@ -367,6 +397,23 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                                         ))}
                                     </SelectContent>
                                 </Select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Level</Label>
+                                <RadioGroup name="question-level" defaultValue={editingQuestion.level || 'Both'} className="flex gap-4">
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="UG" id="edit-level-ug" />
+                                        <Label htmlFor="edit-level-ug">Undergraduate</Label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="PG" id="edit-level-pg" />
+                                        <Label htmlFor="edit-level-pg">Postgraduate</Label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="Both" id="edit-level-both" />
+                                        <Label htmlFor="edit-level-both">Both</Label>
+                                    </div>
+                                </RadioGroup>
                             </div>
                             <Button type="submit" disabled={isPending}>
                                 {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

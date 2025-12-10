@@ -1,6 +1,7 @@
 
+
 export type UserRole = string;
-export type UserLevel = 'UG' | 'PG' | 'Both';
+export type UserLevel = 'UG' | 'PG';
 
 export type User = {
   id: string;
@@ -26,10 +27,13 @@ export type QuestionCategory = {
   created_at: string;
 };
 
+export type QuestionLevel = 'UG' | 'PG' | 'Both';
+
 export type Question = {
   id: number;
   text: string;
   category_id: number;
+  level: QuestionLevel;
   created_at: string;
   question_categories: { name: string }; // For joining data
 };

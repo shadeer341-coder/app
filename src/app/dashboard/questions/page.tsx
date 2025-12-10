@@ -1,9 +1,10 @@
 
 
+
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import type { Question, QuestionCategory } from '@/lib/types';
+import type { Question, QuestionCategory, QuestionLevel } from '@/lib/types';
 import {
   Card,
   CardContent,
@@ -105,6 +106,7 @@ async function createQuestion(formData: FormData) {
   const questionData = {
     text: String(formData.get('question-text')),
     category_id: Number(formData.get('question-category')),
+    level: String(formData.get('question-level')) as QuestionLevel,
   };
 
   const { error } = await supabase.from('questions').insert(questionData);
@@ -126,6 +128,7 @@ async function updateQuestion(formData: FormData) {
     const questionData = {
       text: String(formData.get('question-text')),
       category_id: Number(formData.get('question-category')),
+      level: String(formData.get('question-level')) as QuestionLevel,
     };
 
     const { error } = await supabase.from('questions').update(questionData).eq('id', questionId);
