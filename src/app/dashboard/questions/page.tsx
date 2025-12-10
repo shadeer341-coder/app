@@ -121,6 +121,10 @@ export default async function QuestionsPage({ searchParams }: { searchParams: { 
       query = query.eq('category_id', searchParams.category);
       countQuery = countQuery.eq('category_id', searchParams.category);
   }
+  if (searchParams.level && searchParams.level !== 'all') {
+    query = query.eq('level', searchParams.level);
+    countQuery = countQuery.eq('level', searchParams.level);
+  }
   
   const sortBy = (searchParams.sortBy as string) || 'created_at';
   const order = (searchParams.order as string) || 'desc';

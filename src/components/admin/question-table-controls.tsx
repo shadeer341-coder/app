@@ -119,6 +119,17 @@ export function QuestionTableControls({ questions, categories, createAction, upd
         replace(`${pathname}?${params.toString()}`, { scroll: false });
     }
 
+    const handleLevelFilter = (level: string) => {
+        const params = new URLSearchParams(searchParams);
+        params.set('page', '1');
+        if (level && level !== 'All Levels') {
+            params.set('level', level);
+        } else {
+            params.delete('level');
+        }
+        replace(`${pathname}?${params.toString()}`, { scroll: false });
+    }
+
     const handleSortOrder = (newOrder: string) => {
         setOrder(newOrder);
         const params = new URLSearchParams(searchParams);
@@ -206,6 +217,19 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                             <SelectItem value="all">All Categories</SelectItem>
                             {categories?.map(cat => (
                                 <SelectItem key={cat.id} value={String(cat.id)}>{cat.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                     <Select
+                        defaultValue={searchParams.get('level') || 'All Levels'}
+                        onValueChange={handleLevelFilter}
+                    >
+                        <SelectTrigger id="filter-level" className="w-full md:w-48">
+                            <SelectValue placeholder="Select a level" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {levelOptions.map(level => (
+                                <SelectItem key={level} value={level}>{level}</SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
