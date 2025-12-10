@@ -1,3 +1,4 @@
+
 "use client"
 
 import Link from "next/link";
@@ -11,7 +12,8 @@ import {
   Building,
   HardHat,
   HelpCircle,
-  AreaChart
+  AreaChart,
+  FolderKanban,
 } from "lucide-react";
 import {
   Sidebar,
@@ -39,6 +41,7 @@ const agencyLinks = [
 const adminLinks = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
   { href: "/dashboard/questions", label: "Questions", icon: HelpCircle },
+  { href: "/dashboard/categories", label: "Categories", icon: FolderKanban },
   { href: "/dashboard/admin", label: "Users", icon: Users },
   { href: "/dashboard/admin/agencies", label: "Agencies", icon: Building },
   { href: "/dashboard/admin/analytics", label: "Analytics", icon: AreaChart },
