@@ -98,6 +98,7 @@ export function QuestionTableControls({ questions, categories, createAction, upd
 
     const handleSearch = useDebouncedCallback((term: string) => {
         const params = new URLSearchParams(searchParams);
+        params.set('page', '1');
         if (term) {
             params.set('q', term);
         } else {
@@ -108,6 +109,7 @@ export function QuestionTableControls({ questions, categories, createAction, upd
 
     const handleFilter = (categoryId: string) => {
         const params = new URLSearchParams(searchParams);
+        params.set('page', '1');
         if (categoryId && categoryId !== 'all') {
             params.set('category', categoryId);
         } else {
@@ -119,6 +121,7 @@ export function QuestionTableControls({ questions, categories, createAction, upd
     const handleSortOrder = (newOrder: string) => {
         setOrder(newOrder);
         const params = new URLSearchParams(searchParams);
+        params.set('page', '1');
         params.set('order', newOrder);
         replace(`${pathname}?${params.toString()}`, { scroll: false });
     }
@@ -126,6 +129,7 @@ export function QuestionTableControls({ questions, categories, createAction, upd
     const handleSortBy = (newSortBy: string) => {
         setSortBy(newSortBy);
         const params = new URLSearchParams(searchParams);
+        params.set('page', '1');
         params.set('sortBy', newSortBy);
         replace(`${pathname}?${params.toString()}`, { scroll: false });
     }

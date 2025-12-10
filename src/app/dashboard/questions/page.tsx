@@ -1,8 +1,4 @@
 
-
-
-
-
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
@@ -15,8 +11,11 @@ import {
 } from '@/components/ui/card';
 import { QuestionTableControls } from '@/components/admin/question-table-controls';
 import { CategoryTableControls } from '@/components/admin/category-table-controls';
+import { PaginationControls } from '@/components/ui/pagination';
 
 export const dynamic = 'force-dynamic';
+
+const ITEMS_PER_PAGE = 10;
 
 async function createCategory(formData: FormData) {
   'use server';
@@ -185,8 +184,9 @@ async function deleteQuestion(formData: FormData) {
 }
 
 
-export default async function QuestionsPage({ searchParams }: { searchParams: { [key: string]: string | undefined }}) {
+export default async function QuestionsPage({ searchParams }: { searchParams: { [key: string]: string | string[] | undefined }}) {
   const supabase = createSupabaseServerClient();
+  const currentPage = Number(searchParams?.page || 1);
 
   const { data: categoriesData, error: categoriesError } = await supabase
     .from('question_categories')
@@ -194,26 +194,38 @@ export default async function QuestionsPage({ searchParams }: { searchParams: { 
     .order('name', { ascending: true });
     
   let query = supabase.from('questions').select(`*, question_categories(name)`);
+  let countQuery = supabase.from('questions').select('id', { count: 'exact', head: true });
 
-  if (searchParams.q) {
-      query = query.ilike('text', `%${searchParams.q}%`);
+  if (searchParams.q && typeof searchParams.q === 'string') {
+      const filter = `%${searchParams.q}%`;
+      query = query.ilike('text', filter);
+      countQuery = countQuery.ilike('text', filter);
   }
   if (searchParams.category && searchParams.category !== 'all') {
       query = query.eq('category_id', searchParams.category);
+      countQuery = countQuery.eq('category_id', searchParams.category);
   }
   
-  const sortBy = searchParams.sortBy || 'created_at';
-  const order = searchParams.order || 'desc';
+  const sortBy = (searchParams.sortBy as string) || 'created_at';
+  const order = (searchParams.order as string) || 'desc';
   query = query.order(sortBy, { ascending: order === 'asc' });
 
+  const from = (currentPage - 1) * ITEMS_PER_PAGE;
+  const to = from + ITEMS_PER_PAGE - 1;
+  query = query.range(from, to);
+
   const { data: questionsData, error: questionsError } = await query;
+  const { count: totalCount, error: countError } = await countQuery;
 
 
   if (categoriesError) console.error('Error fetching categories:', categoriesError);
   if (questionsError) console.error('Error fetching questions:', questionsError);
+  if (countError) console.error('Error counting questions:', countError);
+
   
   const categories = (categoriesData as QuestionCategory[] | null) || [];
   const questions = (questionsData as any[] | null) || [];
+  const totalPages = Math.ceil((totalCount || 0) / ITEMS_PER_PAGE);
 
   return (
     <div className="space-y-6">
@@ -258,6 +270,12 @@ export default async function QuestionsPage({ searchParams }: { searchParams: { 
               updateAction={updateQuestion}
               deleteAction={deleteQuestion}
             />
+          <div className="mt-6 flex justify-center">
+            <PaginationControls
+                currentPage={currentPage}
+                totalPages={totalPages}
+            />
+          </div>
         </CardContent>
       </Card>
     </div>
