@@ -46,7 +46,7 @@ import type { QuestionCategory, QuestionLevel } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { suggestQuestion } from '@/ai/flows/suggest-question';
-import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
+import { TagInput } from '../ui/tag-input';
 
 
 type QuestionTableControlsProps = {
@@ -222,8 +222,8 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                                 </div>
                                  <div className="space-y-2">
                                     <Label htmlFor="question-tags">Tags</Label>
-                                    <Input id="question-tags" name="question-tags" placeholder="e.g., cost, location, research" />
-                                    <p className="text-xs text-muted-foreground">Comma-separated keywords expected in the answer.</p>
+                                    <TagInput id="question-tags" name="question-tags" placeholder="Add a tag and press Enter" />
+                                    <p className="text-xs text-muted-foreground">Keywords expected in the answer.</p>
                                 </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-2">
@@ -409,8 +409,8 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                             </div>
                              <div className="space-y-2">
                                 <Label htmlFor="question-tags-edit">Tags</Label>
-                                <Input id="question-tags-edit" name="question-tags" placeholder="e.g., cost, location, research" defaultValue={editingQuestion.tags?.join(', ')} />
-                                <p className="text-xs text-muted-foreground">Comma-separated keywords expected in the answer.</p>
+                                <TagInput id="question-tags-edit" name="question-tags" placeholder="Add a tag and press Enter" defaultValue={editingQuestion.tags} />
+                                <p className="text-xs text-muted-foreground">Keywords expected in the answer.</p>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-2">

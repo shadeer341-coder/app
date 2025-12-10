@@ -2,6 +2,7 @@
 
 
 
+
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
@@ -105,8 +106,14 @@ async function createQuestion(formData: FormData) {
 
   const supabase = createSupabaseServerClient();
   
-  const tagsRaw = String(formData.get('question-tags') || '');
-  const tags = tagsRaw.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
+  const tagsRaw = String(formData.get('question-tags') || '[]');
+  let tags: string[] = [];
+  try {
+    tags = JSON.parse(tagsRaw);
+    if (!Array.isArray(tags)) tags = [];
+  } catch (e) {
+    // Keep tags as empty array if parsing fails
+  }
 
   const questionData = {
     text: String(formData.get('question-text')),
@@ -132,8 +139,15 @@ async function updateQuestion(formData: FormData) {
     const supabase = createSupabaseServerClient();
     const questionId = Number(formData.get('question-id'));
 
-    const tagsRaw = String(formData.get('question-tags') || '');
-    const tags = tagsRaw.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
+    const tagsRaw = String(formData.get('question-tags') || '[]');
+    let tags: string[] = [];
+    try {
+        tags = JSON.parse(tagsRaw);
+        if (!Array.isArray(tags)) tags = [];
+    } catch(e) {
+        // Keep tags as empty array if parsing fails
+    }
+
 
     const questionData = {
       text: String(formData.get('question-text')),
