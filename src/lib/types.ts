@@ -1,5 +1,6 @@
 
 
+
 export type UserRole = string;
 export type UserLevel = 'UG' | 'PG';
 
@@ -27,7 +28,7 @@ export type QuestionCategory = {
   created_at: string;
 };
 
-export type QuestionLevel = 'UG' | 'PG' | 'Both';
+export type QuestionLevel = string;
 
 export type Question = {
   id: number;

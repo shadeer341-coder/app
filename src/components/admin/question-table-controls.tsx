@@ -57,6 +57,14 @@ type QuestionTableControlsProps = {
     deleteAction: (formData: FormData) => Promise<{ success: boolean, message: string }>;
 };
 
+const levelOptions = [
+    "All Levels",
+    "Foundation + Degree",
+    "Degree (Undergraduate)",
+    "Top-Up / Final Year",
+    "Masters (Postgraduate)",
+];
+
 export function QuestionTableControls({ questions, categories, createAction, updateAction, deleteAction }: QuestionTableControlsProps) {
     const searchParams = useSearchParams();
     const { replace } = useRouter();
@@ -212,50 +220,48 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                                 <Label htmlFor="question-text">Question Text</Label>
                                 <Textarea id="question-text" name="question-text" placeholder="e.g., Tell me about a time you faced a challenge." required ref={questionTextRef} />
                                 </div>
-                                <div className="space-y-2">
-                                <Label htmlFor="question-category">Category</Label>
-                                <div className="flex gap-2">
-                                    <Select 
-                                        name="question-category" 
-                                        required 
-                                        onValueChange={(value) => {
-                                            const category = categories.find(c => String(c.id) === value);
-                                            if (category) {
-                                                setSelectedCategory({id: String(category.id), name: category.name});
-                                            }
-                                        }}
-                                    >
-                                        <SelectTrigger id="question-category">
-                                        <SelectValue placeholder="Select a category" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                        {categories?.map(cat => (
-                                            <SelectItem key={cat.id} value={String(cat.id)}>{cat.name}</SelectItem>
-                                        ))}
-                                        </SelectContent>
-                                    </Select>
-                                    <Button type="button" variant="outline" size="icon" onClick={handleSuggestQuestion} disabled={isSuggesting || !selectedCategory}>
-                                        {isSuggesting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                                        <span className="sr-only">Suggest Question</span>
-                                    </Button>
-                                </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Level</Label>
-                                    <RadioGroup name="question-level" defaultValue="Both" className="flex gap-4">
-                                        <div className="flex items-center space-x-2">
-                                            <RadioGroupItem value="UG" id="level-ug" />
-                                            <Label htmlFor="level-ug">Undergraduate</Label>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="question-category">Category</Label>
+                                        <div className="flex gap-2">
+                                            <Select 
+                                                name="question-category" 
+                                                required 
+                                                onValueChange={(value) => {
+                                                    const category = categories.find(c => String(c.id) === value);
+                                                    if (category) {
+                                                        setSelectedCategory({id: String(category.id), name: category.name});
+                                                    }
+                                                }}
+                                            >
+                                                <SelectTrigger id="question-category">
+                                                <SelectValue placeholder="Select a category" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                {categories?.map(cat => (
+                                                    <SelectItem key={cat.id} value={String(cat.id)}>{cat.name}</SelectItem>
+                                                ))}
+                                                </SelectContent>
+                                            </Select>
+                                            <Button type="button" variant="outline" size="icon" onClick={handleSuggestQuestion} disabled={isSuggesting || !selectedCategory}>
+                                                {isSuggesting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                                                <span className="sr-only">Suggest Question</span>
+                                            </Button>
                                         </div>
-                                        <div className="flex items-center space-x-2">
-                                            <RadioGroupItem value="PG" id="level-pg" />
-                                            <Label htmlFor="level-pg">Postgraduate</Label>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                            <RadioGroupItem value="Both" id="level-both" />
-                                            <Label htmlFor="level-both">Both</Label>
-                                        </div>
-                                    </RadioGroup>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="question-level">Level</Label>
+                                        <Select name="question-level" defaultValue="All Levels" required>
+                                            <SelectTrigger id="question-level">
+                                                <SelectValue placeholder="Select a level" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {levelOptions.map(level => (
+                                                    <SelectItem key={level} value={level}>{level}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
                                 </div>
                                 <Button type="submit" disabled={isPending}>
                                     {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -323,7 +329,7 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                         </Badge>
                         </TableCell>
                         <TableCell>
-                           <Badge variant={q.level === 'Both' ? 'secondary' : 'default'} className={cn(q.level === 'PG' && 'bg-accent text-accent-foreground')}>{q.level}</Badge>
+                           <Badge variant={q.level === 'All Levels' ? 'secondary' : 'default'} className={cn(q.level.includes('Postgraduate') && 'bg-accent text-accent-foreground')}>{q.level}</Badge>
                         </TableCell>
                         <TableCell className="text-right">
                            <div className="inline-flex items-center">
@@ -385,35 +391,33 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                                 <Label htmlFor="question-text-edit">Question Text</Label>
                                 <Textarea id="question-text-edit" name="question-text" defaultValue={editingQuestion.text} required />
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="question-category-edit">Category</Label>
-                                <Select name="question-category" defaultValue={String(editingQuestion.category_id)} required>
-                                    <SelectTrigger id="question-category-edit">
-                                        <SelectValue placeholder="Select a category" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {categories?.map(cat => (
-                                            <SelectItem key={cat.id} value={String(cat.id)}>{cat.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Level</Label>
-                                <RadioGroup name="question-level" defaultValue={editingQuestion.level || 'Both'} className="flex gap-4">
-                                    <div className="flex items-center space-x-2">
-                                        <RadioGroupItem value="UG" id="edit-level-ug" />
-                                        <Label htmlFor="edit-level-ug">Undergraduate</Label>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                        <RadioGroupItem value="PG" id="edit-level-pg" />
-                                        <Label htmlFor="edit-level-pg">Postgraduate</Label>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                        <RadioGroupItem value="Both" id="edit-level-both" />
-                                        <Label htmlFor="edit-level-both">Both</Label>
-                                    </div>
-                                </RadioGroup>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="question-category-edit">Category</Label>
+                                    <Select name="question-category" defaultValue={String(editingQuestion.category_id)} required>
+                                        <SelectTrigger id="question-category-edit">
+                                            <SelectValue placeholder="Select a category" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {categories?.map(cat => (
+                                                <SelectItem key={cat.id} value={String(cat.id)}>{cat.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="question-level-edit">Level</Label>
+                                    <Select name="question-level" defaultValue={editingQuestion.level || 'All Levels'} required>
+                                        <SelectTrigger id="question-level-edit">
+                                            <SelectValue placeholder="Select a level" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {levelOptions.map(level => (
+                                                <SelectItem key={level} value={level}>{level}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
                             <Button type="submit" disabled={isPending}>
                                 {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
