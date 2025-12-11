@@ -39,24 +39,49 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
   const currentQuestion = questions[currentQuestionIndex];
   
   const getCameraPermission = useCallback(async () => {
-    if (hasCameraPermission) return true;
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-      setHasCameraPermission(true);
-      return true;
-    } catch (error) {
-      console.error('Error accessing camera:', error);
-      setHasCameraPermission(false);
-      toast({
-        variant: 'destructive',
-        title: 'Camera Access Denied',
-        description: 'Please enable camera and microphone permissions in your browser settings.',
-      });
-      return false;
+    // If we think we have permission, we still need to set the srcObject if it's not set
+    if (videoRef.current && !videoRef.current.srcObject) {
+         try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+            }
+            setHasCameraPermission(true);
+            return true;
+        } catch (error) {
+            console.error('Error accessing camera:', error);
+            setHasCameraPermission(false);
+            toast({
+                variant: 'destructive',
+                title: 'Camera Access Denied',
+                description: 'Please enable camera and microphone permissions in your browser settings.',
+            });
+            return false;
+        }
     }
+    
+    // If permission is not yet determined, ask for it.
+    if (hasCameraPermission === null || hasCameraPermission === false) {
+       try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+            }
+            setHasCameraPermission(true);
+            return true;
+        } catch (error) {
+            console.error('Error accessing camera:', error);
+            setHasCameraPermission(false);
+            toast({
+                variant: 'destructive',
+                title: 'Camera Access Denied',
+                description: 'Please enable camera and microphone permissions in your browser settings.',
+            });
+            return false;
+        }
+    }
+
+    return true;
   }, [hasCameraPermission, toast]);
 
   const startRecording = async () => {
@@ -81,6 +106,13 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
       setVideoRecordings(prev => ({...prev, [currentQuestionIndex]: url}));
       setIsRecording(false);
       setStage('reviewing');
+      
+      // Stop the camera stream after recording
+      if (videoRef.current && videoRef.current.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach(track => track.stop());
+        videoRef.current.srcObject = null;
+      }
     };
 
     mediaRecorderRef.current.start();
@@ -94,15 +126,23 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
   };
 
   const handleRerecord = () => {
+    // Revoke the old blob URL to free up memory
+    if (videoRecordings[currentQuestionIndex]) {
+        URL.revokeObjectURL(videoRecordings[currentQuestionIndex]!);
+    }
     setVideoRecordings(prev => ({...prev, [currentQuestionIndex]: null}));
     recordedChunksRef.current = [];
     setStage('answering');
+    // We need to get the camera again for re-recording
+    getCameraPermission();
   };
   
   const handleNextQuestion = () => {
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
       setStage('answering');
+      // Get camera ready for the next question
+      getCameraPermission();
     } else {
       setStage('finished');
     }
@@ -139,6 +179,11 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
         Object.values(videoRecordings).forEach(url => {
             if (url) URL.revokeObjectURL(url);
         });
+        // Also stop any active camera stream on unmount
+        if (videoRef.current && videoRef.current.srcObject) {
+            const stream = videoRef.current.srcObject as MediaStream;
+            stream.getTracks().forEach(track => track.stop());
+        }
     }
   }, [videoRecordings]);
 
