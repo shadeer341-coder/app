@@ -3,28 +3,31 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Question, QuestionCategory, User } from '@/lib/types';
+import type { Question, User } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Video, StopCircle, RefreshCw, Send, AlertTriangle } from 'lucide-react';
+import { Loader2, Video, StopCircle, RefreshCw, Send, AlertTriangle, ArrowRight, PartyPopper } from 'lucide-react';
+
+type InterviewQuestion = Pick<Question, 'id' | 'text' | 'category_id'> & { categoryName: string };
 
 type PracticeSessionProps = {
-  categories: QuestionCategory[];
-  questions: Pick<Question, 'id' | 'text' | 'category_id'>[];
+  questions: InterviewQuestion[];
   user: User | null;
 };
 
-type Stage = 'select_category' | 'show_question' | 'recording' | 'reviewing' | 'submitting';
+type Stage = 'introduction' | 'answering' | 'recording' | 'reviewing' | 'submitting' | 'finished';
 
-export function PracticeSession({ categories, questions, user }: PracticeSessionProps) {
-  const [stage, setStage] = useState<Stage>('select_category');
-  const [selectedCategory, setSelectedCategory] = useState<QuestionCategory | null>(null);
-  const [currentQuestion, setCurrentQuestion] = useState<Pick<Question, 'id' | 'text' | 'category_id'> | null>(null);
+export function PracticeSession({ questions, user }: PracticeSessionProps) {
+  const [stage, setStage] = useState<Stage>('introduction');
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [isRecording, setIsRecording] = useState(false);
-  const [recordedVideo, setRecordedVideo] = useState<string | null>(null);
+  
+  // Store recordings for each question
+  const [videoRecordings, setVideoRecordings] = useState<Record<number, string | null>>({});
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -33,27 +36,10 @@ export function PracticeSession({ categories, questions, user }: PracticeSession
   const { toast } = useToast();
   const router = useRouter();
 
-  const handleSelectCategory = (category: QuestionCategory) => {
-    const categoryQuestions = questions.filter(q => q.category_id === category.id);
-    if (categoryQuestions.length === 0) {
-        toast({
-            variant: 'destructive',
-            title: 'No Questions',
-            description: `There are no questions in the "${category.name}" category.`,
-        });
-        return;
-    }
-    const randomIndex = Math.floor(Math.random() * categoryQuestions.length);
-    const randomQuestion = categoryQuestions[randomIndex];
-    
-    setSelectedCategory(category);
-    setCurrentQuestion(randomQuestion);
-    setStage('show_question');
-  };
-
+  const currentQuestion = questions[currentQuestionIndex];
+  
   const getCameraPermission = useCallback(async () => {
     if (hasCameraPermission) return true;
-
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       if (videoRef.current) {
@@ -78,11 +64,10 @@ export function PracticeSession({ categories, questions, user }: PracticeSession
     if (!permissionGranted || !videoRef.current?.srcObject) return;
 
     setIsRecording(true);
-    setRecordedVideo(null);
     recordedChunksRef.current = [];
 
     const stream = videoRef.current.srcObject as MediaStream;
-    mediaRecorderRef.current = new MediaRecorder(stream);
+    mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'video/webm' });
 
     mediaRecorderRef.current.ondataavailable = (event) => {
       if (event.data.size > 0) {
@@ -93,7 +78,7 @@ export function PracticeSession({ categories, questions, user }: PracticeSession
     mediaRecorderRef.current.onstop = () => {
       const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
       const url = URL.createObjectURL(blob);
-      setRecordedVideo(url);
+      setVideoRecordings(prev => ({...prev, [currentQuestionIndex]: url}));
       setIsRecording(false);
       setStage('reviewing');
     };
@@ -109,20 +94,28 @@ export function PracticeSession({ categories, questions, user }: PracticeSession
   };
 
   const handleRerecord = () => {
-    setRecordedVideo(null);
+    setVideoRecordings(prev => ({...prev, [currentQuestionIndex]: null}));
     recordedChunksRef.current = [];
-    setStage('show_question');
+    setStage('answering');
   };
   
+  const handleNextQuestion = () => {
+    if (currentQuestionIndex < questions.length - 1) {
+      setCurrentQuestionIndex(prev => prev + 1);
+      setStage('answering');
+    } else {
+      setStage('finished');
+    }
+  };
+
   const handleSubmit = async () => {
-      // Placeholder for submission logic
       setStage('submitting');
       toast({
           title: "Submitting...",
           description: "Your interview is being submitted for analysis. Please wait.",
       });
 
-      // This is where you would convert the blob to a data URI and send to the AI flow
+      // This is where you would convert blobs to data URIs and send to the AI flow
       // For now, we'll just simulate a delay and redirect
       setTimeout(() => {
           toast({
@@ -134,37 +127,63 @@ export function PracticeSession({ categories, questions, user }: PracticeSession
           router.push('/dashboard/interviews');
       }, 3000);
   };
+  
+  const handleStartInterview = () => {
+    setStage('answering');
+    getCameraPermission();
+  }
 
   useEffect(() => {
-    if (stage === 'show_question') {
-      getCameraPermission();
+    // Clean up blob URLs on unmount
+    return () => {
+        Object.values(videoRecordings).forEach(url => {
+            if (url) URL.revokeObjectURL(url);
+        });
     }
-  }, [stage, getCameraPermission]);
+  }, [videoRecordings]);
 
+  if (questions.length === 0) {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>No Questions Available</CardTitle>
+                <CardDescription>There are no questions configured for your interview session.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <p>Please contact an administrator to set up the interview questions.</p>
+                <Button onClick={() => router.push('/dashboard')} className="mt-4">Back to Dashboard</Button>
+            </CardContent>
+        </Card>
+    )
+  }
+
+  const progressValue = (currentQuestionIndex / questions.length) * 100;
 
   return (
     <Card>
-      {stage === 'select_category' && (
-        <>
-          <CardHeader>
-            <CardTitle>Step 1: Choose a Category</CardTitle>
-            <CardDescription>Select the type of question you want to practice.</CardDescription>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {categories.map((cat) => (
-              <Button key={cat.id} variant="outline" size="lg" className="p-8 text-lg" onClick={() => handleSelectCategory(cat)}>
-                {cat.name}
-              </Button>
-            ))}
-          </CardContent>
-        </>
-      )}
-
-      {(stage === 'show_question' || stage === 'recording') && (
+        {stage === 'introduction' && (
+             <>
+                <CardHeader>
+                    <CardTitle>Your Interview is Ready</CardTitle>
+                    <CardDescription>You will be asked {questions.length} questions in this session. Good luck!</CardDescription>
+                </CardHeader>
+                <CardContent className="text-center">
+                    <p className="text-lg">Click the button below to begin.</p>
+                </CardContent>
+                <CardFooter className="justify-center">
+                    <Button size="lg" onClick={handleStartInterview}>
+                        Start Interview
+                    </Button>
+                </CardFooter>
+            </>
+        )}
+      
+      {(stage === 'answering' || stage === 'recording') && (
         <>
             <CardHeader>
-                <CardTitle>Step 2: Record Your Answer</CardTitle>
-                <CardDescription>You are practicing a question from the <strong>{selectedCategory?.name}</strong> category.</CardDescription>
+                <CardTitle>Question {currentQuestionIndex + 1} of {questions.length}</CardTitle>
+                <CardDescription>Category: <strong>{currentQuestion?.categoryName}</strong></CardDescription>
+                <Progress value={progressValue} className="mt-2" />
             </CardHeader>
             <CardContent className="space-y-6">
                 <Alert>
@@ -187,7 +206,7 @@ export function PracticeSession({ categories, questions, user }: PracticeSession
                 </div>
 
                 <div className="flex justify-center">
-                    {stage === 'show_question' && (
+                    {stage === 'answering' && (
                         <Button size="lg" onClick={startRecording} disabled={hasCameraPermission !== true}>
                             <Video className="mr-2" /> Start Recording
                         </Button>
@@ -202,31 +221,51 @@ export function PracticeSession({ categories, questions, user }: PracticeSession
         </>
       )}
       
-      {(stage === 'reviewing' || stage === 'submitting') && recordedVideo && (
+      {stage === 'reviewing' && videoRecordings[currentQuestionIndex] && (
           <>
             <CardHeader>
-                <CardTitle>Step 3: Review Your Recording</CardTitle>
-                <CardDescription>Watch your performance. You can re-record or submit for AI feedback.</CardDescription>
+                <CardTitle>Review Your Answer for Question {currentQuestionIndex + 1}</CardTitle>
+                <CardDescription>Watch your performance. You can re-record or proceed to the next question.</CardDescription>
+                <Progress value={((currentQuestionIndex + 1) / questions.length) * 100} className="mt-2" />
             </CardHeader>
             <CardContent className="space-y-6">
                 <div className="aspect-video w-full rounded-md border bg-secondary overflow-hidden">
-                    <video src={recordedVideo} className="w-full h-full" controls playsInline />
+                    <video src={videoRecordings[currentQuestionIndex]!} className="w-full h-full" controls playsInline autoPlay />
                 </div>
                 <div className="flex justify-center gap-4">
-                    <Button size="lg" variant="outline" onClick={handleRerecord} disabled={stage === 'submitting'}>
+                    <Button size="lg" variant="outline" onClick={handleRerecord}>
                         <RefreshCw className="mr-2" /> Re-record
                     </Button>
-                    <Button size="lg" onClick={handleSubmit} disabled={stage === 'submitting'}>
-                        {stage === 'submitting' ? (
-                            <Loader2 className="mr-2 animate-spin" />
-                        ) : (
-                            <Send className="mr-2" />
-                        )}
-                        Submit for Feedback
+                    <Button size="lg" onClick={handleNextQuestion}>
+                        {currentQuestionIndex < questions.length - 1 ? 'Next Question' : 'Finish Interview'}
+                        <ArrowRight className="ml-2" />
                     </Button>
                 </div>
             </CardContent>
           </>
+      )}
+
+      {stage === 'finished' && (
+        <>
+            <CardHeader className="items-center text-center">
+                <PartyPopper className="w-16 h-16 text-primary" />
+                <CardTitle className="mt-4">Interview Complete!</CardTitle>
+                <CardDescription>You have answered all {questions.length} questions.</CardDescription>
+            </CardHeader>
+            <CardContent className="text-center">
+                <p>You can now submit your interview for AI-powered feedback.</p>
+            </CardContent>
+             <CardFooter className="justify-center">
+                <Button size="lg" onClick={handleSubmit} disabled={stage === 'submitting'}>
+                    {stage === 'submitting' ? (
+                        <Loader2 className="mr-2 animate-spin" />
+                    ) : (
+                        <Send className="mr-2" />
+                    )}
+                    Submit for Feedback
+                </Button>
+            </CardFooter>
+        </>
       )}
 
     </Card>
