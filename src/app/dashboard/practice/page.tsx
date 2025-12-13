@@ -23,7 +23,7 @@ export default async function PracticePage() {
     const { data: categoriesData, error: categoriesError } = await supabase
         .from('question_categories')
         .select('*')
-        .order('name', { ascending: true });
+        .order('sort_order', { ascending: true });
 
     const { data: questionsData, error: questionsError } = await supabase
         .from('questions')

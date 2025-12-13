@@ -18,7 +18,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { PlusCircle, Edit, Trash2, Loader2 } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, ArrowUp, ArrowDown } from 'lucide-react';
 import type { QuestionCategory } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
@@ -27,10 +27,11 @@ type CategoryTableControlsProps = {
   createAction: (formData: FormData) => Promise<{ success: boolean, message: string }>;
   updateAction: (formData: FormData) => Promise<{ success: boolean, message: string }>;
   deleteAction: (formData: FormData) => Promise<{ success: boolean, message: string }>;
+  moveAction: (categoryId: number, direction: 'up' | 'down') => Promise<{ success: boolean, message: string }>;
   isTable?: boolean;
 };
 
-export function CategoryTableControls({ categories, createAction, updateAction, deleteAction, isTable = false }: CategoryTableControlsProps) {
+export function CategoryTableControls({ categories, createAction, updateAction, deleteAction, moveAction, isTable = false }: CategoryTableControlsProps) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
@@ -47,12 +48,23 @@ export function CategoryTableControls({ categories, createAction, updateAction, 
     startTransition(async () => {
       const result = await action(formData);
       if (result.success) {
-        toast({ title: 'Success', description: result.message });
+        if (result.message.includes('successfully')) {
+          toast({ title: 'Success', description: result.message });
+        }
         closeDialog();
       } else {
         toast({ variant: 'destructive', title: 'Error', description: result.message });
       }
     });
+  }
+
+  const handleMoveAction = (categoryId: number, direction: 'up' | 'down') => {
+      startTransition(async () => {
+          const result = await moveAction(categoryId, direction);
+           if (!result.success) {
+                toast({ variant: 'destructive', title: 'Error', description: result.message });
+           }
+      });
   }
   
   if (!isTable) {
@@ -94,14 +106,35 @@ export function CategoryTableControls({ categories, createAction, updateAction, 
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[80px]">Order</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Question Limit</TableHead>
               <TableHead className="w-[100px] text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {categories.map((cat) => (
+            {categories.map((cat, index) => (
               <TableRow key={cat.id}>
+                 <TableCell>
+                    <div className="flex items-center gap-1">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={index === 0 || isPending}
+                            onClick={() => handleMoveAction(cat.id, 'up')}
+                        >
+                            <ArrowUp className="h-4 w-4" />
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={index === categories.length - 1 || isPending}
+                            onClick={() => handleMoveAction(cat.id, 'down')}
+                        >
+                            <ArrowDown className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </TableCell>
                 <TableCell className="font-medium">{cat.name}</TableCell>
                 <TableCell>{cat.question_limit}</TableCell>
                 <TableCell className="text-right">
@@ -143,7 +176,7 @@ export function CategoryTableControls({ categories, createAction, updateAction, 
             ))}
             {(!categories || categories.length === 0) && (
               <TableRow>
-                <TableCell colSpan={3} className="text-center">No categories found.</TableCell>
+                <TableCell colSpan={4} className="text-center">No categories found.</TableCell>
               </TableRow>
             )}
           </TableBody>

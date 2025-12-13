@@ -2,6 +2,7 @@
 
 
 
+
 export type UserRole = string;
 export type UserLevel = 'UG' | 'PG';
 
@@ -27,6 +28,7 @@ export type QuestionCategory = {
   name: string;
   question_limit: number;
   created_at: string;
+  sort_order: number;
 };
 
 export type QuestionLevel = string;

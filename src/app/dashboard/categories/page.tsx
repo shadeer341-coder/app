@@ -19,9 +19,25 @@ async function createCategory(formData: FormData) {
   const limit = Number(formData.get('question-limit'));
 
   const supabase = createSupabaseServerClient();
+  
+  // Get the max sort_order
+  const { data: maxOrderData, error: maxOrderError } = await supabase
+    .from('question_categories')
+    .select('sort_order')
+    .order('sort_order', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (maxOrderError && maxOrderError.code !== 'PGRST116') { // Ignore error if no rows found
+    console.error('Error getting max sort order:', maxOrderError);
+    return { success: false, message: 'Could not determine category order.' };
+  }
+
+  const newSortOrder = (maxOrderData?.sort_order || 0) + 1;
+
   const { error } = await supabase
     .from('question_categories')
-    .insert({ name: name, question_limit: limit });
+    .insert({ name: name, question_limit: limit, sort_order: newSortOrder });
 
   if (error) {
     console.error('Error creating category:', error.message);
@@ -94,6 +110,52 @@ async function deleteCategory(formData: FormData) {
     }
 }
 
+async function moveCategory(categoryId: number, direction: 'up' | 'down') {
+    'use server';
+    const supabase = createSupabaseServerClient();
+
+    const { data: allCategories, error: fetchError } = await supabase
+        .from('question_categories')
+        .select('id, sort_order')
+        .order('sort_order', { ascending: true });
+
+    if (fetchError) {
+        return { success: false, message: 'Could not fetch categories to reorder.' };
+    }
+
+    const currentIndex = allCategories.findIndex(c => c.id === categoryId);
+    if (currentIndex === -1) {
+        return { success: false, message: 'Category not found.' };
+    }
+
+    let otherIndex = -1;
+    if (direction === 'up') {
+        if (currentIndex === 0) return { success: true, message: 'Already at the top.'};
+        otherIndex = currentIndex - 1;
+    } else {
+        if (currentIndex === allCategories.length - 1) return { success: true, message: 'Already at the bottom.'};
+        otherIndex = currentIndex + 1;
+    }
+
+    const categoryA = allCategories[currentIndex];
+    const categoryB = allCategories[otherIndex];
+
+    const { error: updateError } = await supabase.rpc('swap_category_order', {
+        cat_id_1: categoryA.id,
+        cat_id_2: categoryB.id,
+        order_1: categoryA.sort_order,
+        order_2: categoryB.sort_order,
+    });
+    
+    if (updateError) {
+        console.error('Error swapping categories:', updateError);
+        return { success: false, message: updateError.message };
+    }
+
+    revalidatePath('/dashboard/categories');
+    return { success: true, message: 'Category moved.' };
+}
+
 
 export default async function CategoriesPage() {
   const supabase = createSupabaseServerClient();
@@ -101,7 +163,7 @@ export default async function CategoriesPage() {
   const { data: categoriesData, error: categoriesError } = await supabase
     .from('question_categories')
     .select('*')
-    .order('name', { ascending: true });
+    .order('sort_order', { ascending: true });
 
   if (categoriesError) {
       console.error('Error fetching categories:', categoriesError.message);
@@ -116,7 +178,7 @@ export default async function CategoriesPage() {
           Question Categories
         </h1>
         <p className="text-muted-foreground">
-          Create, view, and manage categories for organizing questions.
+          Create, view, and manage categories for organizing questions. Drag and drop to reorder.
         </p>
       </div>
 
@@ -128,6 +190,7 @@ export default async function CategoriesPage() {
                 createAction={createCategory}
                 updateAction={updateCategory}
                 deleteAction={deleteCategory}
+                moveAction={moveCategory}
             />
         </CardHeader>
         <CardContent>
@@ -137,6 +200,7 @@ export default async function CategoriesPage() {
                 createAction={createCategory}
                 updateAction={updateCategory}
                 deleteAction={deleteCategory}
+                moveAction={moveCategory}
             />
         </CardContent>
       </Card>
