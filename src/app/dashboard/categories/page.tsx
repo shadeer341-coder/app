@@ -1,4 +1,5 @@
 
+
 import { revalidatePath } from 'next/cache';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import type { QuestionCategory } from '@/lib/types';
@@ -127,7 +128,7 @@ async function moveCategory(categoryId: number, direction: 'up' | 'down') {
     if (currentIndex === -1) {
         return { success: false, message: 'Category not found.' };
     }
-
+    
     let otherIndex = -1;
     if (direction === 'up') {
         if (currentIndex === 0) return { success: true, message: 'Already at the top.'};
@@ -140,16 +141,30 @@ async function moveCategory(categoryId: number, direction: 'up' | 'down') {
     const categoryA = allCategories[currentIndex];
     const categoryB = allCategories[otherIndex];
 
-    const { error: updateError } = await supabase.rpc('swap_category_order', {
-        cat_id_1: categoryA.id,
-        cat_id_2: categoryB.id,
-        order_1: categoryA.sort_order,
-        order_2: categoryB.sort_order,
-    });
+    // Swap sort_order values using two update calls
+    const { error: errorA } = await supabase
+        .from('question_categories')
+        .update({ sort_order: categoryB.sort_order })
+        .eq('id', categoryA.id);
+
+    if (errorA) {
+        console.error('Error updating category A:', errorA);
+        return { success: false, message: errorA.message };
+    }
+
+    const { error: errorB } = await supabase
+        .from('question_categories')
+        .update({ sort_order: categoryA.sort_order })
+        .eq('id', categoryB.id);
     
-    if (updateError) {
-        console.error('Error swapping categories:', updateError);
-        return { success: false, message: updateError.message };
+    if (errorB) {
+        console.error('Error updating category B:', errorB);
+        // Attempt to revert the first change
+        await supabase
+            .from('question_categories')
+            .update({ sort_order: categoryA.sort_order })
+            .eq('id', categoryA.id);
+        return { success: false, message: errorB.message };
     }
 
     revalidatePath('/dashboard/categories');
