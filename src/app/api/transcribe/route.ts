@@ -1,7 +1,7 @@
 
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { promises as fs, createReadStream } from 'fs';
+import { promises as fs, createReadStream, IncomingMessage } from 'fs';
 import formidable from 'formidable';
 import type { NextApiRequest } from 'next';
 
@@ -10,19 +10,43 @@ const openai = new OpenAI({
 });
 
 async function parseFormData(req: Request): Promise<{ fields: formidable.Fields, files: formidable.Files }> {
+    const formidableRequest = await fromNodeLikeRequest(req);
     return new Promise((resolve, reject) => {
         const form = formidable({});
-        // The formidable parse method expects a Node.js IncomingMessage, 
-        // which is not directly available in Next.js App Router API routes.
-        // We adapt the Next.js request for formidable.
-        // This is a common pattern for using formidable in this environment.
-        form.parse(req as unknown as NextApiRequest, (err, fields, files) => {
+        form.parse(formidableRequest, (err, fields, files) => {
             if (err) {
                 return reject(err);
             }
             resolve({ fields, files });
         });
     });
+}
+
+async function fromNodeLikeRequest(request: Request) {
+    const headers = new Headers(request.headers);
+    const body = request.body;
+
+    const req = {
+        headers: headers as any,
+        [Symbol.asyncIterator]: async function* () {
+            const reader = body?.getReader();
+            if (!reader) {
+                return;
+            }
+            try {
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) {
+                        return;
+                    }
+                    yield value;
+                }
+            } finally {
+                reader.releaseLock();
+            }
+        },
+    } as IncomingMessage;
+    return req;
 }
 
 export async function POST(request: Request) {
