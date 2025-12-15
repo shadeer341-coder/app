@@ -160,7 +160,7 @@ export default async function InterviewFeedbackPage({ params }: InterviewFeedbac
                                                         <p className="text-muted-foreground text-sm">{feedback?.grammarFeedback || 'Not available.'}</p>
                                                     </div>
                                                 </CardContent>
-                                                {attempt.id === firstAttemptWithSnapshots?.id && firstAttemptWithSnapshots.snapshots && firstAttemptWithSnapshots.snapshots.length > 0 && (
+                                                 {user.role === 'admin' && attempt.id === firstAttemptWithSnapshots?.id && firstAttemptWithSnapshots.snapshots && firstAttemptWithSnapshots.snapshots.length > 0 && (
                                                     <CardFooter className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                         {firstAttemptWithSnapshots.snapshots.map((snapshot, i) => (
                                                             <div key={i} className="aspect-video relative rounded-md overflow-hidden border">
@@ -228,3 +228,5 @@ export default async function InterviewFeedbackPage({ params }: InterviewFeedbac
         </div>
     );
 }
+
+    
