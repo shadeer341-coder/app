@@ -1,8 +1,8 @@
+
 'use server';
 
 import OpenAI from 'openai';
 import { z } from 'zod';
-import type { GenerateInterviewFeedbackOutput } from './generate-interview-feedback';
 
 const SummarizeInputSchema = z.object({
   feedbacks: z.array(
@@ -60,7 +60,7 @@ export async function summarizeInterviewPerformance(
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4-turbo-preview",
+      model: "gpt-4o-mini",
       max_tokens: 1000,
       response_format: { type: "json_object" },
       messages: [

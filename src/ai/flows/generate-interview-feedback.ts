@@ -15,6 +15,7 @@ const FeedbackOutputSchema = z.object({
   strengths: z.string().describe("Specific strengths of the user's answer and presentation."),
   weaknesses: z.string().describe("Specific weaknesses or areas for improvement in the user's answer and presentation."),
   grammarFeedback: z.string().describe("Feedback on the user's grammar, clarity, and use of filler words."),
+  visualFeedback: z.string().optional().describe("Feedback on the user's visual presentation (e.g., lighting, framing, eye contact)."),
   overallPerformance: z.string().describe("A summary of the overall performance."),
   score: z.number().int().min(0).max(100).describe("An overall score from 0 to 100 based on all factors."),
 });
@@ -26,6 +27,68 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+async function analyzeTranscript(transcript: string, questionText: string, questionTags: string[] | undefined) {
+    const prompt = `
+        You are an expert interview coach. Analyze the following interview answer based *only* on the text provided.
+        The user was asked: "${questionText}"
+        The user's answer: "${transcript}"
+        Expected keywords: ${questionTags?.join(', ') || "None specified."}
+
+        Provide a concise and constructive feedback report in a JSON object with the following fields:
+        - "strengths": "Specific strengths of the answer's content and structure."
+        - "weaknesses": "Specific weaknesses or areas for improvement in the answer's content."
+        - "grammarFeedback": "Feedback on grammar, clarity, and use of filler words."
+        - "overallPerformance": "A summary of the textual performance."
+        - "score": A score from 0 to 100 based on answer quality (70%) and keyword usage (30%).
+
+        Do not include any other text or formatting.
+    `;
+
+    const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        max_tokens: 1000,
+        response_format: { type: "json_object" },
+        messages: [{ role: "user", content: prompt }],
+    });
+
+    const content = response.choices[0].message?.content;
+    if (!content) throw new Error("Transcript analysis API returned empty response.");
+    return JSON.parse(content);
+}
+
+async function analyzeSnapshots(snapshots: string[]) {
+    const prompt = `
+        You are a visual presentation coach. Analyze the user's visual presentation from the provided snapshots.
+        Focus on lighting, framing (is the user centered?), eye contact (are they looking towards the camera?), and overall professionalism of the background.
+        Provide a concise feedback summary in a JSON object with two fields:
+        - "visualFeedback": "A summary of the visual presentation quality."
+        - "visualScore": A score from 0 to 100 based on the visual factors.
+
+        Do not include any other text or formatting.
+    `;
+
+    const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        max_tokens: 500,
+        response_format: { type: "json_object" },
+        messages: [{
+            role: "user",
+            content: [
+                { type: "text", text: prompt },
+                ...snapshots.map(snapshot => ({
+                    type: "image_url" as const,
+                    image_url: { url: snapshot, detail: "low" as const },
+                })),
+            ],
+        }],
+    });
+    
+    const content = response.choices[0].message?.content;
+    if (!content) throw new Error("Snapshot analysis API returned empty response.");
+    return JSON.parse(content);
+}
+
+
 export async function generateInterviewFeedback(
   input: GenerateInterviewFeedbackInput
 ): Promise<GenerateInterviewFeedbackOutput> {
@@ -34,61 +97,45 @@ export async function generateInterviewFeedback(
   }
 
   const { transcript, questionText, questionTags, snapshots } = FeedbackInputSchema.parse(input);
-
   const hasSnapshots = snapshots && snapshots.length > 0;
 
-  const analysisPrompt = `
-    You are an expert interview coach providing feedback on an interview performance.
-    Analyze the following information and provide structured feedback.
-
-    The user was asked the following question: "${questionText}"
-    The user's transcribed answer is: "${transcript}"
-    
-    The expected keywords and concepts for the answer were: ${questionTags && questionTags.length > 0 ? questionTags.join(', ') : "None specified."}
-    
-    ${hasSnapshots ? "Analyze the attached snapshots for visual presentation quality (e.g., lighting, framing, eye contact, facial clarity)." : "No snapshots were provided for visual analysis."}
-    
-    Based on all of this, provide a concise and constructive feedback report. The feedback should be direct and actionable.
-    Calculate a score from 0 to 100.
-    The final score should be based on:
-    - Answer quality and relevance to the question (${hasSnapshots ? '40%' : '55%'})
-    - Mention of keywords/tags (${hasSnapshots ? '30%' : '30%'})
-    - Grammar and clarity of speech (${hasSnapshots ? '15%' : '15%'})
-    ${hasSnapshots ? '- Visual presentation from snapshots (15%)' : ''}
-
-    Return the feedback in a JSON object with the following structure: { "strengths": "...", "weaknesses": "...", "grammarFeedback": "...", "overallPerformance": "...", "score": ... }
-    Do not include any other text or formatting.
-  `;
-
   try {
-    const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [{
-        role: "user",
-        content: [
-          { type: "text", text: analysisPrompt },
-          ...(hasSnapshots ? snapshots.map(snapshot => ({
-            type: "image_url" as const,
-            image_url: {
-              url: snapshot,
-              detail: "low" as const,
-            },
-          })) : []),
-        ],
-    }];
-      
-    const response = await openai.chat.completions.create({
-      model: hasSnapshots ? "gpt-4-vision-preview" : "gpt-4-turbo-preview",
-      max_tokens: 1000,
-      response_format: { type: "json_object" },
-      messages: messages,
-    });
+    const analysisPromises = [
+        analyzeTranscript(transcript, questionText, questionTags)
+    ];
 
-    const feedbackJson = response.choices[0].message?.content;
-    if (!feedbackJson) {
-      throw new Error('API returned an empty feedback response.');
+    if (hasSnapshots) {
+        analysisPromises.push(analyzeSnapshots(snapshots));
     }
+
+    const [transcriptResult, visualResult] = await Promise.all(analysisPromises);
     
-    const parsedFeedback = JSON.parse(feedbackJson);
-    return FeedbackOutputSchema.parse(parsedFeedback);
+    let finalScore = transcriptResult.score;
+    let finalStrengths = transcriptResult.strengths;
+    let finalWeaknesses = transcriptResult.weaknesses;
+    let finalOverall = transcriptResult.overallPerformance;
+    let visualFeedback = undefined;
+
+    if (hasSnapshots && visualResult) {
+        // Blend the results
+        visualFeedback = visualResult.visualFeedback;
+        finalStrengths = `Content: ${transcriptResult.strengths}\n\nPresentation: You appeared engaged and professional.`;
+        finalWeaknesses = `Content: ${transcriptResult.weaknesses}\n\nPresentation: ${visualResult.visualFeedback}`;
+        
+        // Re-calculate score: 85% for text, 15% for visuals
+        finalScore = Math.round((transcriptResult.score * 0.85) + (visualResult.visualScore * 0.15));
+        
+        finalOverall = `${transcriptResult.overallPerformance} Your visual presentation was ${visualResult.visualScore > 70 ? 'strong' : 'fair'}, though there are areas to improve.`
+    }
+
+    return FeedbackOutputSchema.parse({
+      strengths: finalStrengths,
+      weaknesses: finalWeaknesses,
+      grammarFeedback: transcriptResult.grammarFeedback,
+      visualFeedback: visualFeedback,
+      overallPerformance: finalOverall,
+      score: finalScore,
+    });
 
   } catch (error) {
     console.error('Error generating interview feedback with OpenAI:', error);

@@ -1,4 +1,5 @@
 
+
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getCurrentUser } from '@/lib/auth';
 import { redirect } from 'next/navigation';
@@ -8,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Lightbulb, Presentation, PenTool, CheckCircle, AlertTriangle, Sparkles, BrainCircuit, Target } from 'lucide-react';
+import { Lightbulb, Presentation, PenTool, CheckCircle, AlertTriangle, Sparkles, BrainCircuit, Target, Video } from 'lucide-react';
 import Image from 'next/image';
 import {
   Accordion,
@@ -147,23 +148,34 @@ export default async function InterviewFeedbackPage({ params }: InterviewFeedbac
                                                         <h4 className="font-semibold flex items-center gap-2 text-sm"><PenTool className="text-blue-500 h-4 w-4" />Clarity & Grammar</h4>
                                                         <p className="text-muted-foreground text-sm">{feedback?.grammarFeedback || 'Not available.'}</p>
                                                     </div>
-                                                </CardContent>
-                                                <CardFooter className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                     {attempt.snapshots && attempt.snapshots.map((snapshot, i) => (
-                                                        <div key={i} className="aspect-video relative rounded-md overflow-hidden border">
-                                                            <Image 
-                                                                src={snapshot} 
-                                                                alt={`Snapshot ${i + 1}`}
-                                                                fill
-                                                                style={{ objectFit: 'cover' }}
-                                                                sizes="(max-width: 640px) 100vw, 50vw"
-                                                            />
-                                                            <div className="absolute bottom-0 right-0 bg-black/50 text-white text-xs px-2 py-1 rounded-tl-md">
-                                                                Snapshot {i + 1}
-                                                            </div>
+                                                    {feedback?.visualFeedback && (
+                                                      <>
+                                                        <Separator />
+                                                        <div className="space-y-2">
+                                                            <h4 className="font-semibold flex items-center gap-2 text-sm"><Video className="text-purple-500 h-4 w-4" />Visual Presentation</h4>
+                                                            <p className="text-muted-foreground text-sm">{feedback.visualFeedback}</p>
                                                         </div>
-                                                    ))}
-                                                </CardFooter>
+                                                      </>
+                                                    )}
+                                                </CardContent>
+                                                {attempt.snapshots && attempt.snapshots.length > 0 && (
+                                                    <CardFooter className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                        {attempt.snapshots.map((snapshot, i) => (
+                                                            <div key={i} className="aspect-video relative rounded-md overflow-hidden border">
+                                                                <Image 
+                                                                    src={snapshot} 
+                                                                    alt={`Snapshot ${i + 1}`}
+                                                                    fill
+                                                                    style={{ objectFit: 'cover' }}
+                                                                    sizes="(max-width: 640px) 100vw, 50vw"
+                                                                />
+                                                                <div className="absolute bottom-0 right-0 bg-black/50 text-white text-xs px-2 py-1 rounded-tl-md">
+                                                                    Snapshot {i + 1}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </CardFooter>
+                                                )}
                                             </Card>
                                         </AccordionContent>
                                     </AccordionItem>
