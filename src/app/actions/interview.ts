@@ -2,7 +2,7 @@
 'use server';
 
 import { createSupabaseServerActionClient } from "@/lib/supabase/server";
-import { generateInterviewFeedback, type GenerateInterviewFeedbackInput } from "@/ai/flows/generate-interview-feedback";
+import { generateInterviewFeedback, analyzeSnapshots, type GenerateInterviewFeedbackInput } from "@/ai/flows/generate-interview-feedback";
 import { summarizeInterviewPerformance } from "@/ai/flows/summarize-interview-performance";
 import { revalidatePath } from "next/cache";
 
@@ -38,10 +38,17 @@ export async function submitInterview(interviewData: AttemptDataItem[]) {
 
         if (questionsError) throw questionsError;
 
+        // 2a. Handle visual feedback separately
+        const attemptWithSnapshots = interviewData.find(d => d.snapshots && d.snapshots.length > 0);
+        let visualResult = null;
+        if (attemptWithSnapshots) {
+            visualResult = await analyzeSnapshots(attemptWithSnapshots.snapshots);
+        }
+
         let totalScore = 0;
         const individualFeedbacks = [];
 
-        // 3. Process each attempt
+        // 3. Process each attempt for content feedback
         for (const attempt of interviewData) {
             const question = questions.find(q => q.id === attempt.questionId);
             if (!question) {
@@ -49,12 +56,11 @@ export async function submitInterview(interviewData: AttemptDataItem[]) {
                 continue;
             }
             
-            // 3a. Generate individual feedback
+            // 3a. Generate individual text-based feedback
             const feedbackInput: GenerateInterviewFeedbackInput = {
                 transcript: attempt.transcript,
                 questionText: question.text,
                 questionTags: question.tags || [],
-                snapshots: attempt.snapshots,
             };
             const feedback = await generateInterviewFeedback(feedbackInput);
             totalScore += feedback.score;
@@ -71,11 +77,11 @@ export async function submitInterview(interviewData: AttemptDataItem[]) {
                 .from('interview_attempts')
                 .insert({
                     user_id: user.id,
-                    session_id: session.id, // Link to the session
+                    session_id: session.id,
                     question_id: question.id,
                     transcript: attempt.transcript,
-                    snapshots: attempt.snapshots,
-                    feedback: feedback,
+                    snapshots: attempt.snapshots, // Still save snapshots for reference
+                    feedback: feedback, // This now only contains text feedback
                     score: feedback.score,
                 });
 
@@ -89,16 +95,23 @@ export async function submitInterview(interviewData: AttemptDataItem[]) {
              return { success: false, message: "No interview data to submit." };
         }
         
-        // 4. Generate overall summary
+        // 4. Generate overall summary from text-based feedbacks
         const summary = await summarizeInterviewPerformance({ feedbacks: individualFeedbacks });
-        const overallScore = Math.round(totalScore / interviewData.length);
         
-        // 5. Update the session with the summary and overall score
+        // 5. Calculate final score, factoring in visual score if present
+        let overallScore = Math.round(totalScore / interviewData.length);
+        if (visualResult?.visualScore) {
+            // Adjust final score: 85% for text answers, 15% for visuals
+            overallScore = Math.round((overallScore * 0.85) + (visualResult.visualScore * 0.15));
+        }
+        
+        // 6. Update the session with the summary, overall score, and visual feedback
         const { error: updateSessionError } = await supabase
             .from('interview_sessions')
             .update({
                 overall_score: overallScore,
                 summary: summary,
+                visual_feedback: visualResult ? { visualFeedback: visualResult.visualFeedback } : null,
             })
             .eq('id', session.id);
             
@@ -114,5 +127,3 @@ export async function submitInterview(interviewData: AttemptDataItem[]) {
         return { success: false, message: error.message || "An unknown error occurred." };
     }
 }
-
-    

@@ -8,14 +8,12 @@ const FeedbackInputSchema = z.object({
   transcript: z.string().describe("The user's transcribed answer to the interview question."),
   questionText: z.string().describe("The text of the interview question that was asked."),
   questionTags: z.array(z.string()).optional().describe("A list of keywords or concepts expected in the answer."),
-  snapshots: z.array(z.string()).describe("An array of Base64-encoded image snapshots of the user during the interview for visual analysis."),
 });
 
 const FeedbackOutputSchema = z.object({
   strengths: z.string().describe("Specific strengths of the user's answer and presentation."),
   weaknesses: z.string().describe("Specific weaknesses or areas for improvement in the user's answer and presentation."),
   grammarFeedback: z.string().describe("Feedback on the user's grammar, clarity, and use of filler words."),
-  visualFeedback: z.string().optional().describe("Feedback on the user's visual presentation (e.g., lighting, framing, eye contact)."),
   overallPerformance: z.string().describe("A summary of the overall performance."),
   score: z.number().int().min(0).max(100).describe("An overall score from 0 to 100 based on all factors."),
 });
@@ -56,7 +54,7 @@ async function analyzeTranscript(transcript: string, questionText: string, quest
     return JSON.parse(content);
 }
 
-async function analyzeSnapshots(snapshots: string[]) {
+export async function analyzeSnapshots(snapshots: string[]) {
     const prompt = `
         You are a visual presentation coach. Analyze the user's visual presentation from the provided snapshots.
         Focus on lighting, framing (is the user centered?), eye contact (are they looking towards the camera?), and overall professionalism of the background.
@@ -96,38 +94,17 @@ export async function generateInterviewFeedback(
     throw new Error('OpenAI API key is not configured.');
   }
 
-  const { transcript, questionText, questionTags, snapshots } = FeedbackInputSchema.parse(input);
-  const hasSnapshots = snapshots && snapshots.length > 0;
+  const { transcript, questionText, questionTags } = FeedbackInputSchema.parse(input);
 
   try {
-    const analysisPromises: (Promise<any> | undefined)[] = [
-        analyzeTranscript(transcript, questionText, questionTags)
-    ];
-
-    if (hasSnapshots) {
-        analysisPromises.push(analyzeSnapshots(snapshots));
-    }
-
-    const [transcriptResult, visualResult] = await Promise.all(analysisPromises);
-    
-    let finalScore = transcriptResult.score;
-    let visualFeedback = undefined;
-    let overallPerformance = transcriptResult.overallPerformance;
-
-    if (hasSnapshots && visualResult) {
-        visualFeedback = visualResult.visualFeedback;
-        // Re-calculate score: 85% for text, 15% for visuals
-        finalScore = Math.round((transcriptResult.score * 0.85) + (visualResult.visualScore * 0.15));
-        overallPerformance = `${transcriptResult.overallPerformance} Your visual presentation was ${visualResult.visualScore > 70 ? 'strong' : 'fair'}.`
-    }
+    const transcriptResult = await analyzeTranscript(transcript, questionText, questionTags);
 
     return FeedbackOutputSchema.parse({
       strengths: transcriptResult.strengths,
       weaknesses: transcriptResult.weaknesses,
       grammarFeedback: transcriptResult.grammarFeedback,
-      visualFeedback: visualFeedback,
-      overallPerformance: overallPerformance,
-      score: finalScore,
+      overallPerformance: transcriptResult.overallPerformance,
+      score: transcriptResult.score,
     });
 
   } catch (error) {

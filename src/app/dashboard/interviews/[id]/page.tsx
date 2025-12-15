@@ -68,6 +68,7 @@ export default async function InterviewFeedbackPage({ params }: InterviewFeedbac
     }
 
     const summary = session.summary as any;
+    const visualFeedback = session.visual_feedback as any;
 
     return (
         <div className="space-y-8">
@@ -97,6 +98,15 @@ export default async function InterviewFeedbackPage({ params }: InterviewFeedbac
                                <h4 className="font-semibold flex items-center gap-2"><Target className="text-yellow-500" />Key Areas for Improvement</h4>
                                <p className="text-muted-foreground">{summary?.overallWeaknesses || 'Not available.'}</p>
                            </div>
+                           {visualFeedback?.visualFeedback && (
+                                <>
+                                <Separator />
+                                <div className="space-y-2">
+                                    <h4 className="font-semibold flex items-center gap-2"><Video className="text-purple-500" />Visual Presentation</h4>
+                                    <p className="text-muted-foreground">{visualFeedback.visualFeedback}</p>
+                                </div>
+                                </>
+                           )}
                         </CardContent>
                          <CardFooter>
                             <Alert variant="default" className="bg-primary/10 border-primary/50">
@@ -112,6 +122,7 @@ export default async function InterviewFeedbackPage({ params }: InterviewFeedbac
                         <Accordion type="single" collapsible className="w-full" defaultValue="item-0">
                              {attempts && attempts.map((attempt, index) => {
                                 const feedback = attempt.feedback as any;
+                                const firstAttemptWithSnapshots = attempts.find(a => a.snapshots && a.snapshots.length > 0);
                                 return (
                                     <AccordionItem value={`item-${index}`} key={attempt.id}>
                                         <AccordionTrigger>
@@ -148,19 +159,10 @@ export default async function InterviewFeedbackPage({ params }: InterviewFeedbac
                                                         <h4 className="font-semibold flex items-center gap-2 text-sm"><PenTool className="text-blue-500 h-4 w-4" />Clarity & Grammar</h4>
                                                         <p className="text-muted-foreground text-sm">{feedback?.grammarFeedback || 'Not available.'}</p>
                                                     </div>
-                                                    {feedback?.visualFeedback && (
-                                                      <>
-                                                        <Separator />
-                                                        <div className="space-y-2">
-                                                            <h4 className="font-semibold flex items-center gap-2 text-sm"><Video className="text-purple-500 h-4 w-4" />Visual Presentation</h4>
-                                                            <p className="text-muted-foreground text-sm">{feedback.visualFeedback}</p>
-                                                        </div>
-                                                      </>
-                                                    )}
                                                 </CardContent>
-                                                {attempt.snapshots && attempt.snapshots.length > 0 && (
+                                                {attempt.id === firstAttemptWithSnapshots?.id && firstAttemptWithSnapshots.snapshots && firstAttemptWithSnapshots.snapshots.length > 0 && (
                                                     <CardFooter className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                        {attempt.snapshots.map((snapshot, i) => (
+                                                        {firstAttemptWithSnapshots.snapshots.map((snapshot, i) => (
                                                             <div key={i} className="aspect-video relative rounded-md overflow-hidden border">
                                                                 <Image 
                                                                     src={snapshot} 
