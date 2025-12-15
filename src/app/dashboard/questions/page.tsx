@@ -30,7 +30,7 @@ async function generateAndSaveAudio(questionId: number, questionText: string) {
     try {
         const supabase = createSupabaseServerActionClient();
         const speechResponse = await openai.audio.speech.create({
-            model: "tts-1",
+            model: "gpt-4o-mini-tts",
             voice: "alloy",
             input: questionText,
         });
