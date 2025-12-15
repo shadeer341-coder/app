@@ -1,7 +1,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createSupabaseServerActionClient } from '@/lib/supabase/server';
 import type { Question, QuestionCategory, QuestionLevel } from '@/lib/types';
 import {
   Card,
@@ -12,6 +12,7 @@ import {
 import { QuestionTableControls } from '@/components/admin/question-table-controls';
 import { PaginationControls } from '@/components/ui/pagination';
 import OpenAI from 'openai';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,7 +29,7 @@ async function generateAndSaveAudio(questionId: number, questionText: string) {
     }
 
     try {
-        const supabase = createSupabaseServerClient();
+        const supabase = createSupabaseServerActionClient();
         const speechResponse = await openai.audio.speech.create({
             model: "tts-1",
             voice: "alloy",
@@ -84,7 +85,7 @@ async function generateAndSaveAudio(questionId: number, questionText: string) {
 async function createQuestion(formData: FormData) {
   'use server';
 
-  const supabase = createSupabaseServerClient();
+  const supabase = createSupabaseServerActionClient();
   
   const tagsRaw = String(formData.get('question-tags') || '[]');
   let tags: string[] = [];
@@ -121,7 +122,7 @@ async function createQuestion(formData: FormData) {
 async function updateQuestion(formData: FormData) {
     'use server';
 
-    const supabase = createSupabaseServerClient();
+    const supabase = createSupabaseServerActionClient();
     const questionId = Number(formData.get('question-id'));
 
     const tagsRaw = String(formData.get('question-tags') || '[]');
@@ -171,7 +172,7 @@ async function updateQuestion(formData: FormData) {
 async function deleteQuestion(formData: FormData) {
     'use server';
 
-    const supabase = createSupabaseServerClient();
+    const supabase = createSupabaseServerActionClient();
     const questionId = Number(formData.get('question-id'));
 
     const { error } = await supabase.from('questions').delete().eq('id', questionId);
