@@ -22,7 +22,7 @@ type Stage = 'introduction' | 'answering' | 'recording' | 'reviewing' | 'submitt
 
 type AttemptData = {
   questionId: number;
-  audioBlob: Blob;
+  transcript: string;
   snapshots: string[];
 };
 
@@ -52,6 +52,8 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
   
   const [videoRecordings, setVideoRecordings] = useState<Record<number, string | null>>({});
   const [attemptData, setAttemptData] = useState<Record<number, AttemptData>>({});
+  const [currentAudioBlob, setCurrentAudioBlob] = useState<Blob | null>(null);
+  const [isTranscribing, setIsTranscribing] = useState(false);
 
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -119,7 +121,6 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     const snapshots = [captureSnapshot()];
 
     const stream = videoRef.current.srcObject as MediaStream;
-    // We record audio and video, but we will only use the audio track for transcription
     mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'video/webm' });
 
     mediaRecorderRef.current.ondataavailable = (event) => {
@@ -132,6 +133,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
       const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
       const url = URL.createObjectURL(blob);
       setVideoRecordings(prev => ({...prev, [currentQuestionIndex]: url}));
+      setCurrentAudioBlob(blob);
 
       // Capture second snapshot
       snapshots.push(captureSnapshot());
@@ -140,7 +142,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
           ...prev,
           [currentQuestionIndex]: {
               questionId: currentQuestion.id,
-              audioBlob: blob,
+              transcript: '', // Will be filled in after transcription
               snapshots: snapshots.filter(s => s),
           }
       }));
@@ -148,7 +150,6 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
       setIsRecording(false);
       setStage('reviewing');
       
-      // Stop the camera stream after recording to show the user it's 'done'
       if (videoRef.current && videoRef.current.srcObject) {
         const stream = videoRef.current.srcObject as MediaStream;
         stream.getTracks().forEach(track => track.stop());
@@ -176,18 +177,43 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
         delete newAttempts[currentQuestionIndex];
         return newAttempts;
     });
+    setCurrentAudioBlob(null);
     recordedChunksRef.current = [];
     setStage('answering');
     getCameraPermission();
   };
   
-  const handleNextQuestion = () => {
-    if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex(prev => prev + 1);
-      setStage('answering');
-      getCameraPermission();
-    } else {
-      setStage('finished');
+  const handleNextQuestion = async () => {
+    if (!currentAudioBlob) return;
+
+    setIsTranscribing(true);
+    try {
+        const transcript = await transcribeAudio(currentAudioBlob);
+        setAttemptData(prev => ({
+            ...prev,
+            [currentQuestionIndex]: {
+                ...prev[currentQuestionIndex],
+                transcript: transcript,
+            }
+        }));
+        setCurrentAudioBlob(null);
+
+        if (currentQuestionIndex < questions.length - 1) {
+            setCurrentQuestionIndex(prev => prev + 1);
+            setStage('answering');
+            getCameraPermission();
+        } else {
+            setStage('finished');
+        }
+    } catch (error: any) {
+        console.error("Transcription failed:", error);
+        toast({
+            variant: "destructive",
+            title: "Transcription Failed",
+            description: error.message || "Could not process your audio. Please try again.",
+        });
+    } finally {
+        setIsTranscribing(false);
     }
   };
 
@@ -199,23 +225,10 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
       });
 
       try {
-        const itemsToSubmit = questions.map((q, index) => ({
-            question: q,
-            attempt: attemptData[index],
-        })).filter(item => item.attempt);
-
-        const fullInterviewData = [];
-
-        for (const item of itemsToSubmit) {
-            const transcript = await transcribeAudio(item.attempt.audioBlob);
-            fullInterviewData.push({
-                question: item.question,
-                attempt: {
-                    questionId: item.attempt.questionId,
-                    transcript: transcript,
-                    snapshots: item.attempt.snapshots,
-                }
-            });
+        const fullInterviewData = Object.values(attemptData);
+        
+        if (fullInterviewData.length === 0) {
+            throw new Error("No answers were recorded.");
         }
         
         const result = await submitInterview(fullInterviewData);
@@ -359,10 +372,11 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
                     <video src={videoRecordings[currentQuestionIndex]!} className="w-full h-full" playsInline autoPlay loop muted />
                 </div>
                 <div className="flex justify-center gap-4">
-                    <Button size="lg" variant="outline" onClick={handleRerecord}>
+                    <Button size="lg" variant="outline" onClick={handleRerecord} disabled={isTranscribing}>
                         <RefreshCw className="mr-2" /> Re-record
                     </Button>
-                    <Button size="lg" onClick={handleNextQuestion}>
+                    <Button size="lg" onClick={handleNextQuestion} disabled={isTranscribing}>
+                        {isTranscribing && <Loader2 className="mr-2 animate-spin" />}
                         {currentQuestionIndex < questions.length - 1 ? 'Next Question' : 'Finish Interview'}
                         <ArrowRight className="ml-2" />
                     </Button>

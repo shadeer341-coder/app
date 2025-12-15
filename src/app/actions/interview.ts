@@ -3,7 +3,6 @@
 
 import { createSupabaseServerActionClient } from "@/lib/supabase/server";
 import { generateInterviewFeedback, type GenerateInterviewFeedbackInput } from "@/ai/flows/generate-interview-feedback";
-import type { Question } from "@/lib/types";
 import { revalidatePath } from "next/cache";
 
 type AttemptDataItem = {
@@ -12,12 +11,7 @@ type AttemptDataItem = {
     snapshots: string[];
 };
 
-type FullInterviewDataItem = {
-    question: Pick<Question, 'id' | 'text' | 'tags'>;
-    attempt: AttemptDataItem;
-};
-
-export async function submitInterview(fullInterviewData: FullInterviewDataItem[]) {
+export async function submitInterview(interviewData: AttemptDataItem[]) {
     const supabase = createSupabaseServerActionClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -26,13 +20,22 @@ export async function submitInterview(fullInterviewData: FullInterviewDataItem[]
     }
 
     try {
-        for (const item of fullInterviewData) {
-            const { question, attempt } = item;
+        const { data: questions, error: questionsError } = await supabase
+            .from('questions')
+            .select('id, text, tags')
+            .in('id', interviewData.map(d => d.questionId));
+
+        if (questionsError) throw questionsError;
+
+        for (const attempt of interviewData) {
+            const question = questions.find(q => q.id === attempt.questionId);
+            if (!question) {
+                console.warn(`Question with ID ${attempt.questionId} not found. Skipping.`);
+                continue;
+            }
             
-            // The transcript is now passed in directly.
             const { transcript, snapshots } = attempt;
             
-            // 1. Generate AI Feedback
             const feedbackInput: GenerateInterviewFeedbackInput = {
                 transcript: transcript,
                 questionText: question.text,
@@ -42,7 +45,6 @@ export async function submitInterview(fullInterviewData: FullInterviewDataItem[]
 
             const feedback = await generateInterviewFeedback(feedbackInput);
 
-            // 2. Save to database
             const { error } = await supabase
                 .from('interview_attempts')
                 .insert({
