@@ -22,7 +22,8 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-async function generateAndSaveAudio(supabase: SupabaseClient, questionId: number, questionText: string) {
+async function generateAndSaveAudio(questionId: number, questionText: string) {
+    const supabase = createSupabaseServerActionClient();
     if (!process.env.OPENAI_API_KEY) {
         console.error("OpenAI API key is not configured. Skipping audio generation.");
         return { success: false, message: "OpenAI API key is not configured." };
@@ -111,7 +112,7 @@ async function createQuestion(formData: FormData) {
   } else {
     // Generate audio asynchronously, don't block the response
     if (data?.id) {
-        generateAndSaveAudio(supabase, data.id, questionText);
+        generateAndSaveAudio(data.id, questionText);
     }
     revalidatePath('/dashboard/questions');
     return { success: true, message: "Question created successfully. Audio generation is in progress." };
@@ -161,7 +162,7 @@ async function updateQuestion(formData: FormData) {
     } else {
         const textHasChanged = existingQuestion?.text !== questionText;
         if (textHasChanged) {
-            generateAndSaveAudio(supabase, questionId, questionText);
+            generateAndSaveAudio(questionId, questionText);
         }
         revalidatePath('/dashboard/questions');
         return { success: true, message: `Question updated successfully. ${textHasChanged ? "Audio regeneration is in progress." : ""}` };
@@ -187,8 +188,7 @@ async function deleteQuestion(formData: FormData) {
 
 async function generateQuestionAudioAction(questionId: number, questionText: string) {
     'use server';
-    const supabase = createSupabaseServerActionClient();
-    return await generateAndSaveAudio(supabase, questionId, questionText);
+    return await generateAndSaveAudio(questionId, questionText);
 }
 
 
