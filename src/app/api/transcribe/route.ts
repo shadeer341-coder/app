@@ -1,7 +1,7 @@
 
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { promises as fs } from 'fs';
+import { promises as fs, createReadStream } from 'fs';
 import formidable from 'formidable';
 import type { NextApiRequest } from 'next';
 
@@ -50,14 +50,9 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Invalid file data' }, { status: 400 });
     }
 
-    // Create a read stream from the file path to pass to OpenAI
-    const fileStream = await fs.readFile(file.filepath);
-
+    // Pass the file stream directly to the OpenAI API
     const transcription = await openai.audio.transcriptions.create({
-      file: {
-        value: fileStream,
-        name: file.originalFilename || 'audio.webm'
-      },
+      file: createReadStream(file.filepath),
       model: 'whisper-1',
     });
 
