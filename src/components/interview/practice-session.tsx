@@ -26,6 +26,24 @@ type AttemptData = {
   snapshots: string[];
 };
 
+async function transcribeAudio(audioBlob: Blob): Promise<string> {
+    const formData = new FormData();
+    formData.append('audio', audioBlob, 'interview-answer.webm');
+    
+    const response = await fetch(`/api/transcribe`, {
+        method: 'POST',
+        body: formData,
+    });
+
+    if (!response.ok) {
+        const errorBody = await response.json();
+        throw new Error(`Transcription failed: ${errorBody.error || response.statusText}`);
+    }
+
+    const result = await response.json();
+    return result.transcript;
+}
+
 export function PracticeSession({ questions, user }: PracticeSessionProps) {
   const [stage, setStage] = useState<Stage>('introduction');
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -177,15 +195,29 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
       setStage('submitting');
       toast({
           title: "Submitting Interview...",
-          description: "Your answers are being analyzed. Please wait, this may take a moment.",
+          description: "Your answers are being analyzed. This may take a moment.",
       });
 
-      const fullInterviewData = questions.map((q, index) => ({
-          question: q,
-          attempt: attemptData[index],
-      })).filter(item => item.attempt);
-
       try {
+        const itemsToSubmit = questions.map((q, index) => ({
+            question: q,
+            attempt: attemptData[index],
+        })).filter(item => item.attempt);
+
+        const fullInterviewData = [];
+
+        for (const item of itemsToSubmit) {
+            const transcript = await transcribeAudio(item.attempt.audioBlob);
+            fullInterviewData.push({
+                question: item.question,
+                attempt: {
+                    questionId: item.attempt.questionId,
+                    transcript: transcript,
+                    snapshots: item.attempt.snapshots,
+                }
+            });
+        }
+        
         const result = await submitInterview(fullInterviewData);
 
         if (result.success) {
@@ -204,7 +236,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
             title: "Submission Failed",
             description: error.message || "Could not submit your interview for analysis.",
         });
-        setStage('finished'); // Return to finished state to allow retry
+        setStage('finished');
       }
   };
   
