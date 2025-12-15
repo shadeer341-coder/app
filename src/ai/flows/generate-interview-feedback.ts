@@ -61,7 +61,7 @@ async function analyzeSnapshots(snapshots: string[]) {
         You are a visual presentation coach. Analyze the user's visual presentation from the provided snapshots.
         Focus on lighting, framing (is the user centered?), eye contact (are they looking towards the camera?), and overall professionalism of the background.
         Provide a concise feedback summary in a JSON object with two fields:
-        - "visualFeedback": "A summary of the visual presentation quality."
+        - "visualFeedback": "A summary of the visual presentation quality. Focus on lighting, face appearance, framing, eye contact and background."
         - "visualScore": A score from 0 to 100 based on the visual factors.
 
         Do not include any other text or formatting.
@@ -100,7 +100,7 @@ export async function generateInterviewFeedback(
   const hasSnapshots = snapshots && snapshots.length > 0;
 
   try {
-    const analysisPromises = [
+    const analysisPromises: (Promise<any> | undefined)[] = [
         analyzeTranscript(transcript, questionText, questionTags)
     ];
 
@@ -111,29 +111,22 @@ export async function generateInterviewFeedback(
     const [transcriptResult, visualResult] = await Promise.all(analysisPromises);
     
     let finalScore = transcriptResult.score;
-    let finalStrengths = transcriptResult.strengths;
-    let finalWeaknesses = transcriptResult.weaknesses;
-    let finalOverall = transcriptResult.overallPerformance;
     let visualFeedback = undefined;
+    let overallPerformance = transcriptResult.overallPerformance;
 
     if (hasSnapshots && visualResult) {
-        // Blend the results
         visualFeedback = visualResult.visualFeedback;
-        finalStrengths = `Content: ${transcriptResult.strengths}\n\nPresentation: You appeared engaged and professional.`;
-        finalWeaknesses = `Content: ${transcriptResult.weaknesses}\n\nPresentation: ${visualResult.visualFeedback}`;
-        
         // Re-calculate score: 85% for text, 15% for visuals
         finalScore = Math.round((transcriptResult.score * 0.85) + (visualResult.visualScore * 0.15));
-        
-        finalOverall = `${transcriptResult.overallPerformance} Your visual presentation was ${visualResult.visualScore > 70 ? 'strong' : 'fair'}, though there are areas to improve.`
+        overallPerformance = `${transcriptResult.overallPerformance} Your visual presentation was ${visualResult.visualScore > 70 ? 'strong' : 'fair'}.`
     }
 
     return FeedbackOutputSchema.parse({
-      strengths: finalStrengths,
-      weaknesses: finalWeaknesses,
+      strengths: transcriptResult.strengths,
+      weaknesses: transcriptResult.weaknesses,
       grammarFeedback: transcriptResult.grammarFeedback,
       visualFeedback: visualFeedback,
-      overallPerformance: finalOverall,
+      overallPerformance: overallPerformance,
       score: finalScore,
     });
 
