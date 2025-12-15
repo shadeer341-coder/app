@@ -2,9 +2,8 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { promises as fs } from 'fs';
-import os from 'os';
-import path from 'path';
 import formidable from 'formidable';
+import type { NextApiRequest } from 'next';
 
 export const config = {
   api: {
@@ -16,26 +15,21 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-async function parseFormData(request: Request): Promise<{ fields: formidable.Fields; files: formidable.Files }> {
-    const readable = request.body as any;
-    if (!readable) {
-        throw new Error('Request body is not readable');
-    }
-
-    // formidable expects a raw NodeJS request object, but we have a Next.js request.
-    // We can adapt it by passing the headers and the readable stream.
+async function parseFormData(req: Request): Promise<{ fields: formidable.Fields, files: formidable.Files }> {
     return new Promise((resolve, reject) => {
         const form = formidable({});
-        form.parse({ headers: request.headers, readable }, (err, fields, files) => {
+        // The formidable parse method expects a Node.js IncomingMessage, 
+        // which is not directly available in Next.js App Router API routes.
+        // We adapt the Next.js request for formidable.
+        // This is a common pattern for using formidable in this environment.
+        form.parse(req as unknown as NextApiRequest, (err, fields, files) => {
             if (err) {
-                reject(err);
-            } else {
-                resolve({ fields, files });
+                return reject(err);
             }
+            resolve({ fields, files });
         });
     });
 }
-
 
 export async function POST(request: Request) {
   if (!process.env.OPENAI_API_KEY) {
@@ -45,20 +39,25 @@ export async function POST(request: Request) {
   try {
     const { files } = await parseFormData(request);
     const audioFile = files.audio;
-
+    
     if (!audioFile) {
       return NextResponse.json({ error: 'No audio file uploaded' }, { status: 400 });
     }
     
-    // formidable wraps the file in an array
     const file = Array.isArray(audioFile) ? audioFile[0] : audioFile;
 
     if (!file || !file.filepath) {
         return NextResponse.json({ error: 'Invalid file data' }, { status: 400 });
     }
 
+    // Create a read stream from the file path to pass to OpenAI
+    const fileStream = await fs.readFile(file.filepath);
+
     const transcription = await openai.audio.transcriptions.create({
-      file: await fs.readFile(file.filepath),
+      file: {
+        value: fileStream,
+        name: file.originalFilename || 'audio.webm'
+      },
       model: 'whisper-1',
     });
 
