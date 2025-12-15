@@ -6,12 +6,12 @@ import { useRouter } from 'next/navigation';
 import type { Question, User } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Video, StopCircle, RefreshCw, Send, AlertTriangle, ArrowRight, PartyPopper } from 'lucide-react';
+import { Loader2, Video, StopCircle, RefreshCw, Send, AlertTriangle, ArrowRight, PartyPopper, Camera } from 'lucide-react';
+import { submitInterview } from '@/app/actions/interview';
 
-type InterviewQuestion = Pick<Question, 'id' | 'text' | 'category_id' | 'audio_url'> & { categoryName: string };
+type InterviewQuestion = Pick<Question, 'id' | 'text' | 'category_id' | 'audio_url' | 'tags'> & { categoryName: string };
 
 type PracticeSessionProps = {
   questions: InterviewQuestion[];
@@ -20,14 +20,21 @@ type PracticeSessionProps = {
 
 type Stage = 'introduction' | 'answering' | 'recording' | 'reviewing' | 'submitting' | 'finished';
 
+type AttemptData = {
+  questionId: number;
+  audioBlob: Blob;
+  snapshots: string[];
+};
+
 export function PracticeSession({ questions, user }: PracticeSessionProps) {
   const [stage, setStage] = useState<Stage>('introduction');
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   
-  // Store recordings for each question
   const [videoRecordings, setVideoRecordings] = useState<Record<number, string | null>>({});
+  const [attemptData, setAttemptData] = useState<Record<number, AttemptData>>({});
+
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -40,56 +47,48 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
   const currentQuestion = questions[currentQuestionIndex];
   
   const getCameraPermission = useCallback(async () => {
-    // If we think we have permission, we still need to set the srcObject if it's not set
-    if (videoRef.current && !videoRef.current.srcObject) {
-         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream;
-            }
-            setHasCameraPermission(true);
-            return true;
-        } catch (error) {
-            console.error('Error accessing camera:', error);
-            setHasCameraPermission(false);
-            toast({
-                variant: 'destructive',
-                title: 'Camera Access Denied',
-                description: 'Please enable camera and microphone permissions in your browser settings.',
-            });
-            return false;
-        }
-    }
-    
-    // If permission is not yet determined, ask for it.
-    if (hasCameraPermission === null || hasCameraPermission === false) {
-       try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream;
-            }
-            setHasCameraPermission(true);
-            return true;
-        } catch (error) {
-            console.error('Error accessing camera:', error);
-            setHasCameraPermission(false);
-            toast({
-                variant: 'destructive',
-                title: 'Camera Access Denied',
-                description: 'Please enable camera and microphone permissions in your browser settings.',
-            });
-            return false;
-        }
+    if (hasCameraPermission === true && videoRef.current?.srcObject) {
+        return true;
     }
 
-    return true;
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+        }
+        setHasCameraPermission(true);
+        return true;
+    } catch (error) {
+        console.error('Error accessing camera:', error);
+        setHasCameraPermission(false);
+        toast({
+            variant: 'destructive',
+            title: 'Camera Access Denied',
+            description: 'Please enable camera and microphone permissions in your browser settings.',
+        });
+        return false;
+    }
   }, [hasCameraPermission, toast]);
+
+  const captureSnapshot = (): string => {
+    if (videoRef.current) {
+        const canvas = document.createElement('canvas');
+        canvas.width = videoRef.current.videoWidth;
+        canvas.height = videoRef.current.videoHeight;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+            ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+            return canvas.toDataURL('image/jpeg');
+        }
+    }
+    return '';
+  };
+
 
   const startRecording = async () => {
     const permissionGranted = await getCameraPermission();
     if (!permissionGranted || !videoRef.current?.srcObject) return;
 
-    // Stop the question audio if it's playing
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
@@ -98,7 +97,11 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     setIsRecording(true);
     recordedChunksRef.current = [];
 
+    // Capture first snapshot
+    const snapshots = [captureSnapshot()];
+
     const stream = videoRef.current.srcObject as MediaStream;
+    // We record audio and video, but we will only use the audio track for transcription
     mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'video/webm' });
 
     mediaRecorderRef.current.ondataavailable = (event) => {
@@ -111,10 +114,23 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
       const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
       const url = URL.createObjectURL(blob);
       setVideoRecordings(prev => ({...prev, [currentQuestionIndex]: url}));
+
+      // Capture second snapshot
+      snapshots.push(captureSnapshot());
+
+      setAttemptData(prev => ({
+          ...prev,
+          [currentQuestionIndex]: {
+              questionId: currentQuestion.id,
+              audioBlob: blob,
+              snapshots: snapshots.filter(s => s),
+          }
+      }));
+
       setIsRecording(false);
       setStage('reviewing');
       
-      // Stop the camera stream after recording
+      // Stop the camera stream after recording to show the user it's 'done'
       if (videoRef.current && videoRef.current.srcObject) {
         const stream = videoRef.current.srcObject as MediaStream;
         stream.getTracks().forEach(track => track.stop());
@@ -133,14 +149,17 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
   };
 
   const handleRerecord = () => {
-    // Revoke the old blob URL to free up memory
     if (videoRecordings[currentQuestionIndex]) {
         URL.revokeObjectURL(videoRecordings[currentQuestionIndex]!);
     }
     setVideoRecordings(prev => ({...prev, [currentQuestionIndex]: null}));
+    setAttemptData(prev => {
+        const newAttempts = {...prev};
+        delete newAttempts[currentQuestionIndex];
+        return newAttempts;
+    });
     recordedChunksRef.current = [];
     setStage('answering');
-    // We need to get the camera again for re-recording
     getCameraPermission();
   };
   
@@ -148,7 +167,6 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
       setStage('answering');
-      // Get camera ready for the next question
       getCameraPermission();
     } else {
       setStage('finished');
@@ -158,21 +176,36 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
   const handleSubmit = async () => {
       setStage('submitting');
       toast({
-          title: "Submitting...",
-          description: "Your interview is being submitted for analysis. Please wait.",
+          title: "Submitting Interview...",
+          description: "Your answers are being analyzed. Please wait, this may take a moment.",
       });
 
-      // This is where you would convert blobs to data URIs and send to the AI flow
-      // For now, we'll just simulate a delay and redirect
-      setTimeout(() => {
-          toast({
-              title: "Submission Successful!",
-              description: "You will be redirected to the interviews page shortly.",
-          });
-          // In a real app, you'd redirect to the new interview attempt page:
-          // router.push(`/dashboard/interviews/new-attempt-id`);
-          router.push('/dashboard/interviews');
-      }, 3000);
+      const fullInterviewData = questions.map((q, index) => ({
+          question: q,
+          attempt: attemptData[index],
+      })).filter(item => item.attempt);
+
+      try {
+        const result = await submitInterview(fullInterviewData);
+
+        if (result.success) {
+            toast({
+                title: "Submission Successful!",
+                description: "You will be redirected to the interviews page.",
+            });
+            router.push('/dashboard/interviews');
+        } else {
+            throw new Error(result.message);
+        }
+      } catch (error: any) {
+        console.error("Submission failed:", error);
+        toast({
+            variant: "destructive",
+            title: "Submission Failed",
+            description: error.message || "Could not submit your interview for analysis.",
+        });
+        setStage('finished'); // Return to finished state to allow retry
+      }
   };
   
   const handleStartInterview = () => {
@@ -180,7 +213,6 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     getCameraPermission();
   }
 
-  // Effect to play audio when the question changes
   useEffect(() => {
     if (stage === 'answering' && currentQuestion?.audio_url && audioRef.current) {
         audioRef.current.src = currentQuestion.audio_url;
@@ -190,12 +222,10 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
 
 
   useEffect(() => {
-    // Clean up blob URLs on unmount
     return () => {
         Object.values(videoRecordings).forEach(url => {
             if (url) URL.revokeObjectURL(url);
         });
-        // Also stop any active camera stream on unmount
         if (videoRef.current && videoRef.current.srcObject) {
             const stream = videoRef.current.srcObject as MediaStream;
             stream.getTracks().forEach(track => track.stop());
@@ -252,8 +282,8 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
                     <p className="text-2xl font-bold font-headline">{currentQuestion?.text}</p>
                 </div>
 
-                <div className="relative aspect-video w-full rounded-md border bg-secondary overflow-hidden">
-                    <video ref={videoRef} className="w-full h-full" autoPlay muted playsInline />
+                <div className="relative aspect-video w-full rounded-md border bg-slate-900 overflow-hidden">
+                    <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
                     {hasCameraPermission === false && (
                         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 text-white p-4 text-center">
                             <AlertTriangle className="w-12 h-12 mb-4" />
@@ -261,12 +291,18 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
                             <p>Please allow camera and microphone access to record.</p>
                         </div>
                     )}
+                    {stage === 'recording' && (
+                        <div className="absolute top-4 right-4 flex items-center gap-2 bg-black/50 text-white px-3 py-1 rounded-full">
+                            <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse"></div>
+                            <span>REC</span>
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex justify-center">
                     {stage === 'answering' && (
                         <Button size="lg" onClick={startRecording} disabled={hasCameraPermission !== true}>
-                            <Video className="mr-2" /> Start Recording
+                            <Camera className="mr-2" /> Start Recording
                         </Button>
                     )}
                     {stage === 'recording' && (
@@ -283,12 +319,12 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
           <>
             <CardHeader>
                 <CardTitle>Review Your Answer for Question {currentQuestionIndex + 1}</CardTitle>
-                <CardDescription>Watch your performance. You can re-record or proceed to the next question.</CardDescription>
+                <CardDescription>You can re-record or proceed. Note: this is a silent preview.</CardDescription>
                 <Progress value={((currentQuestionIndex + 1) / questions.length) * 100} className="mt-2" />
             </CardHeader>
             <CardContent className="space-y-6">
-                <div className="aspect-video w-full rounded-md border bg-secondary overflow-hidden">
-                    <video src={videoRecordings[currentQuestionIndex]!} className="w-full h-full" controls playsInline autoPlay />
+                <div className="aspect-video w-full rounded-md border bg-black overflow-hidden">
+                    <video src={videoRecordings[currentQuestionIndex]!} className="w-full h-full" playsInline autoPlay loop muted />
                 </div>
                 <div className="flex justify-center gap-4">
                     <Button size="lg" variant="outline" onClick={handleRerecord}>
@@ -303,12 +339,12 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
           </>
       )}
 
-      {stage === 'finished' && (
+      {(stage === 'finished' || stage === 'submitting') && (
         <>
             <CardHeader className="items-center text-center">
                 <PartyPopper className="w-16 h-16 text-primary" />
                 <CardTitle className="mt-4">Interview Complete!</CardTitle>
-                <CardDescription>You have answered all {questions.length} questions.</CardDescription>
+                <CardDescription>You have answered all {Object.keys(attemptData).length} questions.</CardDescription>
             </CardHeader>
             <CardContent className="text-center">
                 <p>You can now submit your interview for AI-powered feedback.</p>

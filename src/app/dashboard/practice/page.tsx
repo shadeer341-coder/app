@@ -28,7 +28,7 @@ export default async function PracticePage() {
 
     const { data: questionsData, error: questionsError } = await supabase
         .from('questions')
-        .select('id, text, category_id, audio_url');
+        .select('id, text, category_id, audio_url, tags');
 
     if (categoriesError || questionsError) {
         return (
@@ -51,7 +51,7 @@ export default async function PracticePage() {
     const questions = (questionsData as any[] | null) || [];
 
     // Generate the question queue
-    const interviewQueue: (Pick<Question, 'id' | 'text' | 'category_id' | 'audio_url'> & { categoryName: string })[] = [];
+    let interviewQueue: (Pick<Question, 'id' | 'text' | 'category_id' | 'audio_url' | 'tags'> & { categoryName: string })[] = [];
 
     categories.forEach(category => {
         if (category.question_limit > 0) {
@@ -64,6 +64,9 @@ export default async function PracticePage() {
             });
         }
     });
+    
+    // For testing, limit to 2 questions
+    interviewQueue = interviewQueue.slice(0, 2);
 
 
     return (
