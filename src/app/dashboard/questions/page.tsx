@@ -11,10 +11,73 @@ import {
 } from '@/components/ui/card';
 import { QuestionTableControls } from '@/components/admin/question-table-controls';
 import { PaginationControls } from '@/components/ui/pagination';
+import OpenAI from 'openai';
 
 export const dynamic = 'force-dynamic';
 
 const ITEMS_PER_PAGE = 10;
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+async function generateAndSaveAudio(questionId: number, questionText: string) {
+    if (!process.env.OPENAI_API_KEY) {
+        console.error("OpenAI API key is not configured. Skipping audio generation.");
+        return null;
+    }
+
+    try {
+        const supabase = createSupabaseServerClient();
+        const speechResponse = await openai.audio.speech.create({
+            model: "tts-1",
+            voice: "alloy",
+            input: questionText,
+        });
+        
+        const audioBuffer = Buffer.from(await speechResponse.arrayBuffer());
+        const filePath = `public/${questionId}_${Date.now()}.mp3`;
+
+        const { error: uploadError } = await supabase.storage
+            .from('question_audios')
+            .upload(filePath, audioBuffer, {
+                contentType: 'audio/mpeg',
+                upsert: true
+            });
+
+        if (uploadError) {
+            throw uploadError;
+        }
+
+        const { data: publicUrlData } = supabase.storage
+            .from('question_audios')
+            .getPublicUrl(filePath);
+
+        if (!publicUrlData) {
+            throw new Error("Could not get public URL for audio file.");
+        }
+
+        const { error: updateError } = await supabase
+            .from('questions')
+            .update({ audio_url: publicUrlData.publicUrl })
+            .eq('id', questionId);
+
+        if (updateError) {
+            throw updateError;
+        }
+
+        return publicUrlData.publicUrl;
+
+    } catch (error) {
+        if (error instanceof Error) {
+            console.error('Error generating or saving audio:', error.message);
+        } else {
+            console.error('An unknown error occurred during audio processing:', error);
+        }
+        return null;
+    }
+}
+
 
 async function createQuestion(formData: FormData) {
   'use server';
@@ -30,21 +93,26 @@ async function createQuestion(formData: FormData) {
     // Keep tags as empty array if parsing fails
   }
 
+  const questionText = String(formData.get('question-text'));
   const questionData = {
-    text: String(formData.get('question-text')),
+    text: questionText,
     category_id: Number(formData.get('question-category')),
     level: String(formData.get('question-level')) as QuestionLevel,
     tags: tags.length > 0 ? tags : null,
   };
 
-  const { error } = await supabase.from('questions').insert(questionData);
+  const { data, error } = await supabase.from('questions').insert(questionData).select().single();
 
   if (error) {
     console.error('Error creating question:', error.message);
     return { success: false, message: error.message };
   } else {
+    // Generate audio asynchronously, don't block the response
+    if (data?.id) {
+        generateAndSaveAudio(data.id, questionText);
+    }
     revalidatePath('/dashboard/questions');
-    return { success: true, message: "Question created successfully." };
+    return { success: true, message: "Question created successfully. Audio generation is in progress." };
   }
 }
 
@@ -63,13 +131,25 @@ async function updateQuestion(formData: FormData) {
         // Keep tags as empty array if parsing fails
     }
 
-
+    const questionText = String(formData.get('question-text'));
     const questionData = {
-      text: String(formData.get('question-text')),
+      text: questionText,
       category_id: Number(formData.get('question-category')),
       level: String(formData.get('question-level')) as QuestionLevel,
       tags: tags.length > 0 ? tags : null,
     };
+
+    // Check if the text has changed to decide whether to regenerate audio
+    const { data: existingQuestion, error: fetchError } = await supabase
+        .from('questions')
+        .select('text')
+        .eq('id', questionId)
+        .single();
+    
+    if (fetchError) {
+        console.error('Error fetching existing question:', fetchError.message);
+        // Continue with update anyway
+    }
 
     const { error } = await supabase.from('questions').update(questionData).eq('id', questionId);
 
@@ -77,8 +157,12 @@ async function updateQuestion(formData: FormData) {
         console.error('Error updating question:', error.message);
         return { success: false, message: error.message };
     } else {
+        const textHasChanged = existingQuestion?.text !== questionText;
+        if (textHasChanged) {
+            generateAndSaveAudio(questionId, questionText);
+        }
         revalidatePath('/dashboard/questions');
-        return { success: true, message: "Question updated successfully." };
+        return { success: true, message: `Question updated successfully. ${textHasChanged ? "Audio regeneration is in progress." : ""}` };
     }
 }
 

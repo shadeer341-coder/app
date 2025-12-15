@@ -3,6 +3,7 @@
 
 
 
+
 export type UserRole = string;
 export type UserLevel = 'UG' | 'PG';
 
@@ -40,6 +41,7 @@ export type Question = {
   level: QuestionLevel;
   created_at: string;
   tags?: string[];
+  audio_url?: string;
   question_categories: { name: string }; // For joining data
 };
 

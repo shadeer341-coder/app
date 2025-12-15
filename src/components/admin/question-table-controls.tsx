@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, Edit, Trash2, Loader2, Sparkles, Tag } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, Sparkles, Tag, PlayCircle } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -43,7 +43,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import type { QuestionCategory, QuestionLevel } from '@/lib/types';
+import type { QuestionCategory, QuestionLevel, Question } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { suggestQuestion } from '@/ai/flows/suggest-question';
@@ -51,7 +51,7 @@ import { TagInput } from '../ui/tag-input';
 
 
 type QuestionTableControlsProps = {
-    questions: any[];
+    questions: Question[];
     categories: QuestionCategory[];
     createAction: (formData: FormData) => Promise<{ success: boolean, message: string }>;
     updateAction: (formData: FormData) => Promise<{ success: boolean, message: string }>;
@@ -75,7 +75,8 @@ export function QuestionTableControls({ questions, categories, createAction, upd
 
     const [addDialogOpen, setAddDialogOpen] = useState(false);
     const [editDialogOpen, setEditDialogOpen] = useState(false);
-    const [editingQuestion, setEditingQuestion] = useState<any | null>(null);
+    const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
+    const [playingAudio, setPlayingAudio] = useState<HTMLAudioElement | null>(null);
 
     const [sortBy, setSortBy] = useState(searchParams.get('sortBy') || 'created_at');
     const [order, setOrder] = useState(searchParams.get('order') || 'desc');
@@ -83,6 +84,27 @@ export function QuestionTableControls({ questions, categories, createAction, upd
     const [isSuggesting, setIsSuggesting] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState<{id: string, name: string} | null>(null);
     const questionTextRef = useRef<HTMLTextAreaElement>(null);
+
+    const handlePlayAudio = (audioUrl: string) => {
+        if (playingAudio) {
+            playingAudio.pause();
+            if (playingAudio.src === audioUrl) {
+                setPlayingAudio(null);
+                return;
+            }
+        }
+        
+        const audio = new Audio(audioUrl);
+        setPlayingAudio(audio);
+        audio.play();
+        audio.onended = () => {
+            setPlayingAudio(null);
+        };
+        audio.onerror = () => {
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not play audio.' });
+            setPlayingAudio(null);
+        }
+    }
 
 
     const handleFormAction = (action: (formData: FormData) => Promise<{ success: boolean, message: string }>, formData: FormData, closeDialog: () => void) => {
@@ -353,10 +375,17 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {questions?.map((q: any) => (
+                    {questions?.map((q) => (
                     <TableRow key={q.id}>
                         <TableCell className="font-medium max-w-sm truncate">
-                        {q.text}
+                        <div className="flex items-center gap-2">
+                             {q.audio_url && (
+                                <Button variant="ghost" size="icon" onClick={() => handlePlayAudio(q.audio_url!)} className="h-7 w-7">
+                                    <PlayCircle className={cn("h-5 w-5", playingAudio?.src === q.audio_url && "text-primary")} />
+                                </Button>
+                            )}
+                            {q.text}
+                        </div>
                         </TableCell>
                         <TableCell>
                         <Badge variant="outline">
