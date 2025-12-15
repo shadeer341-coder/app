@@ -24,7 +24,7 @@ const openai = new OpenAI({
 async function generateAndSaveAudio(questionId: number, questionText: string) {
     if (!process.env.OPENAI_API_KEY) {
         console.error("OpenAI API key is not configured. Skipping audio generation.");
-        return null;
+        return { success: false, message: "OpenAI API key is not configured." };
     }
 
     try {
@@ -39,7 +39,7 @@ async function generateAndSaveAudio(questionId: number, questionText: string) {
         const filePath = `public/${questionId}_${Date.now()}.mp3`;
 
         const { error: uploadError } = await supabase.storage
-            .from('question_audios')
+            .from('audio-questions')
             .upload(filePath, audioBuffer, {
                 contentType: 'audio/mpeg',
                 upsert: true
@@ -50,7 +50,7 @@ async function generateAndSaveAudio(questionId: number, questionText: string) {
         }
 
         const { data: publicUrlData } = supabase.storage
-            .from('question_audios')
+            .from('audio-questions')
             .getPublicUrl(filePath);
 
         if (!publicUrlData) {
@@ -66,15 +66,17 @@ async function generateAndSaveAudio(questionId: number, questionText: string) {
             throw updateError;
         }
 
-        return publicUrlData.publicUrl;
+        revalidatePath('/dashboard/questions');
+        return { success: true, message: "Audio generated and linked successfully.", audioUrl: publicUrlData.publicUrl };
 
     } catch (error) {
         if (error instanceof Error) {
             console.error('Error generating or saving audio:', error.message);
+            return { success: false, message: error.message };
         } else {
             console.error('An unknown error occurred during audio processing:', error);
+            return { success: false, message: 'An unknown error occurred during audio processing.' };
         }
-        return null;
     }
 }
 
@@ -183,6 +185,11 @@ async function deleteQuestion(formData: FormData) {
     }
 }
 
+async function generateQuestionAudioAction(questionId: number, questionText: string) {
+    'use server';
+    return await generateAndSaveAudio(questionId, questionText);
+}
+
 
 export default async function QuestionsPage({ searchParams }: { searchParams: { [key: string]: string | string[] | undefined }}) {
   const supabase = createSupabaseServerClient();
@@ -246,6 +253,7 @@ export default async function QuestionsPage({ searchParams }: { searchParams: { 
               createAction={createQuestion}
               updateAction={updateQuestion}
               deleteAction={deleteQuestion}
+              generateAudioAction={generateQuestionAudioAction}
             />
           <div className="mt-6 flex justify-center">
             <PaginationControls

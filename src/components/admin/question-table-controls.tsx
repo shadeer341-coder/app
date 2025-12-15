@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, Edit, Trash2, Loader2, Sparkles, Tag, PlayCircle } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, Sparkles, Tag, PlayCircle, Radio } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -56,6 +56,7 @@ type QuestionTableControlsProps = {
     createAction: (formData: FormData) => Promise<{ success: boolean, message: string }>;
     updateAction: (formData: FormData) => Promise<{ success: boolean, message: string }>;
     deleteAction: (formData: FormData) => Promise<{ success: boolean, message: string }>;
+    generateAudioAction: (questionId: number, questionText: string) => Promise<{ success: boolean, message: string }>;
 };
 
 const levelOptions = [
@@ -66,7 +67,7 @@ const levelOptions = [
     "Masters (Postgraduate)",
 ];
 
-export function QuestionTableControls({ questions, categories, createAction, updateAction, deleteAction }: QuestionTableControlsProps) {
+export function QuestionTableControls({ questions, categories, createAction, updateAction, deleteAction, generateAudioAction }: QuestionTableControlsProps) {
     const searchParams = useSearchParams();
     const { replace } = useRouter();
     const pathname = usePathname();
@@ -82,8 +83,10 @@ export function QuestionTableControls({ questions, categories, createAction, upd
     const [order, setOrder] = useState(searchParams.get('order') || 'desc');
     
     const [isSuggesting, setIsSuggesting] = useState(false);
+    const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState<{id: string, name: string} | null>(null);
     const questionTextRef = useRef<HTMLTextAreaElement>(null);
+    const editQuestionTextRef = useRef<HTMLTextAreaElement>(null);
 
     const handlePlayAudio = (audioUrl: string) => {
         if (playingAudio) {
@@ -204,6 +207,21 @@ export function QuestionTableControls({ questions, categories, createAction, upd
         }
     };
     
+    const handleGenerateAudio = async () => {
+        if (!editingQuestion || !editQuestionTextRef.current) return;
+        setIsGeneratingAudio(true);
+        startTransition(async () => {
+            const result = await generateAudioAction(editingQuestion.id, editQuestionTextRef.current?.value || editingQuestion.text);
+            if (result.success) {
+                toast({ title: 'Success', description: result.message });
+                setEditDialogOpen(false);
+            } else {
+                toast({ variant: 'destructive', title: 'Error', description: result.message });
+            }
+            setIsGeneratingAudio(false);
+        });
+    }
+
     const sortOptions = [
         { value: 'created_at', label: 'Date' },
         { value: 'text', label: 'Question Text' },
@@ -463,7 +481,7 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                             <input type="hidden" name="question-id" value={editingQuestion.id} />
                             <div className="space-y-2">
                                 <Label htmlFor="question-text-edit">Question Text</Label>
-                                <Textarea id="question-text-edit" name="question-text" defaultValue={editingQuestion.text} required />
+                                <Textarea id="question-text-edit" name="question-text" defaultValue={editingQuestion.text} required ref={editQuestionTextRef} />
                             </div>
                              <div className="space-y-2">
                                 <Label htmlFor="question-tags-edit">Tags</Label>
@@ -498,10 +516,18 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                                     </Select>
                                 </div>
                             </div>
-                            <Button type="submit" disabled={isPending}>
-                                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Save Changes
-                            </Button>
+                            <div className="flex gap-2">
+                                <Button type="submit" disabled={isPending}>
+                                    {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Save Changes
+                                </Button>
+                                {!editingQuestion.audio_url && (
+                                    <Button type="button" variant="outline" onClick={handleGenerateAudio} disabled={isGeneratingAudio || isPending}>
+                                        {isGeneratingAudio ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Radio className="mr-2 h-4 w-4" />}
+                                        Generate Audio
+                                    </Button>
+                                )}
+                            </div>
                         </form>
                     </DialogContent>
                 </Dialog>
