@@ -1,3 +1,4 @@
+
 'use server';
 
 import { createSupabaseServerActionClient } from "@/lib/supabase/server";
@@ -113,3 +114,5 @@ export async function submitInterview(interviewData: AttemptDataItem[]) {
         return { success: false, message: error.message || "An unknown error occurred." };
     }
 }
+
+    
