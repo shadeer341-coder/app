@@ -5,12 +5,6 @@ import { promises as fs, createReadStream } from 'fs';
 import formidable from 'formidable';
 import type { NextApiRequest } from 'next';
 
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
-
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
