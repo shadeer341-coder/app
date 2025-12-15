@@ -54,6 +54,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
   const [attemptData, setAttemptData] = useState<Record<number, AttemptData>>({});
   const [currentAudioBlob, setCurrentAudioBlob] = useState<Blob | null>(null);
   const [isTranscribing, setIsTranscribing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -183,27 +184,29 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     getCameraPermission();
   };
   
-  const handleNextQuestion = async () => {
+  const processAndAdvance = async (isFinalQuestion: boolean) => {
     if (!currentAudioBlob) return;
-
+    
     setIsTranscribing(true);
     try {
         const transcript = await transcribeAudio(currentAudioBlob);
-        setAttemptData(prev => ({
-            ...prev,
-            [currentQuestionIndex]: {
-                ...prev[currentQuestionIndex],
-                transcript: transcript,
-            }
-        }));
+        const finalAttemptData = {
+          ...attemptData,
+          [currentQuestionIndex]: {
+            ...attemptData[currentQuestionIndex],
+            transcript: transcript,
+          }
+        };
+        setAttemptData(finalAttemptData);
         setCurrentAudioBlob(null);
-
-        if (currentQuestionIndex < questions.length - 1) {
+        
+        if (isFinalQuestion) {
+            setStage('submitting');
+            handleSubmit(Object.values(finalAttemptData));
+        } else {
             setCurrentQuestionIndex(prev => prev + 1);
             setStage('answering');
             getCameraPermission();
-        } else {
-            setStage('finished');
         }
     } catch (error: any) {
         console.error("Transcription failed:", error);
@@ -215,23 +218,22 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     } finally {
         setIsTranscribing(false);
     }
-  };
+  }
 
-  const handleSubmit = async () => {
-      setStage('submitting');
+
+  const handleSubmit = async (finalInterviewData: AttemptData[]) => {
+      setIsSubmitting(true);
       toast({
           title: "Submitting Interview...",
           description: "Your answers are being analyzed. This may take a moment.",
       });
 
       try {
-        const fullInterviewData = Object.values(attemptData);
-        
-        if (fullInterviewData.length === 0) {
+        if (finalInterviewData.length === 0) {
             throw new Error("No answers were recorded.");
         }
         
-        const result = await submitInterview(fullInterviewData);
+        const result = await submitInterview(finalInterviewData);
 
         if (result.success) {
             toast({
@@ -249,7 +251,9 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
             title: "Submission Failed",
             description: error.message || "Could not submit your interview for analysis.",
         });
-        setStage('finished');
+        setStage('reviewing'); // Go back to review stage on failure
+      } finally {
+        setIsSubmitting(false);
       }
   };
   
@@ -294,6 +298,23 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
   }
 
   const progressValue = (currentQuestionIndex / questions.length) * 100;
+  const isLastQuestion = currentQuestionIndex === questions.length - 1;
+
+  if (stage === 'submitting') {
+    return (
+        <Card>
+            <CardHeader className="items-center text-center">
+                <PartyPopper className="w-16 h-16 text-primary" />
+                <CardTitle className="mt-4">Finishing up...</CardTitle>
+                <CardDescription>Your interview is being submitted for AI analysis.</CardDescription>
+            </CardHeader>
+            <CardContent className="text-center flex flex-col items-center justify-center gap-4">
+                <Loader2 className="w-12 h-12 animate-spin" />
+                <p>Please wait, this may take a moment.</p>
+            </CardContent>
+        </Card>
+    )
+  }
 
   return (
     <Card>
@@ -375,39 +396,14 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
                     <Button size="lg" variant="outline" onClick={handleRerecord} disabled={isTranscribing}>
                         <RefreshCw className="mr-2" /> Re-record
                     </Button>
-                    <Button size="lg" onClick={handleNextQuestion} disabled={isTranscribing}>
-                        {isTranscribing && <Loader2 className="mr-2 animate-spin" />}
-                        {currentQuestionIndex < questions.length - 1 ? 'Next Question' : 'Finish Interview'}
-                        <ArrowRight className="ml-2" />
+                    <Button size="lg" onClick={() => processAndAdvance(isLastQuestion)} disabled={isTranscribing}>
+                        {isTranscribing ? <Loader2 className="mr-2 animate-spin" /> : (isLastQuestion ? <Send className="mr-2"/> : <ArrowRight className="ml-2" />)}
+                        {isLastQuestion ? 'Finish & Submit' : 'Next Question'}
                     </Button>
                 </div>
             </CardContent>
           </>
       )}
-
-      {(stage === 'finished' || stage === 'submitting') && (
-        <>
-            <CardHeader className="items-center text-center">
-                <PartyPopper className="w-16 h-16 text-primary" />
-                <CardTitle className="mt-4">Interview Complete!</CardTitle>
-                <CardDescription>You have answered all {Object.keys(attemptData).length} questions.</CardDescription>
-            </CardHeader>
-            <CardContent className="text-center">
-                <p>You can now submit your interview for AI-powered feedback.</p>
-            </CardContent>
-             <CardFooter className="justify-center">
-                <Button size="lg" onClick={handleSubmit} disabled={stage === 'submitting'}>
-                    {stage === 'submitting' ? (
-                        <Loader2 className="mr-2 animate-spin" />
-                    ) : (
-                        <Send className="mr-2" />
-                    )}
-                    Submit for Feedback
-                </Button>
-            </CardFooter>
-        </>
-      )}
-
     </Card>
   );
 }
