@@ -1,53 +1,28 @@
 
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { promises as fs, createReadStream, IncomingMessage } from 'fs';
-import formidable from 'formidable';
-import type { NextApiRequest } from 'next';
+import { promises as fs, createReadStream } from 'fs';
+import formidable, { File } from 'formidable';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-async function parseFormData(req: Request): Promise<{ fields: formidable.Fields, files: formidable.Files }> {
-    const formidableRequest = await fromNodeLikeRequest(req);
+// Helper to parse the form data with formidable
+async function parseFormData(request: Request): Promise<{ fields: formidable.Fields; files: formidable.Files }> {
     return new Promise((resolve, reject) => {
         const form = formidable({});
-        form.parse(formidableRequest, (err, fields, files) => {
+        // formidable's parse method can directly handle the stream from request.body
+        form.parse(request as any, (err, fields, files) => {
             if (err) {
-                return reject(err);
+                reject(err);
+            } else {
+                resolve({ fields, files });
             }
-            resolve({ fields, files });
         });
     });
 }
 
-async function fromNodeLikeRequest(request: Request) {
-    const headers = new Headers(request.headers);
-    const body = request.body;
-
-    const req = {
-        headers: headers as any,
-        [Symbol.asyncIterator]: async function* () {
-            const reader = body?.getReader();
-            if (!reader) {
-                return;
-            }
-            try {
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) {
-                        return;
-                    }
-                    yield value;
-                }
-            } finally {
-                reader.releaseLock();
-            }
-        },
-    } as IncomingMessage;
-    return req;
-}
 
 export async function POST(request: Request) {
   if (!process.env.OPENAI_API_KEY) {
@@ -62,6 +37,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No audio file uploaded' }, { status: 400 });
     }
     
+    // formidable can return an array of files, so we handle that
     const file = Array.isArray(audioFile) ? audioFile[0] : audioFile;
 
     if (!file || !file.filepath) {
@@ -74,7 +50,7 @@ export async function POST(request: Request) {
       model: 'whisper-1',
     });
 
-    // Clean up the temporary file
+    // Clean up the temporary file created by formidable
     await fs.unlink(file.filepath);
 
     return NextResponse.json({ transcript: transcription.text });
