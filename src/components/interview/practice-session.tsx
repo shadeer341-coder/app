@@ -62,19 +62,31 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
 
   const { toast } = useToast();
   const router = useRouter();
 
   const currentQuestion = questions[currentQuestionIndex];
   
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+        videoRef.current.srcObject = null;
+    }
+  }, []);
+
   const getCameraPermission = useCallback(async () => {
-    if (hasCameraPermission === true && videoRef.current?.srcObject) {
+    if (streamRef.current && videoRef.current?.srcObject) {
         return true;
     }
 
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        streamRef.current = stream;
         if (videoRef.current) {
             videoRef.current.srcObject = stream;
         }
@@ -90,7 +102,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
         });
         return false;
     }
-  }, [hasCameraPermission, toast]);
+  }, [toast]);
 
   const captureSnapshot = useCallback((): string => {
     if (videoRef.current && videoRef.current.readyState >= 2) {
@@ -109,7 +121,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
 
   const startRecording = async () => {
     const permissionGranted = await getCameraPermission();
-    if (!permissionGranted || !videoRef.current?.srcObject) return;
+    if (!permissionGranted || !streamRef.current) return;
   
     if (audioRef.current) {
       audioRef.current.pause();
@@ -135,8 +147,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
       }, 4000); // 4 seconds in
     }
   
-    const stream = videoRef.current.srcObject as MediaStream;
-    mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'video/webm' });
+    mediaRecorderRef.current = new MediaRecorder(streamRef.current, { mimeType: 'video/webm' });
   
     mediaRecorderRef.current.ondataavailable = (event) => {
       if (event.data.size > 0) {
@@ -153,11 +164,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
       setIsRecording(false);
       setStage('reviewing');
       
-      if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach(track => track.stop());
-        videoRef.current.srcObject = null;
-      }
+      stopCamera();
     };
   
     mediaRecorderRef.current.start();
@@ -272,16 +279,22 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
 
 
   useEffect(() => {
+    // This is the cleanup function that runs when the component unmounts.
     return () => {
+        // Stop any active camera streams.
+        stopCamera();
+
+        // Stop any media recorder instance.
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+            mediaRecorderRef.current.stop();
+        }
+
+        // Revoke any created object URLs to prevent memory leaks.
         Object.values(videoRecordings).forEach(url => {
             if (url) URL.revokeObjectURL(url);
         });
-        if (videoRef.current && videoRef.current.srcObject) {
-            const stream = videoRef.current.srcObject as MediaStream;
-            stream.getTracks().forEach(track => track.stop());
-        }
     }
-  }, [videoRecordings]);
+  }, [stopCamera, videoRecordings]);
 
   if (questions.length === 0) {
     return (
