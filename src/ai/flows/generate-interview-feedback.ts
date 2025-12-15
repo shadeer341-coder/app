@@ -1,3 +1,4 @@
+
 'use server';
 
 import OpenAI from 'openai';
@@ -34,6 +35,8 @@ export async function generateInterviewFeedback(
 
   const { transcript, questionText, questionTags, snapshots } = FeedbackInputSchema.parse(input);
 
+  const hasSnapshots = snapshots && snapshots.length > 0;
+
   const analysisPrompt = `
     You are an expert interview coach providing feedback on an interview performance.
     Analyze the following information and provide structured feedback.
@@ -41,42 +44,42 @@ export async function generateInterviewFeedback(
     The user was asked the following question: "${questionText}"
     The user's transcribed answer is: "${transcript}"
     
-    Here are the keywords and concepts that were expected in the answer: ${questionTags && questionTags.length > 0 ? questionTags.join(', ') : "None specified. Evaluate based on general knowledge."}
-
-    Here are some snapshots of the user while they were answering. Analyze them for visual presentation quality (e.g., lighting, framing, eye contact, facial clarity).
+    The expected keywords and concepts for the answer were: ${questionTags && questionTags.length > 0 ? questionTags.join(', ') : "None specified."}
+    
+    ${hasSnapshots ? "Analyze the attached snapshots for visual presentation quality (e.g., lighting, framing, eye contact, facial clarity)." : "No snapshots were provided for visual analysis."}
     
     Based on all of this, provide a concise and constructive feedback report. The feedback should be direct and actionable.
     Calculate a score from 0 to 100.
     The final score should be based on:
-    - Answer quality and relevance to the question (40%)
-    - Mention of keywords/tags (30%)
-    - Grammar and clarity of speech (15%)
-    - Visual presentation from snapshots (15%)
+    - Answer quality and relevance to the question (${hasSnapshots ? '40%' : '55%'})
+    - Mention of keywords/tags (${hasSnapshots ? '30%' : '30%'})
+    - Grammar and clarity of speech (${hasSnapshots ? '15%' : '15%'})
+    ${hasSnapshots ? '- Visual presentation from snapshots (15%)' : ''}
 
     Return the feedback in a JSON object with the following structure: { "strengths": "...", "weaknesses": "...", "grammarFeedback": "...", "overallPerformance": "...", "score": ... }
     Do not include any other text or formatting.
   `;
 
   try {
+    const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [{
+        role: "user",
+        content: [
+          { type: "text", text: analysisPrompt },
+          ...(hasSnapshots ? snapshots.map(snapshot => ({
+            type: "image_url" as const,
+            image_url: {
+              url: snapshot,
+              detail: "low" as const,
+            },
+          })) : []),
+        ],
+    }];
+      
     const response = await openai.chat.completions.create({
-      model: "gpt-4-vision-preview",
+      model: hasSnapshots ? "gpt-4-vision-preview" : "gpt-4-turbo-preview",
       max_tokens: 1000,
       response_format: { type: "json_object" },
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "text", text: analysisPrompt },
-            ...snapshots.map(snapshot => ({
-              type: "image_url" as const,
-              image_url: {
-                url: snapshot,
-                detail: "low" as const,
-              },
-            })),
-          ],
-        },
-      ],
+      messages: messages,
     });
 
     const feedbackJson = response.choices[0].message?.content;

@@ -62,8 +62,6 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
-  const snapshotIntervalRef = useRef<NodeJS.Timeout | null>(null);
-
 
   const { toast } = useToast();
   const router = useRouter();
@@ -112,53 +110,46 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
   const startRecording = async () => {
     const permissionGranted = await getCameraPermission();
     if (!permissionGranted || !videoRef.current?.srcObject) return;
-
+  
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
     }
-
+  
     setIsRecording(true);
-    setCurrentSnapshots([]); // Clear previous snapshots
+    setStage('recording');
+    setCurrentSnapshots([]);
     recordedChunksRef.current = [];
-
-    // Capture first snapshot immediately
-    setTimeout(() => {
-        const firstSnapshot = captureSnapshot();
-        if (firstSnapshot) {
-            setCurrentSnapshots(prev => [firstSnapshot]);
-        }
-    }, 500); // Wait a bit for camera to stabilize
-
-    // Set up interval for more snapshots
-    snapshotIntervalRef.current = setInterval(() => {
-        const snapshot = captureSnapshot();
-        if (snapshot) {
-            setCurrentSnapshots(prev => [...prev, snapshot]);
-        }
-    }, 5000); // Every 5 seconds
-
-
+  
+    // Only take snapshots for the first question
+    if (currentQuestionIndex === 0) {
+      // Capture 2 snapshots after a delay to ensure camera is ready
+      setTimeout(() => {
+        const snapshot1 = captureSnapshot();
+        if (snapshot1) setCurrentSnapshots(prev => [...prev, snapshot1]);
+      }, 1000); // 1 second in
+  
+      setTimeout(() => {
+        const snapshot2 = captureSnapshot();
+        if (snapshot2) setCurrentSnapshots(prev => [...prev, snapshot2]);
+      }, 4000); // 4 seconds in
+    }
+  
     const stream = videoRef.current.srcObject as MediaStream;
     mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'video/webm' });
-
+  
     mediaRecorderRef.current.ondataavailable = (event) => {
       if (event.data.size > 0) {
         recordedChunksRef.current.push(event.data);
       }
     };
-
+  
     mediaRecorderRef.current.onstop = () => {
-      if (snapshotIntervalRef.current) {
-          clearInterval(snapshotIntervalRef.current);
-          snapshotIntervalRef.current = null;
-      }
-      
       const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
       const url = URL.createObjectURL(blob);
       setVideoRecordings(prev => ({...prev, [currentQuestionIndex]: url}));
       setCurrentAudioBlob(blob);
-
+  
       setIsRecording(false);
       setStage('reviewing');
       
@@ -168,9 +159,8 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
         videoRef.current.srcObject = null;
       }
     };
-
+  
     mediaRecorderRef.current.start();
-    setStage('recording');
   };
 
   const stopRecording = () => {
@@ -283,9 +273,6 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
 
   useEffect(() => {
     return () => {
-        if (snapshotIntervalRef.current) {
-            clearInterval(snapshotIntervalRef.current);
-        }
         Object.values(videoRecordings).forEach(url => {
             if (url) URL.revokeObjectURL(url);
         });
@@ -422,5 +409,3 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     </Card>
   );
 }
-
-    
