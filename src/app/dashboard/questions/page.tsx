@@ -1,7 +1,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { createSupabaseServerActionClient } from '@/lib/supabase/server';
+import { createSupabaseServerActionClient, createSupabaseServerClient } from '@/lib/supabase/server';
 import type { Question, QuestionCategory, QuestionLevel } from '@/lib/types';
 import {
   Card,
@@ -12,7 +12,6 @@ import {
 import { QuestionTableControls } from '@/components/admin/question-table-controls';
 import { PaginationControls } from '@/components/ui/pagination';
 import OpenAI from 'openai';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
