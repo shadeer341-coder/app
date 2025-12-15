@@ -1,4 +1,5 @@
 
+
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import type { Question, QuestionCategory } from '@/lib/types';
 import { PracticeSession } from '@/components/interview/practice-session';
@@ -27,7 +28,7 @@ export default async function PracticePage() {
 
     const { data: questionsData, error: questionsError } = await supabase
         .from('questions')
-        .select('id, text, category_id');
+        .select('id, text, category_id, audio_url');
 
     if (categoriesError || questionsError) {
         return (
@@ -50,7 +51,7 @@ export default async function PracticePage() {
     const questions = (questionsData as any[] | null) || [];
 
     // Generate the question queue
-    const interviewQueue: (Pick<Question, 'id' | 'text' | 'category_id'> & { categoryName: string })[] = [];
+    const interviewQueue: (Pick<Question, 'id' | 'text' | 'category_id' | 'audio_url'> & { categoryName: string })[] = [];
 
     categories.forEach(category => {
         if (category.question_limit > 0) {

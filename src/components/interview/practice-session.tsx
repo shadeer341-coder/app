@@ -11,7 +11,7 @@ import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Video, StopCircle, RefreshCw, Send, AlertTriangle, ArrowRight, PartyPopper } from 'lucide-react';
 
-type InterviewQuestion = Pick<Question, 'id' | 'text' | 'category_id'> & { categoryName: string };
+type InterviewQuestion = Pick<Question, 'id' | 'text' | 'category_id' | 'audio_url'> & { categoryName: string };
 
 type PracticeSessionProps = {
   questions: InterviewQuestion[];
@@ -30,6 +30,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
   const [videoRecordings, setVideoRecordings] = useState<Record<number, string | null>>({});
 
   const videoRef = useRef<HTMLVideoElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
 
@@ -87,6 +88,12 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
   const startRecording = async () => {
     const permissionGranted = await getCameraPermission();
     if (!permissionGranted || !videoRef.current?.srcObject) return;
+
+    // Stop the question audio if it's playing
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
 
     setIsRecording(true);
     recordedChunksRef.current = [];
@@ -173,6 +180,15 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     getCameraPermission();
   }
 
+  // Effect to play audio when the question changes
+  useEffect(() => {
+    if (stage === 'answering' && currentQuestion?.audio_url && audioRef.current) {
+        audioRef.current.src = currentQuestion.audio_url;
+        audioRef.current.play().catch(error => console.error("Audio playback failed:", error));
+    }
+  }, [currentQuestion, stage]);
+
+
   useEffect(() => {
     // Clean up blob URLs on unmount
     return () => {
@@ -206,6 +222,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
 
   return (
     <Card>
+        <audio ref={audioRef} />
         {stage === 'introduction' && (
              <>
                 <CardHeader>
@@ -231,18 +248,14 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
                 <Progress value={progressValue} className="mt-2" />
             </CardHeader>
             <CardContent className="space-y-6">
-                <Alert>
-                    <AlertTriangle className="h-4 w-4" />
-                    <AlertTitle>Question</AlertTitle>
-                    <AlertDescription className="text-lg font-semibold">
-                        {currentQuestion?.text}
-                    </AlertDescription>
-                </Alert>
+                <div className="text-center p-8 border rounded-lg bg-secondary">
+                    <p className="text-2xl font-bold font-headline">{currentQuestion?.text}</p>
+                </div>
 
                 <div className="relative aspect-video w-full rounded-md border bg-secondary overflow-hidden">
                     <video ref={videoRef} className="w-full h-full" autoPlay muted playsInline />
                     {hasCameraPermission === false && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 text-white p-4">
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 text-white p-4 text-center">
                             <AlertTriangle className="w-12 h-12 mb-4" />
                             <h3 className="text-xl font-bold">Camera Access Required</h3>
                             <p>Please allow camera and microphone access to record.</p>
