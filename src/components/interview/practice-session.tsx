@@ -51,7 +51,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
   const [isRecording, setIsRecording] = useState(false);
   
   const [videoRecordings, setVideoRecordings] = useState<Record<number, string | null>>({});
-  const [attemptData, setAttemptData] = useState<Record<number, AttemptData>>({});
+  const [attemptData, setAttemptData] = useState<AttemptData[]>([]);
   const [currentAudioBlob, setCurrentAudioBlob] = useState<Blob | null>(null);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -118,9 +118,6 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     setIsRecording(true);
     recordedChunksRef.current = [];
 
-    // Capture first snapshot
-    const snapshots = [captureSnapshot()];
-
     const stream = videoRef.current.srcObject as MediaStream;
     mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'video/webm' });
 
@@ -135,18 +132,6 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
       const url = URL.createObjectURL(blob);
       setVideoRecordings(prev => ({...prev, [currentQuestionIndex]: url}));
       setCurrentAudioBlob(blob);
-
-      // Capture second snapshot
-      snapshots.push(captureSnapshot());
-
-      setAttemptData(prev => ({
-          ...prev,
-          [currentQuestionIndex]: {
-              questionId: currentQuestion.id,
-              transcript: '', // Will be filled in after transcription
-              snapshots: snapshots.filter(s => s),
-          }
-      }));
 
       setIsRecording(false);
       setStage('reviewing');
@@ -173,36 +158,34 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
         URL.revokeObjectURL(videoRecordings[currentQuestionIndex]!);
     }
     setVideoRecordings(prev => ({...prev, [currentQuestionIndex]: null}));
-    setAttemptData(prev => {
-        const newAttempts = {...prev};
-        delete newAttempts[currentQuestionIndex];
-        return newAttempts;
-    });
     setCurrentAudioBlob(null);
     recordedChunksRef.current = [];
     setStage('answering');
     getCameraPermission();
   };
   
-  const processAndAdvance = async (isFinalQuestion: boolean) => {
+  const processAndAdvance = async () => {
     if (!currentAudioBlob) return;
     
     setIsTranscribing(true);
     try {
         const transcript = await transcribeAudio(currentAudioBlob);
-        const finalAttemptData = {
-          ...attemptData,
-          [currentQuestionIndex]: {
-            ...attemptData[currentQuestionIndex],
-            transcript: transcript,
-          }
+        
+        const newAttempt: AttemptData = {
+          questionId: currentQuestion.id,
+          transcript: transcript,
+          snapshots: [captureSnapshot(), captureSnapshot()].filter(s => s) // Capture snapshots on review
         };
-        setAttemptData(finalAttemptData);
+
+        const newAttemptData = [...attemptData, newAttempt];
+        setAttemptData(newAttemptData);
         setCurrentAudioBlob(null);
+        
+        const isFinalQuestion = currentQuestionIndex === questions.length - 1;
         
         if (isFinalQuestion) {
             setStage('submitting');
-            handleSubmit(Object.values(finalAttemptData));
+            await handleSubmit(newAttemptData);
         } else {
             setCurrentQuestionIndex(prev => prev + 1);
             setStage('answering');
@@ -235,12 +218,12 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
         
         const result = await submitInterview(finalInterviewData);
 
-        if (result.success) {
+        if (result.success && result.sessionId) {
             toast({
                 title: "Submission Successful!",
-                description: "You will be redirected to the interviews page.",
+                description: "You will be redirected to your feedback.",
             });
-            router.push('/dashboard/interviews');
+            router.push(`/dashboard/interviews/${result.sessionId}`);
         } else {
             throw new Error(result.message);
         }
@@ -396,8 +379,9 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
                     <Button size="lg" variant="outline" onClick={handleRerecord} disabled={isTranscribing}>
                         <RefreshCw className="mr-2" /> Re-record
                     </Button>
-                    <Button size="lg" onClick={() => processAndAdvance(isLastQuestion)} disabled={isTranscribing}>
-                        {isTranscribing ? <Loader2 className="mr-2 animate-spin" /> : (isLastQuestion ? <Send className="mr-2"/> : <ArrowRight className="ml-2" />)}
+                    <Button size="lg" onClick={processAndAdvance} disabled={isTranscribing}>
+                        {isTranscribing && <Loader2 className="mr-2 animate-spin" />}
+                        {!isTranscribing && (isLastQuestion ? <Send className="mr-2"/> : <ArrowRight className="mr-2" />)}
                         {isLastQuestion ? 'Finish & Submit' : 'Next Question'}
                     </Button>
                 </div>

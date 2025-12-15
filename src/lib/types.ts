@@ -1,16 +1,11 @@
 
-
-
-
-
-
 export type UserRole = string;
 export type UserLevel = 'UG' | 'PG';
 
 export type User = {
   id: string;
   name: string;
-  email: string; // This will come from the auth session, not the profile table
+  email: string;
   avatarUrl: string;
   role: UserRole;
   level: UserLevel;
@@ -45,20 +40,29 @@ export type Question = {
   question_categories: { name: string }; // For joining data
 };
 
+export type InterviewSession = {
+    id: string;
+    user_id: string;
+    overall_score?: number;
+    summary?: any; // JSONB
+    created_at: string;
+}
 
 export type InterviewAttempt = {
   id: string;
-  userId: string;
-  question: Question;
-  score: number;
-  videoUrl?: string;
-  feedback?: {
-    strengths: string;
-    weaknesses: string;
-    grammarFeedback: string;
-    overallPerformance: string;
+  user_id: string;
+  session_id: string;
+  question_id: number;
+  transcript: string;
+  snapshots: string[];
+  feedback?: any; // JSONB
+  score?: number;
+  created_at: string;
+  questions?: { // For joining data
+    text: string;
+    tags: string[];
+    question_categories: { name: string };
   };
-  createdAt: string;
 };
 
 export type Agency = {
@@ -66,5 +70,3 @@ export type Agency = {
   name: string;
   members: User[];
 };
-
-    
