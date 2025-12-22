@@ -23,7 +23,7 @@ export function ProgressChart({ data }: ProgressChartProps) {
     <div className="h-80 w-full">
         <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={data} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                <LineChart data={data} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis 
                     dataKey="date" 
