@@ -66,9 +66,11 @@ export default async function ProgressPage() {
             This chart tracks your average score for each completed interview session.
           </CardDescription>
         </CardHeader>
-        <CardContent className="pt-0">
+        <CardContent>
           {chartData.length >= 2 ? (
-            <ProgressChart data={chartData} />
+            <div className="h-80">
+              <ProgressChart data={chartData} />
+            </div>
           ) : (
             <div className="flex flex-col items-center justify-center text-center p-8 h-80 rounded-lg bg-muted/50">
                 <h3 className="text-xl font-semibold">Not Enough Data Yet</h3>
