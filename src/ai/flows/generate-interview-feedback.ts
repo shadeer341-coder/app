@@ -12,7 +12,7 @@ const FeedbackInputSchema = z.object({
 
 const FeedbackOutputSchema = z.object({
   strengths: z.string().describe("Specific strengths of the user's answer and presentation."),
-  weaknesses: z.string().describe("Specific weaknesses or areas for improvement in the user's answer and presentation."),
+  weaknesses: z.string().describe("Specific weaknesses or areas for improvement in the user's answer and presentation. This should be empty if all tags are covered."),
   grammarFeedback: z.string().describe("Feedback on the user's grammar, clarity, and use of filler words."),
   overallPerformance: z.string().describe("A summary of the overall performance."),
   score: z.number().int().min(0).max(100).describe("An overall score from 0 to 100 based on all factors."),
@@ -28,20 +28,24 @@ const openai = new OpenAI({
 async function analyzeTranscript(transcript: string, questionText: string, questionTags: string[] | undefined | null) {
     const hasTags = questionTags && questionTags.length > 0;
     const prompt = `
-        You are a strict interview evaluator. Your primary goal is to check if the user's answer includes specific concepts.
+        You are a strict interview evaluator. Your primary goal is to check if the user's answer includes specific concepts from a list of tags.
         The user was asked: "${questionText}"
         The user's answer: "${transcript}"
         ${hasTags ? `The answer *must* include and elaborate on the following concepts: **${questionTags!.join(', ')}**.` : "Analyze the answer for general quality and clarity."}
 
         Your task:
-        1.  Analyze the transcript to see if it explicitly discusses the required concepts from the tags.
-        2.  For the "strengths" field: If the answer covers all or most of the required concepts, state that the answer was clear and comprehensive. Mention which concepts were well-explained.
-        3.  For the "weaknesses" field: If the answer is missing any of the required concepts, you MUST list the specific concepts the user failed to mention. This is the most important part of the feedback.
+        1.  Analyze the transcript to see if it explicitly discusses all required concepts from the tags.
+        2.  For the "strengths" field: 
+            - If the answer covers all required concepts, state: "The answer perfectly covered all key points: ${questionTags!.join(', ')}."
+            - Otherwise, mention which concepts were well-explained.
+        3.  For the "weaknesses" field: 
+            - If the answer is missing any of the required concepts, you MUST list the specific concepts the user failed to mention.
+            - If all concepts are covered, this field MUST be an empty string "". This is critical.
         4.  For the "score" field: Base this score almost entirely on how many of the required concepts were successfully covered. A perfect answer that misses the keywords should get a low score. An answer that hits all keywords should get a high score.
         
         Provide the feedback in a JSON object with the following fields:
-        - "strengths": "If all tags are covered, state that the question was answered clearly. Mention which concepts were well-explained."
-        - "weaknesses": "If tags are missing, list the specific points the user should have mentioned."
+        - "strengths": "Positive feedback based on tag coverage."
+        - "weaknesses": "If tags are missing, list them. If all tags are present, this MUST be an empty string."
         - "grammarFeedback": "Feedback on grammar, clarity, and use of filler words."
         - "overallPerformance": "A summary of the performance, focused on tag coverage."
         - "score": A score from 0 to 100, primarily based on keyword coverage.

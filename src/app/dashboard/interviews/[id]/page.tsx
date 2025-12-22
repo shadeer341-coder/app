@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Lightbulb, Presentation, PenTool, CheckCircle, AlertTriangle, Sparkles, BrainCircuit, Target, Video } from 'lucide-react';
+import { Lightbulb, Presentation, PenTool, CheckCircle, AlertTriangle, Sparkles, BrainCircuit, Target, Video, Star } from 'lucide-react';
 import Image from 'next/image';
 import {
   Accordion,
@@ -122,6 +122,7 @@ export default async function InterviewFeedbackPage({ params }: InterviewFeedbac
                         <Accordion type="single" collapsible className="w-full" defaultValue="item-0">
                              {attempts && attempts.map((attempt, index) => {
                                 const feedback = attempt.feedback as any;
+                                const isPerfect = feedback?.weaknesses === '';
                                 const firstAttemptWithSnapshots = attempts.find(a => a.snapshots && a.snapshots.length > 0);
                                 return (
                                     <AccordionItem value={`item-${index}`} key={attempt.id}>
@@ -136,29 +137,47 @@ export default async function InterviewFeedbackPage({ params }: InterviewFeedbac
                                         </AccordionTrigger>
                                         <AccordionContent>
                                             <Card className="border-none shadow-none">
-                                                <CardHeader>
-                                                    <CardTitle className="text-lg">{attempt.questions?.text}</CardTitle>
-                                                    <CardDescription>
-                                                        <blockquote className="border-l-2 pl-4 italic bg-muted/50 p-3 rounded-md mt-2">
-                                                            Your Answer: {attempt.transcript || "No transcript available."}
-                                                        </blockquote>
-                                                    </CardDescription>
-                                                </CardHeader>
-                                                <CardContent className="space-y-4">
-                                                    <div className="space-y-2">
-                                                        <h4 className="font-semibold flex items-center gap-2 text-sm"><CheckCircle className="text-green-500 h-4 w-4" />Strengths</h4>
-                                                        <p className="text-muted-foreground text-sm">{feedback?.strengths || 'Not available.'}</p>
-                                                    </div>
-                                                    <Separator />
-                                                    <div className="space-y-2">
-                                                        <h4 className="font-semibold flex items-center gap-2 text-sm"><AlertTriangle className="text-yellow-500 h-4 w-4" />Areas for Improvement</h4>
-                                                        <p className="text-muted-foreground text-sm">{feedback?.weaknesses || 'Not available.'}</p>
-                                                    </div>
-                                                     <Separator />
-                                                    <div className="space-y-2">
-                                                        <h4 className="font-semibold flex items-center gap-2 text-sm"><PenTool className="text-blue-500 h-4 w-4" />Clarity & Grammar</h4>
-                                                        <p className="text-muted-foreground text-sm">{feedback?.grammarFeedback || 'Not available.'}</p>
-                                                    </div>
+                                                <CardContent className="space-y-4 pt-6">
+                                                     {isPerfect ? (
+                                                        <Alert variant="default" className="bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800">
+                                                            <Star className="h-4 w-4 text-green-600 dark:text-green-400" />
+                                                            <AlertTitle className="text-green-800 dark:text-green-300">Answered Perfectly!</AlertTitle>
+                                                            <AlertDescription className="text-green-700 dark:text-green-400">
+                                                                {feedback?.strengths || "You addressed all the key points for this question."}
+                                                            </AlertDescription>
+                                                        </Alert>
+                                                     ) : (
+                                                        <>
+                                                            <CardHeader className="p-0">
+                                                                <CardTitle className="text-lg">{attempt.questions?.text}</CardTitle>
+                                                                <CardDescription>
+                                                                    <blockquote className="border-l-2 pl-4 italic bg-muted/50 p-3 rounded-md mt-2">
+                                                                        Your Answer: {attempt.transcript || "No transcript available."}
+                                                                    </blockquote>
+                                                                </CardDescription>
+                                                            </CardHeader>
+                                                            <div className="space-y-2">
+                                                                <h4 className="font-semibold flex items-center gap-2 text-sm"><CheckCircle className="text-green-500 h-4 w-4" />Strengths</h4>
+                                                                <p className="text-muted-foreground text-sm">{feedback?.strengths || 'Not available.'}</p>
+                                                            </div>
+                                                            <Separator />
+                                                            {feedback?.weaknesses && (
+                                                                <div className="space-y-2">
+                                                                    <h4 className="font-semibold flex items-center gap-2 text-sm"><AlertTriangle className="text-yellow-500 h-4 w-4" />Areas for Improvement</h4>
+                                                                    <p className="text-muted-foreground text-sm">{feedback?.weaknesses}</p>
+                                                                </div>
+                                                            )}
+                                                        </>
+                                                     )}
+
+                                                    {(feedback?.grammarFeedback && !isPerfect) && <Separator />}
+                                                    
+                                                    {!isPerfect && (
+                                                        <div className="space-y-2">
+                                                            <h4 className="font-semibold flex items-center gap-2 text-sm"><PenTool className="text-blue-500 h-4 w-4" />Clarity & Grammar</h4>
+                                                            <p className="text-muted-foreground text-sm">{feedback?.grammarFeedback || 'Not available.'}</p>
+                                                        </div>
+                                                    )}
                                                 </CardContent>
                                                  {user.role === 'admin' && attempt.id === firstAttemptWithSnapshots?.id && firstAttemptWithSnapshots.snapshots && firstAttemptWithSnapshots.snapshots.length > 0 && (
                                                     <CardFooter className="grid grid-cols-1 sm:grid-cols-2 gap-4">
