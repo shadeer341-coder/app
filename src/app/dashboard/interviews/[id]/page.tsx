@@ -60,9 +60,7 @@ export default async function InterviewFeedbackPage({ params }: InterviewFeedbac
                         <Loader2 className="w-12 h-12 text-primary animate-spin" />
                     </div>
                     <CardTitle className="text-2xl font-headline">Feedback is Being Prepared</CardTitle>
-                    <CardDescription className="max-w-md mx-auto">
-                        Your interview has been submitted and is currently in the queue for AI analysis.
-                    </CardDescription>
+
                 </CardHeader>
                 <CardContent>
                     <p className="text-sm text-muted-foreground">You can safely leave this page and return later.</p>
@@ -150,9 +148,6 @@ export default async function InterviewFeedbackPage({ params }: InterviewFeedbac
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2"><Sparkles className="text-primary"/> Overall Performance Summary</CardTitle>
-                            <CardDescription>
-                                An AI-powered synthesis of your performance across all questions in this session.
-                            </CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
                            <div className="space-y-2">
