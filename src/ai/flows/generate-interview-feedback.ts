@@ -7,7 +7,7 @@ import { z } from 'zod';
 const FeedbackInputSchema = z.object({
   transcript: z.string().describe("The user's transcribed answer to the interview question."),
   questionText: z.string().describe("The text of the interview question that was asked."),
-  questionTags: z.array(z.string()).optional().describe("A list of keywords or concepts expected in the answer."),
+  questionTags: z.array(z.string()).optional().nullable().describe("A list of keywords or concepts expected in the answer."),
 });
 
 const FeedbackOutputSchema = z.object({
@@ -25,19 +25,26 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-async function analyzeTranscript(transcript: string, questionText: string, questionTags: string[] | undefined) {
+async function analyzeTranscript(transcript: string, questionText: string, questionTags: string[] | undefined | null) {
+    const hasTags = questionTags && questionTags.length > 0;
     const prompt = `
-        You are an expert interview coach. Analyze the following interview answer based *only* on the text provided.
+        You are a strict interview evaluator. Your primary goal is to check if the user's answer includes specific concepts.
         The user was asked: "${questionText}"
         The user's answer: "${transcript}"
-        Expected keywords: ${questionTags?.join(', ') || "None specified."}
+        ${hasTags ? `The answer *must* include and elaborate on the following concepts: **${questionTags!.join(', ')}**.` : "Analyze the answer for general quality and clarity."}
 
-        Provide a concise and constructive feedback report in a JSON object with the following fields:
-        - "strengths": "Specific strengths of the answer's content and structure."
-        - "weaknesses": "Specific weaknesses or areas for improvement in the answer's content."
+        Your task:
+        1.  Analyze the transcript to see if it explicitly discusses the required concepts from the tags.
+        2.  For the "strengths" field: If the answer covers all or most of the required concepts, state that the answer was clear and comprehensive. Mention which concepts were well-explained.
+        3.  For the "weaknesses" field: If the answer is missing any of the required concepts, you MUST list the specific concepts the user failed to mention. This is the most important part of the feedback.
+        4.  For the "score" field: Base this score almost entirely on how many of the required concepts were successfully covered. A perfect answer that misses the keywords should get a low score. An answer that hits all keywords should get a high score.
+        
+        Provide the feedback in a JSON object with the following fields:
+        - "strengths": "If all tags are covered, state that the question was answered clearly. Mention which concepts were well-explained."
+        - "weaknesses": "If tags are missing, list the specific points the user should have mentioned."
         - "grammarFeedback": "Feedback on grammar, clarity, and use of filler words."
-        - "overallPerformance": "A summary of the textual performance."
-        - "score": A score from 0 to 100 based on answer quality (70%) and keyword usage (30%).
+        - "overallPerformance": "A summary of the performance, focused on tag coverage."
+        - "score": A score from 0 to 100, primarily based on keyword coverage.
 
         Do not include any other text or formatting.
     `;
