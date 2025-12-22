@@ -23,7 +23,7 @@ const profileSchema = z.object({
   gender: z.string().min(1, "Gender is required."),
   age: z.coerce.number().min(16, "You must be at least 16 years old.").max(100),
   nationality: z.string().min(1, "Nationality is required."),
-  university: z.string().min(2, "University is required."),
+  university: z.string(), // No validation needed as it's disabled
 });
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
@@ -46,7 +46,9 @@ export function ProfileForm({ user }: { user: User }) {
 
   function onSubmit(data: ProfileFormValues) {
     startTransition(async () => {
-      const result = await updateProfile(data);
+      // Exclude university from the data sent to the server action
+      const { university, ...updateData } = data;
+      const result = await updateProfile(updateData);
       if (result.success) {
         toast({
           title: "Profile Updated",
@@ -137,8 +139,9 @@ export function ProfileForm({ user }: { user: User }) {
             <FormItem>
               <FormLabel>University</FormLabel>
               <FormControl>
-                <Input placeholder="Your university" {...field} />
+                <Input placeholder="Your university" {...field} disabled />
               </FormControl>
+              <p className="text-sm text-muted-foreground">University cannot be changed after onboarding.</p>
               <FormMessage />
             </FormItem>
           )}

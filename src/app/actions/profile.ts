@@ -11,7 +11,6 @@ const profileSchema = z.object({
   gender: z.string().min(1, "Gender is required."),
   age: z.coerce.number().min(16, "You must be at least 16 years old.").max(100),
   nationality: z.string().min(1, "Nationality is required."),
-  university: z.string().min(2, "University is required."),
 });
 
 export async function updateProfile(formData: z.infer<typeof profileSchema>) {
