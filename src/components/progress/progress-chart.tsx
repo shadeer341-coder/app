@@ -30,14 +30,14 @@ export function ProgressChart({ data }: ProgressChartProps) {
                     tickLine={false}
                     axisLine={false}
                     tickMargin={8}
-                    tickFormatter={(value) => value.slice(0, 3)}
+                    tickFormatter={(value) => value.slice(0, 6)}
                 />
                 <YAxis 
                     stroke="#888888" 
                     fontSize={12} 
                     tickLine={false} 
                     axisLine={false}
-                    domain={[0, 100]}
+                    domain={[0, 'dataMax + 10']}
                 />
                 <Tooltip 
                     cursor={{
