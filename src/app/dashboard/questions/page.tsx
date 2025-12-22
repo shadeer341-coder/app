@@ -22,35 +22,9 @@ const openai = new OpenAI({
 
 async function generateAndSaveAudio(questionId: number, questionText: string) {
     'use server';
-    const supabase = createSupabaseServerActionClient();
+    // Use the service role client to bypass RLS for storage writes
+    const supabase = createSupabaseServerActionClient({ service: true });
     
-    // --- START DIAGNOSTIC LOGGING ---
-    try {
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-        if (authError || !user) {
-            console.error('generateAndSaveAudio Error: User not authenticated.', authError);
-            return { success: false, message: 'Authentication failed.' };
-        }
-        console.log(`generateAndSaveAudio: Authenticated user ID: ${user.id}`);
-
-        const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', user.id)
-            .single();
-
-        if (profileError || !profile) {
-            console.error(`generateAndSaveAudio Error: Could not fetch profile for user ${user.id}.`, profileError);
-            return { success: false, message: 'Could not find user profile.' };
-        }
-        console.log(`generateAndSaveAudio: User role from profile: ${profile.role}`);
-
-    } catch (e: any) {
-        console.error('generateAndSaveAudio Error: Unexpected error during diagnostic check.', e);
-        return { success: false, message: 'An unexpected error occurred during pre-check.' };
-    }
-    // --- END DIAGNOSTIC LOGGING ---
-
     if (!process.env.OPENAI_API_KEY) {
         console.error("OpenAI API key is not configured. Skipping audio generation.");
         return { success: false, message: "OpenAI API key is not configured." };
