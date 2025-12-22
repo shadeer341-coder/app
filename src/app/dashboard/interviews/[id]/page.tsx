@@ -61,7 +61,7 @@ export default async function InterviewFeedbackPage({ params }: InterviewFeedbac
                     </div>
                     <CardTitle className="text-2xl font-headline">Feedback is Being Prepared</CardTitle>
                     <CardDescription className="max-w-md mx-auto">
-                        Your interview has been submitted and is currently in the queue for AI analysis. This process usually takes a few minutes. Please check back shortly.
+                        Your interview has been submitted and is currently in the queue for AI analysis.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
