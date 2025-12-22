@@ -1,4 +1,5 @@
 
+
 export type UserRole = string;
 export type UserLevel = 'UG' | 'PG';
 
@@ -40,13 +41,17 @@ export type Question = {
   question_categories: { name: string }; // For joining data
 };
 
+export type InterviewSessionStatus = 'pending' | 'processing' | 'completed' | 'failed';
+
 export type InterviewSession = {
     id: string;
     user_id: string;
     overall_score?: number;
     summary?: any; // JSONB
     created_at: string;
-}
+    status: InterviewSessionStatus;
+    visual_feedback?: any;
+};
 
 export type InterviewAttempt = {
   id: string;

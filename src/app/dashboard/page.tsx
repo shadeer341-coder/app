@@ -6,8 +6,15 @@ import { redirect } from 'next/navigation';
 import { getCurrentUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { interviewAttempts, users as allUsers } from "@/lib/mock-data";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -15,13 +22,28 @@ export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
+  const supabase = createSupabaseServerClient();
 
   if (!user) {
     redirect('/');
   }
 
+  // Fetch data required for all roles
+  const { data: userSessions, error: sessionsError } = await supabase
+    .from('interview_sessions')
+    .select('id, overall_score, status, created_at, user_id, interview_attempts!inner(questions(text, question_categories(name)))')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false });
+
+  if(sessionsError){
+    console.error("Error fetching user sessions: ", sessionsError);
+  }
+
+  const completedSessions = userSessions?.filter(s => s.status === 'completed') || [];
+  const averageScore = completedSessions.reduce((sum, s) => sum + (s.overall_score || 0), 0) / (completedSessions.length || 1);
+
+
   const renderUserDashboard = () => {
-    const userAttempts = interviewAttempts.filter(a => a.userId === user.id).slice(0, 3);
     return (
       <>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -31,7 +53,7 @@ export default async function DashboardPage() {
               <Video className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{interviewAttempts.filter(a => a.userId === user.id).length}</div>
+              <div className="text-2xl font-bold">{userSessions?.length || 0}</div>
               <p className="text-xs text-muted-foreground">Practice makes perfect</p>
             </CardContent>
           </Card>
@@ -42,11 +64,9 @@ export default async function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {
-                  (interviewAttempts.filter(a => a.userId === user.id).reduce((sum, a) => sum + a.score, 0) / interviewAttempts.filter(a => a.userId === user.id).length || 0).toFixed(1)
-                }%
+                {averageScore.toFixed(1)}%
               </div>
-              <p className="text-xs text-muted-foreground">Based on your attempts</p>
+              <p className="text-xs text-muted-foreground">Based on completed interviews</p>
             </CardContent>
           </Card>
         </div>
@@ -59,7 +79,6 @@ export default async function DashboardPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Question</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Score</TableHead>
                   <TableHead>Date</TableHead>
@@ -67,19 +86,28 @@ export default async function DashboardPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {userAttempts.map(attempt => (
-                  <TableRow key={attempt.id}>
-                    <TableCell className="font-medium max-w-xs truncate">{attempt.question.text}</TableCell>
-                    <TableCell><Badge variant="outline">{attempt.question.category.name}</Badge></TableCell>
-                    <TableCell>{attempt.score}%</TableCell>
-                    <TableCell>{new Date(attempt.createdAt).toLocaleDateString()}</TableCell>
-                    <TableCell>
-                      <Button asChild variant="ghost" size="sm">
-                        <Link href={`/dashboard/interviews/${attempt.id}`}>View Feedback</Link>
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {userSessions?.slice(0, 3).map(session => {
+                  const firstCategory = session.interview_attempts[0]?.questions?.question_categories?.name;
+                  return (
+                    <TableRow key={session.id}>
+                        <TableCell><Badge variant="outline">{firstCategory || 'General'}</Badge></TableCell>
+                        <TableCell>{session.status === 'completed' ? `${session.overall_score}%` : <span className="text-muted-foreground capitalize">{session.status}</span>}</TableCell>
+                        <TableCell>{new Date(session.created_at).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                        <Button asChild variant="ghost" size="sm">
+                            <Link href={`/dashboard/interviews/${session.id}`}>View Details</Link>
+                        </Button>
+                        </TableCell>
+                    </TableRow>
+                  )
+                })}
+                 {(!userSessions || userSessions.length === 0) && (
+                    <TableRow>
+                        <TableCell colSpan={4} className="h-24 text-center">
+                            You haven't completed any interviews yet.
+                        </TableCell>
+                    </TableRow>
+                 )}
               </TableBody>
             </Table>
           </CardContent>
@@ -89,57 +117,17 @@ export default async function DashboardPage() {
   };
 
   const renderAgencyAdminDashboard = () => {
-    if (!user.agencyId) return <p>No agency associated with this account.</p>;
-    const agencyMembers = allUsers.filter(u => u.agencyId === user.agencyId);
-    const memberAttempts = interviewAttempts.filter(a => agencyMembers.some(m => m.id === a.userId)).slice(0, 5);
+    // This would require more complex queries, for now, it's a placeholder.
+    // The logic from mock-data will be adapted here.
     return (
       <div className="space-y-8">
         <Card>
           <CardHeader>
-            <CardTitle>Agency Members</CardTitle>
-            <CardDescription>Overview of your agency's members.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-4">
-            {agencyMembers.map(member => (
-              <div key={member.id} className="flex items-center gap-2 rounded-full border p-1 pr-3">
-                  <Avatar className="h-8 w-8">
-                      <AvatarImage src={member.avatarUrl} alt={member.name} />
-                      <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  <span className="font-medium">{member.name}</span>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Member Activity</CardTitle>
-            <CardDescription>Latest interview attempts from your members.</CardDescription>
+            <CardTitle>Agency Dashboard</CardTitle>
+            <CardDescription>Member overview and recent activity.</CardDescription>
           </CardHeader>
           <CardContent>
-          <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Member</TableHead>
-                  <TableHead>Question</TableHead>
-                  <TableHead>Score</TableHead>
-                  <TableHead>Date</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {memberAttempts.map(attempt => {
-                    const attemptUser = allUsers.find(u => u.id === attempt.userId);
-                    return (
-                        <TableRow key={attempt.id}>
-                            <TableCell className="font-medium">{attemptUser?.name}</TableCell>
-                            <TableCell className="max-w-xs truncate">{attempt.question.text}</TableCell>
-                            <TableCell>{attempt.score}%</TableCell>
-                            <TableCell>{new Date(attempt.createdAt).toLocaleDateString()}</TableCell>
-                        </TableRow>
-                    )
-                })}
-              </TableBody>
-            </Table>
+            <p>Agency admin dashboard functionality will be implemented here.</p>
           </CardContent>
         </Card>
       </div>
@@ -188,7 +176,7 @@ export default async function DashboardPage() {
         )}
       </div>
 
-      {roleDashboards[user.role]}
+      {roleDashboards[user.role as keyof typeof roleDashboards] || renderUserDashboard()}
     </div>
   );
 }

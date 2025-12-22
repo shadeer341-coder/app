@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Lightbulb, Presentation, PenTool, CheckCircle, AlertTriangle, Sparkles, BrainCircuit, Target, Video, Star } from 'lucide-react';
+import { Lightbulb, Presentation, PenTool, CheckCircle, AlertTriangle, Sparkles, BrainCircuit, Target, Video, Star, Loader2, PartyPopper, ServerCrash } from 'lucide-react';
 import Image from 'next/image';
 import {
   Accordion,
@@ -18,6 +18,9 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion"
 import { format } from 'date-fns';
+import { RefreshCcw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,6 +51,61 @@ export default async function InterviewFeedbackPage({ params }: InterviewFeedbac
         notFound();
     }
 
+    // Handle non-completed statuses
+    if (session.status === 'pending' || session.status === 'processing') {
+        return (
+            <Card className="flex flex-col items-center justify-center text-center p-8 md:p-12 min-h-[50vh]">
+                <CardHeader>
+                    <div className="mx-auto bg-primary/10 p-4 rounded-full mb-4">
+                        <Loader2 className="w-12 h-12 text-primary animate-spin" />
+                    </div>
+                    <CardTitle className="text-2xl font-headline">Feedback is Being Prepared</CardTitle>
+                    <CardDescription className="max-w-md mx-auto">
+                        Your interview has been submitted and is currently in the queue for AI analysis. This process usually takes a few minutes. Please check back shortly.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-sm text-muted-foreground">You can safely leave this page and return later.</p>
+                </CardContent>
+                 <CardFooter>
+                    <Button asChild variant="outline">
+                        <Link href="/dashboard/interviews">
+                            <RefreshCcw className="mr-2 h-4 w-4" />
+                            <span>Return to Interview List</span>
+                        </Link>
+                    </Button>
+                </CardFooter>
+            </Card>
+        );
+    }
+    
+    if (session.status === 'failed') {
+         return (
+            <Card className="flex flex-col items-center justify-center text-center p-8 md:p-12 min-h-[50vh] border-destructive">
+                <CardHeader>
+                    <div className="mx-auto bg-destructive/10 p-4 rounded-full mb-4">
+                        <ServerCrash className="w-12 h-12 text-destructive" />
+                    </div>
+                    <CardTitle className="text-2xl font-headline">Analysis Failed</CardTitle>
+                    <CardDescription className="max-w-md mx-auto">
+                        We're sorry, but an unexpected error occurred while analyzing your interview. Our team has been notified.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-sm text-muted-foreground">Please try another interview session. If the problem persists, contact support.</p>
+                </CardContent>
+                 <CardFooter>
+                    <Button asChild variant="secondary">
+                        <Link href="/dashboard/interviews">
+                            <span>Return to Interview List</span>
+                        </Link>
+                    </Button>
+                </CardFooter>
+            </Card>
+        );
+    }
+
+
     // 2. Fetch all attempts linked to this session
     const { data: attempts, error: attemptsError } = await supabase
         .from('interview_attempts')
@@ -62,9 +120,9 @@ export default async function InterviewFeedbackPage({ params }: InterviewFeedbac
         .eq('session_id', params.id)
         .order('created_at', { ascending: true });
 
-    if (attemptsError) {
+    if (attemptsError || !attempts) {
         console.error('Error fetching attempts for session:', attemptsError);
-        // We can still render the page with just session info if attempts fail
+        return <p>Error loading attempt details.</p>;
     }
 
     const summary = session.summary as any;
@@ -72,11 +130,19 @@ export default async function InterviewFeedbackPage({ params }: InterviewFeedbac
 
     return (
         <div className="space-y-8">
-            <div>
-                <h1 className="font-headline text-3xl font-bold tracking-tight">Interview Session Feedback</h1>
-                <p className="text-muted-foreground">
-                    Session from {format(new Date(session.created_at), "PPP, p")}
-                </p>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                    <h1 className="font-headline text-3xl font-bold tracking-tight">Interview Session Feedback</h1>
+                    <p className="text-muted-foreground">
+                        Session from {format(new Date(session.created_at), "PPP, p")}
+                    </p>
+                </div>
+                 <Button asChild>
+                    <Link href="/dashboard/practice">
+                        <PartyPopper className="mr-2"/>
+                        Start New Interview
+                    </Link>
+                </Button>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -247,5 +313,3 @@ export default async function InterviewFeedbackPage({ params }: InterviewFeedbac
         </div>
     );
 }
-
-    
