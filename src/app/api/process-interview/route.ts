@@ -13,16 +13,14 @@ export async function POST(request: Request) {
 
   const supabase = createSupabaseServerClient({ service: true });
 
-  // Add a 30-second delay to allow for manual testing.
-  // This prevents the cron job from immediately picking up a newly submitted interview.
-  const thirtySecondsAgo = new Date(Date.now() - 30000).toISOString();
+  const now = new Date().toISOString();
 
-  // 1. Find the oldest pending interview session that is older than 30 seconds
+  // 1. Find the oldest pending interview session that is ready to be processed
   const { data: session, error: findError } = await supabase
     .from('interview_sessions')
     .select('id')
     .eq('status', 'pending')
-    .lt('created_at', thirtySecondsAgo) // Only select sessions created more than 30s ago
+    .lte('process_at', now) // Only select sessions scheduled for processing
     .order('created_at', { ascending: true })
     .limit(1)
     .single();

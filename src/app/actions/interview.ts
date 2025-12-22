@@ -21,11 +21,14 @@ export async function submitInterview(interviewData: AttemptDataItem[]) {
 
     try {
         // 1. Create a new interview session with a 'pending' status
+        const twentyMinutesFromNow = new Date(Date.now() + 20 * 60 * 1000).toISOString();
+
         const { data: session, error: sessionError } = await supabase
             .from('interview_sessions')
             .insert({ 
                 user_id: user.id,
-                status: 'pending' // Set initial status
+                status: 'pending', // Set initial status
+                process_at: twentyMinutesFromNow, // Schedule for 20 mins in the future
             })
             .select()
             .single();
