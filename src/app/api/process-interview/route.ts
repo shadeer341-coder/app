@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     return new Response('Unauthorized', { status: 401 });
   }
 
-  const supabase = createSupabaseServerClient();
+  const supabase = createSupabaseServerClient({ service: true });
 
   // Add a 30-second delay to allow for manual testing.
   // This prevents the cron job from immediately picking up a newly submitted interview.

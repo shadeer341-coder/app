@@ -5,7 +5,7 @@ import { summarizeInterviewPerformance } from '@/ai/flows/summarize-interview-pe
 import type { InterviewAttempt } from '@/lib/types';
 
 export async function processInterviewInBackground(sessionId: string) {
-    const supabase = createSupabaseServerClient();
+    const supabase = createSupabaseServerClient({ service: true });
 
     // 1. Fetch all attempts for the session
     const { data: attempts, error: attemptsError } = await supabase
