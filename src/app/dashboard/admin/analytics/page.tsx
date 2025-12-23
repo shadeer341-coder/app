@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function AnalyticsPage() {
 
-    const supabase = createSupabaseServerClient();
+    const supabase = createSupabaseServerClient({ service: true });
 
     const { count: standardUserCount, error: usersError } = await supabase
         .from('profiles')
