@@ -9,13 +9,11 @@ export default async function AnalyticsPage() {
 
     const supabase = createSupabaseServerClient();
 
-    // Corrected query for standard users
     const { count: standardUserCount, error: usersError } = await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true })
         .eq('role', 'user');
 
-    // Corrected query for agency members count
     const { count: agencyMemberCount, error: agenciesError } = await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true })
