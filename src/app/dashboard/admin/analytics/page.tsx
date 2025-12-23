@@ -9,15 +9,18 @@ export default async function AnalyticsPage() {
 
     const supabase = createSupabaseServerClient();
 
+    // Corrected query for standard users
     const { count: standardUserCount, error: usersError } = await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true })
         .eq('role', 'user');
 
-    const { count: agencyCount, error: agenciesError } = await supabase
+    // Corrected query for agency members count
+    const { count: agencyMemberCount, error: agenciesError } = await supabase
         .from('profiles')
-        .select('agency_id', { count: 'exact', head: true })
+        .select('*', { count: 'exact', head: true })
         .not('agency_id', 'is', null);
+
 
     if (usersError) {
         console.error("Error fetching users for analytics:", usersError);
@@ -49,12 +52,12 @@ export default async function AnalyticsPage() {
         </Card>
         <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Agencies</CardTitle>
+                <CardTitle className="text-sm font-medium">Total Agency Members</CardTitle>
                 <Building className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-                <div className="text-2xl font-bold">{agencyCount || 0}</div>
-                <p className="text-xs text-muted-foreground">Number of unique agencies with members.</p>
+                <div className="text-2xl font-bold">{agencyMemberCount || 0}</div>
+                <p className="text-xs text-muted-foreground">Number of users part of an agency.</p>
             </CardContent>
         </Card>
       </div>
