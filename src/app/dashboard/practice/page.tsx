@@ -105,7 +105,7 @@ export default async function PracticePage() {
                 </p>
             </div>
             <PracticeSession 
-                questions={interviewQueue}
+                questions={interviewQueue.slice(0, 2)}
                 user={user}
             />
         </div>
