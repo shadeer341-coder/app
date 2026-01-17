@@ -255,7 +255,7 @@ export default async function QuestionsPage({ searchParams }: { searchParams: { 
               createAction={createQuestion}
               updateAction={updateQuestion}
               deleteAction={deleteQuestion}
-              generateAudioAction={generateQuestionAudioAction}
+              // generateAudioAction={generateQuestionAudioAction}
             />
           <div className="mt-6 flex justify-center">
             <PaginationControls

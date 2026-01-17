@@ -59,7 +59,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
 
 
   const videoRef = useRef<HTMLVideoElement>(null);
-  const audioRef = useRef<HTMLAudioElement>(null);
+  // const audioRef = useRef<HTMLAudioElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
@@ -123,10 +123,10 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     const permissionGranted = await getCameraPermission();
     if (!permissionGranted || !streamRef.current) return;
   
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
+    // if (audioRef.current) {
+    //   audioRef.current.pause();
+    //   audioRef.current.currentTime = 0;
+    // }
   
     setIsRecording(true);
     setStage('recording');
@@ -270,12 +270,12 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     getCameraPermission();
   }
 
-  useEffect(() => {
-    if (stage === 'answering' && currentQuestion?.audio_url && audioRef.current) {
-        audioRef.current.src = currentQuestion.audio_url;
-        audioRef.current.play().catch(error => console.error("Audio playback failed:", error));
-    }
-  }, [currentQuestion, stage]);
+  // useEffect(() => {
+  //   if (stage === 'answering' && currentQuestion?.audio_url && audioRef.current) {
+  //       audioRef.current.src = currentQuestion.audio_url;
+  //       audioRef.current.play().catch(error => console.error("Audio playback failed:", error));
+  //   }
+  // }, [currentQuestion, stage]);
 
 
   useEffect(() => {
@@ -332,7 +332,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
 
   return (
     <Card>
-        <audio ref={audioRef} />
+        {/* <audio ref={audioRef} /> */}
         {stage === 'introduction' && (
              <>
                 <CardHeader>

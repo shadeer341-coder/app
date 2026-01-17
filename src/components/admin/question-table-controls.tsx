@@ -56,7 +56,7 @@ type QuestionTableControlsProps = {
     createAction: (formData: FormData) => Promise<{ success: boolean, message: string }>;
     updateAction: (formData: FormData) => Promise<{ success: boolean, message: string }>;
     deleteAction: (formData: FormData) => Promise<{ success: boolean, message: string }>;
-    generateAudioAction: (questionId: number, questionText: string) => Promise<{ success: boolean, message: string }>;
+    // generateAudioAction: (questionId: number, questionText: string) => Promise<{ success: boolean, message: string }>;
 };
 
 const levelOptions = [
@@ -67,7 +67,7 @@ const levelOptions = [
     "Masters (Postgraduate)",
 ];
 
-export function QuestionTableControls({ questions, categories, createAction, updateAction, deleteAction, generateAudioAction }: QuestionTableControlsProps) {
+export function QuestionTableControls({ questions, categories, createAction, updateAction, deleteAction, /* generateAudioAction */ }: QuestionTableControlsProps) {
     const searchParams = useSearchParams();
     const { replace } = useRouter();
     const pathname = usePathname();
@@ -77,37 +77,37 @@ export function QuestionTableControls({ questions, categories, createAction, upd
     const [addDialogOpen, setAddDialogOpen] = useState(false);
     const [editDialogOpen, setEditDialogOpen] = useState(false);
     const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
-    const [playingAudio, setPlayingAudio] = useState<HTMLAudioElement | null>(null);
+    // const [playingAudio, setPlayingAudio] = useState<HTMLAudioElement | null>(null);
 
     const [sortBy, setSortBy] = useState(searchParams.get('sortBy') || 'created_at');
     const [order, setOrder] = useState(searchParams.get('order') || 'desc');
     
     const [isSuggesting, setIsSuggesting] = useState(false);
-    const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
+    // const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState<{id: string, name: string} | null>(null);
     const questionTextRef = useRef<HTMLTextAreaElement>(null);
     const editQuestionTextRef = useRef<HTMLTextAreaElement>(null);
 
-    const handlePlayAudio = (audioUrl: string) => {
-        if (playingAudio) {
-            playingAudio.pause();
-            if (playingAudio.src === audioUrl) {
-                setPlayingAudio(null);
-                return;
-            }
-        }
+    // const handlePlayAudio = (audioUrl: string) => {
+    //     if (playingAudio) {
+    //         playingAudio.pause();
+    //         if (playingAudio.src === audioUrl) {
+    //             setPlayingAudio(null);
+    //             return;
+    //         }
+    //     }
         
-        const audio = new Audio(audioUrl);
-        setPlayingAudio(audio);
-        audio.play();
-        audio.onended = () => {
-            setPlayingAudio(null);
-        };
-        audio.onerror = () => {
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not play audio.' });
-            setPlayingAudio(null);
-        }
-    }
+    //     const audio = new Audio(audioUrl);
+    //     setPlayingAudio(audio);
+    //     audio.play();
+    //     audio.onended = () => {
+    //         setPlayingAudio(null);
+    //     };
+    //     audio.onerror = () => {
+    //         toast({ variant: 'destructive', title: 'Error', description: 'Could not play audio.' });
+    //         setPlayingAudio(null);
+    //     }
+    // }
 
 
     const handleFormAction = (action: (formData: FormData) => Promise<{ success: boolean, message: string }>, formData: FormData, closeDialog: () => void) => {
@@ -207,20 +207,20 @@ export function QuestionTableControls({ questions, categories, createAction, upd
         }
     };
     
-    const handleGenerateAudio = async () => {
-        if (!editingQuestion || !editQuestionTextRef.current) return;
-        setIsGeneratingAudio(true);
-        startTransition(async () => {
-            const result = await generateAudioAction(editingQuestion.id, editQuestionTextRef.current?.value || editingQuestion.text);
-            if (result.success) {
-                toast({ title: 'Success', description: result.message });
-                setEditDialogOpen(false);
-            } else {
-                toast({ variant: 'destructive', title: 'Error', description: result.message });
-            }
-            setIsGeneratingAudio(false);
-        });
-    }
+    // const handleGenerateAudio = async () => {
+    //     if (!editingQuestion || !editQuestionTextRef.current) return;
+    //     setIsGeneratingAudio(true);
+    //     startTransition(async () => {
+    //         const result = await generateAudioAction(editingQuestion.id, editQuestionTextRef.current?.value || editingQuestion.text);
+    //         if (result.success) {
+    //             toast({ title: 'Success', description: result.message });
+    //             setEditDialogOpen(false);
+    //         } else {
+    //             toast({ variant: 'destructive', title: 'Error', description: result.message });
+    //         }
+    //         setIsGeneratingAudio(false);
+    //     });
+    // }
 
     const sortOptions = [
         { value: 'created_at', label: 'Date' },
@@ -396,14 +396,15 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                     {questions?.map((q) => (
                     <TableRow key={q.id}>
                         <TableCell className="font-medium max-w-sm truncate">
-                        <div className="flex items-center gap-2">
+                        {/* <div className="flex items-center gap-2">
                              {q.audio_url && (
                                 <Button variant="ghost" size="icon" onClick={() => handlePlayAudio(q.audio_url!)} className="h-7 w-7">
                                     <PlayCircle className={cn("h-5 w-5", playingAudio?.src === q.audio_url && "text-primary")} />
                                 </Button>
                             )}
                             {q.text}
-                        </div>
+                        </div> */}
+                        {q.text}
                         </TableCell>
                         <TableCell>
                         <Badge variant="outline">
@@ -521,12 +522,12 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                                     {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                     Save Changes
                                 </Button>
-                                {!editingQuestion.audio_url && (
+                                {/* {!editingQuestion.audio_url && (
                                     <Button type="button" variant="outline" onClick={handleGenerateAudio} disabled={isGeneratingAudio || isPending}>
                                         {isGeneratingAudio ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Radio className="mr-2 h-4 w-4" />}
                                         Generate Audio
                                     </Button>
-                                )}
+                                )} */}
                             </div>
                         </form>
                     </DialogContent>
