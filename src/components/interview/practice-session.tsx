@@ -43,6 +43,9 @@ const MicrophoneVisualizer = ({ stream }: { stream: MediaStream | null }) => {
     useEffect(() => {
         if (!stream || stream.getAudioTracks().length === 0) {
             setVolume(0);
+            if (animationFrameIdRef.current) {
+                cancelAnimationFrame(animationFrameIdRef.current);
+            }
             return;
         }
 
@@ -56,14 +59,14 @@ const MicrophoneVisualizer = ({ stream }: { stream: MediaStream | null }) => {
             source = audioContext.createMediaStreamSource(stream);
             source.connect(analyser);
 
-            analyser.fftSize = 32;
+            analyser.fftSize = 256;
             const bufferLength = analyser.frequencyBinCount;
             const dataArray = new Uint8Array(bufferLength);
 
             const updateVolume = () => {
                 analyser.getByteFrequencyData(dataArray);
                 const average = dataArray.reduce((acc, val) => acc + val, 0) / bufferLength;
-                const normalized = Math.min(average / 100, 1);
+                const normalized = Math.min(average / 140, 1);
                 setVolume(normalized);
                 animationFrameIdRef.current = requestAnimationFrame(updateVolume);
             };
@@ -83,17 +86,14 @@ const MicrophoneVisualizer = ({ stream }: { stream: MediaStream | null }) => {
         };
     }, [stream]);
 
-    const bars = [0.1, 0.2, 0.4, 0.6, 0.8].map((threshold, index) => (
-        <div
-            key={index}
-            className={cn(
-                "w-2 h-10 rounded-full transition-colors duration-75",
-                volume > threshold ? 'bg-primary' : 'bg-muted'
-            )}
-        />
-    ));
-
-    return <div className="flex items-end gap-1.5 h-10">{bars}</div>;
+    return (
+        <div className="w-full h-3 bg-muted rounded-full overflow-hidden">
+            <div
+                className="h-full bg-primary rounded-full transition-[width] duration-75"
+                style={{ width: `${volume * 100}%` }}
+            />
+        </div>
+    );
 };
 
 
@@ -240,11 +240,10 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     }
   
     let isCancelled = false;
-    let specificStream: MediaStream | null = null;
   
     const setupDevicesAndStream = async () => {
+      let specificStream: MediaStream | null = null;
       try {
-        // This will request permission if not already granted
         const initialStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         if (isCancelled) {
           initialStream.getTracks().forEach(track => track.stop());
@@ -261,7 +260,6 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
         setAudioDevices(audio);
         setVideoDevices(video);
   
-        // We can stop the initial generic stream now that we have the device list
         initialStream.getTracks().forEach(track => track.stop());
   
         const currentAudioId = selectedAudioDeviceId || (audio.length > 0 ? audio[0].deviceId : '');
@@ -296,9 +294,15 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
         setCameraCheck('error');
         setMicCheck('error');
       }
+  
+      return () => {
+        if (specificStream) {
+          specificStream.getTracks().forEach(track => track.stop());
+        }
+      };
     };
   
-    setupDevicesAndStream();
+    const stopStream = setupDevicesAndStream();
     
     if (internetCheckStatus === 'pending') {
         checkInternetSpeed();
@@ -306,9 +310,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
   
     return () => {
       isCancelled = true;
-      if (specificStream) {
-        specificStream.getTracks().forEach(track => track.stop());
-      }
+      stopStream.then(cleanup => cleanup && cleanup());
     };
   }, [stage, selectedAudioDeviceId, selectedVideoDeviceId, checkInternetSpeed, internetCheckStatus]);
 
@@ -594,7 +596,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
                             </div>
                             {micCheck === 'success' && (
                                 <div className='space-y-3'>
-                                    <div className='flex justify-center'>
+                                    <div className="pt-2">
                                         <MicrophoneVisualizer stream={previewStream} />
                                     </div>
                                     <Select value={selectedAudioDeviceId} onValueChange={setSelectedAudioDeviceId} disabled={audioDevices.length === 0}>
