@@ -61,6 +61,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
   const [cameraCheck, setCameraCheck] = useState<'pending' | 'success' | 'error'>('pending');
   const [micCheck, setMicCheck] = useState<'pending' | 'success' | 'error'>('pending');
   const [internetSpeed, setInternetSpeed] = useState<number | null>(null);
+  const [downloadDuration, setDownloadDuration] = useState<number | null>(null);
   const [internetCheckStatus, setInternetCheckStatus] = useState<'pending' | 'running' | 'success' | 'error'>('pending');
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -111,8 +112,10 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
 
   const checkInternetSpeed = useCallback(async () => {
     setInternetCheckStatus('running');
+    setInternetSpeed(null);
+    setDownloadDuration(null);
     try {
-        const testFileUrl = 'https://storage.googleapis.com/stedi-assets/test-files/1MB.txt';
+        const testFileUrl = 'https://proof.ovh.net/files/1Mb.dat';
         const fileSizeInBytes = 1000000;
         const startTime = new Date().getTime();
         
@@ -124,7 +127,11 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
         
         const endTime = new Date().getTime();
         
-        const duration = (endTime - startTime) / 1000;
+        const durationMs = endTime - startTime;
+        setDownloadDuration(durationMs);
+
+        const duration = durationMs / 1000;
+
         if (duration < 0.1) {
             setInternetSpeed(100);
         } else {
@@ -138,6 +145,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     } catch (error) {
         console.error('Internet speed test failed:', error);
         setInternetSpeed(null);
+        setDownloadDuration(null);
         setInternetCheckStatus('error');
     }
   }, []);
@@ -440,6 +448,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
                                 {internetCheckStatus === 'success' && (
                                     <>
                                         {internetSpeed !== null && <span className="text-sm font-bold text-green-500">{internetSpeed} Mbps</span>}
+                                        {downloadDuration !== null && <span className="text-xs text-muted-foreground">({downloadDuration}ms)</span>}
                                         <CheckCircle className="w-5 h-5 text-green-500" />
                                     </>
                                 )}
@@ -569,5 +578,3 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     </Card>
   );
 }
-
-    
