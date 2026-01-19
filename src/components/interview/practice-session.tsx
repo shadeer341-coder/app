@@ -65,7 +65,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
   const [internetCheckStatus, setInternetCheckStatus] = useState<'pending' | 'running' | 'success' | 'error'>('pending');
 
   const videoRef = useRef<HTMLVideoElement>(null);
-  // const audioRef = useRef<HTMLAudioElement>(null);
+  // const audioRef = useRef<HTMLAudioElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
@@ -115,7 +115,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     setInternetSpeed(null);
     setDownloadDuration(null);
     try {
-        const testFileUrl = 'https://proof.ovh.net/files/1Mb.dat';
+        const testFileUrl = 'https://speed.cloudflare.com/__down?bytes=1000000';
         const fileSizeInBytes = 1000000;
         const startTime = new Date().getTime();
         
