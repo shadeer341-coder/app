@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, Video, StopCircle, RefreshCw, Send, AlertTriangle, ArrowRight, PartyPopper, Camera, CheckCircle, Wifi, Mic } from 'lucide-react';
 import { submitInterview } from '@/app/actions/interview';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { cn } from '@/lib/utils';
 
 type InterviewQuestion = Pick<Question, 'id' | 'text' | 'category_id' | 'audio_url' | 'tags'> & { categoryName: string };
 
@@ -26,6 +27,67 @@ type AttemptData = {
   transcript: string;
   snapshots: string[];
 };
+
+const MicrophoneVisualizer = ({ stream }: { stream: MediaStream | null }) => {
+    const [volume, setVolume] = useState(0);
+    const animationFrameIdRef = useRef<number>();
+
+    useEffect(() => {
+        if (!stream || stream.getAudioTracks().length === 0) {
+            setVolume(0);
+            return;
+        }
+
+        let audioContext: AudioContext;
+        let analyser: AnalyserNode;
+        let source: MediaStreamAudioSourceNode;
+
+        try {
+            audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+            analyser = audioContext.createAnalyser();
+            source = audioContext.createMediaStreamSource(stream);
+            source.connect(analyser);
+
+            analyser.fftSize = 32;
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+
+            const updateVolume = () => {
+                analyser.getByteFrequencyData(dataArray);
+                const average = dataArray.reduce((acc, val) => acc + val, 0) / bufferLength;
+                const normalized = Math.min(average / 100, 1);
+                setVolume(normalized);
+                animationFrameIdRef.current = requestAnimationFrame(updateVolume);
+            };
+            updateVolume();
+
+        } catch (e) {
+            console.error('Error setting up audio visualizer:', e);
+        }
+
+        return () => {
+            if (animationFrameIdRef.current) {
+                cancelAnimationFrame(animationFrameIdRef.current);
+            }
+            if (source) source.disconnect();
+            // @ts-ignore
+            if (audioContext && audioContext.state !== 'closed') audioContext.close();
+        };
+    }, [stream]);
+
+    const bars = [0.1, 0.2, 0.4, 0.6, 0.8].map((threshold, index) => (
+        <div
+            key={index}
+            className={cn(
+                "w-1.5 h-6 rounded-full transition-colors duration-75",
+                volume > threshold ? 'bg-primary' : 'bg-muted'
+            )}
+        />
+    ));
+
+    return <div className="flex items-center gap-1">{bars}</div>;
+};
+
 
 async function transcribeAudio(audioBlob: Blob): Promise<string> {
     const formData = new FormData();
@@ -63,8 +125,10 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
   const [internetSpeed, setInternetSpeed] = useState<number | null>(null);
   const [downloadDuration, setDownloadDuration] = useState<number | null>(null);
   const [internetCheckStatus, setInternetCheckStatus] = useState<'pending' | 'running' | 'success' | 'error'>('pending');
+  const [previewStream, setPreviewStream] = useState<MediaStream | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
+  const previewVideoRef = useRef<HTMLVideoElement>(null);
   // const audioRef = useRef<HTMLAudioElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
@@ -130,11 +194,10 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
         const durationMs = endTime - startTime;
         setDownloadDuration(durationMs);
 
-        const duration = durationMs / 1000;
-
         if (duration < 0.1) {
             setInternetSpeed(100);
         } else {
+          const duration = durationMs / 1000;
           const bitsLoaded = fileSizeInBytes * 8;
           const speedBps = bitsLoaded / duration;
           const speedMbps = parseFloat((speedBps / 1000 / 1000).toFixed(2));
@@ -151,35 +214,44 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
   }, []);
 
   useEffect(() => {
+    // This effect handles the setup and teardown of the preview stream.
     if (stage === 'introduction') {
-        const checkPermissions = async () => {
-            let overallPermission = true;
-            // Check Camera
-            try {
-                const videoStream = await navigator.mediaDevices.getUserMedia({ video: true });
-                videoStream.getTracks().forEach(track => track.stop());
-                setCameraCheck('success');
-            } catch (error) {
-                console.error('Camera check failed:', error);
-                setCameraCheck('error');
-                overallPermission = false;
-            }
+      let isCancelled = false;
+      const setupPreviews = async () => {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+          if (isCancelled) {
+            stream.getTracks().forEach(track => track.stop());
+            return;
+          }
+          setPreviewStream(stream);
+          if (previewVideoRef.current) {
+            previewVideoRef.current.srcObject = stream;
+          }
+          setCameraCheck('success');
+          setMicCheck('success');
+          setHasCameraPermission(true);
+        } catch (error: any) {
+           if (isCancelled) return;
+          console.error('Permission check failed:', error);
+          setHasCameraPermission(false);
+          setCameraCheck('error');
+          setMicCheck('error');
+        }
+      };
 
-            // Check Microphone
-            try {
-                const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                audioStream.getTracks().forEach(track => track.stop());
-                setMicCheck('success');
-            } catch (error) {
-                console.error('Mic check failed:', error);
-                setMicCheck('error');
-                overallPermission = false;
-            }
-            setHasCameraPermission(overallPermission);
-        };
+      setupPreviews();
+      checkInternetSpeed();
 
-        checkPermissions();
-        checkInternetSpeed();
+      return () => {
+        isCancelled = true;
+        setPreviewStream(currentStream => {
+          if (currentStream) {
+            currentStream.getTracks().forEach(track => track.stop());
+          }
+          return null;
+        });
+      };
     }
   }, [stage, checkInternetSpeed]);
 
@@ -420,23 +492,35 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <ul className="space-y-3">
-                        <li className="flex items-center justify-between p-3 rounded-lg bg-secondary">
+                        <li className="flex items-start justify-between p-3 rounded-lg bg-secondary flex-wrap">
                             <div className="flex items-center gap-3">
                                 <Camera className="w-5 h-5 text-muted-foreground" />
                                 <span className="font-medium">Camera</span>
                             </div>
-                            {cameraCheck === 'pending' && <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />}
-                            {cameraCheck === 'success' && <CheckCircle className="w-5 h-5 text-green-500" />}
-                            {cameraCheck === 'error' && <AlertTriangle className="w-5 h-5 text-destructive" />}
+                            <div className="flex items-center gap-2">
+                                {cameraCheck === 'pending' && <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />}
+                                {cameraCheck === 'success' && <CheckCircle className="w-5 h-5 text-green-500" />}
+                                {cameraCheck === 'error' && <AlertTriangle className="w-5 h-5 text-destructive" />}
+                            </div>
+                             {cameraCheck === 'success' && (
+                                <div className="relative w-full aspect-video mt-3 rounded-md border bg-slate-900 overflow-hidden">
+                                    <video ref={previewVideoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
+                                </div>
+                            )}
                         </li>
                         <li className="flex items-center justify-between p-3 rounded-lg bg-secondary">
                             <div className="flex items-center gap-3">
                                 <Mic className="w-5 h-5 text-muted-foreground" />
                                 <span className="font-medium">Microphone</span>
                             </div>
-                            {micCheck === 'pending' && <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />}
-                            {micCheck === 'success' && <CheckCircle className="w-5 h-5 text-green-500" />}
-                            {micCheck === 'error' && <AlertTriangle className="w-5 h-5 text-destructive" />}
+                            <div className="flex items-center gap-2">
+                                {micCheck === 'pending' && <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />}
+                                {micCheck === 'success' && <>
+                                    <MicrophoneVisualizer stream={previewStream} />
+                                    <CheckCircle className="w-5 h-5 text-green-500" />
+                                </>}
+                                {micCheck === 'error' && <AlertTriangle className="w-5 h-5 text-destructive" />}
+                            </div>
                         </li>
                         <li className="flex items-center justify-between p-3 rounded-lg bg-secondary">
                             <div className="flex items-center gap-3">
