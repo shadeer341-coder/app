@@ -12,6 +12,14 @@ import { Loader2, Video, StopCircle, RefreshCw, Send, AlertTriangle, ArrowRight,
 import { submitInterview } from '@/app/actions/interview';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
 
 type InterviewQuestion = Pick<Question, 'id' | 'text' | 'category_id' | 'audio_url' | 'tags'> & { categoryName: string };
 
@@ -79,13 +87,13 @@ const MicrophoneVisualizer = ({ stream }: { stream: MediaStream | null }) => {
         <div
             key={index}
             className={cn(
-                "w-1.5 h-6 rounded-full transition-colors duration-75",
+                "w-2 h-10 rounded-full transition-colors duration-75",
                 volume > threshold ? 'bg-primary' : 'bg-muted'
             )}
         />
     ));
 
-    return <div className="flex items-center gap-1">{bars}</div>;
+    return <div className="flex items-end gap-1.5 h-10">{bars}</div>;
 };
 
 
@@ -127,6 +135,11 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
   const [internetCheckStatus, setInternetCheckStatus] = useState<'pending' | 'running' | 'success' | 'error'>('pending');
   const [previewStream, setPreviewStream] = useState<MediaStream | null>(null);
 
+  const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
+  const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedAudioDeviceId, setSelectedAudioDeviceId] = useState<string>('');
+  const [selectedVideoDeviceId, setSelectedVideoDeviceId] = useState<string>('');
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const previewVideoRef = useRef<HTMLVideoElement>(null);
   // const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -155,7 +168,10 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     }
 
     try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: selectedVideoDeviceId ? { deviceId: { exact: selectedVideoDeviceId } } : true,
+            audio: selectedAudioDeviceId ? { deviceId: { exact: selectedAudioDeviceId } } : true
+        });
         streamRef.current = stream;
         if (videoRef.current) {
             videoRef.current.srcObject = stream;
@@ -172,7 +188,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
         });
         return false;
     }
-  }, [toast]);
+  }, [selectedAudioDeviceId, selectedVideoDeviceId, toast]);
 
   const checkInternetSpeed = useCallback(async () => {
     setInternetCheckStatus('running');
@@ -194,8 +210,8 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
         const durationMs = endTime - startTime;
         setDownloadDuration(durationMs);
 
-        if (duration < 0.1) {
-            setInternetSpeed(100);
+        if (durationMs < 1) { // Avoid division by zero
+            setInternetSpeed(1000); // Assume very fast if it's too quick to measure
         } else {
           const duration = durationMs / 1000;
           const bitsLoaded = fileSizeInBytes * 8;
@@ -213,47 +229,83 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     }
   }, []);
 
+
   useEffect(() => {
-    // This effect handles the setup and teardown of the preview stream.
-    if (stage === 'introduction') {
-      let isCancelled = false;
-      const setupPreviews = async () => {
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-          if (isCancelled) {
-            stream.getTracks().forEach(track => track.stop());
-            return;
-          }
-          setPreviewStream(stream);
-          if (previewVideoRef.current) {
-            previewVideoRef.current.srcObject = stream;
-          }
-          setCameraCheck('success');
-          setMicCheck('success');
-          setHasCameraPermission(true);
-        } catch (error: any) {
-           if (isCancelled) return;
-          console.error('Permission check failed:', error);
-          setHasCameraPermission(false);
-          setCameraCheck('error');
-          setMicCheck('error');
-        }
-      };
-
-      setupPreviews();
-      checkInternetSpeed();
-
-      return () => {
-        isCancelled = true;
-        setPreviewStream(currentStream => {
-          if (currentStream) {
-            currentStream.getTracks().forEach(track => track.stop());
-          }
-          return null;
-        });
-      };
+    if (stage !== 'introduction') {
+      if (previewStream) {
+        previewStream.getTracks().forEach(track => track.stop());
+        setPreviewStream(null);
+      }
+      return;
     }
-  }, [stage, checkInternetSpeed]);
+  
+    let isCancelled = false;
+  
+    const setupDevicesAndStream = async () => {
+      try {
+        const initialStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        if (isCancelled) {
+          initialStream.getTracks().forEach(track => track.stop());
+          return;
+        }
+  
+        setCameraCheck('success');
+        setMicCheck('success');
+        setHasCameraPermission(true);
+  
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const audio = devices.filter(d => d.kind === 'audioinput');
+        const video = devices.filter(d => d.kind === 'videoinput');
+        setAudioDevices(audio);
+        setVideoDevices(video);
+  
+        initialStream.getTracks().forEach(track => track.stop());
+  
+        const currentAudioId = selectedAudioDeviceId || (audio.length > 0 ? audio[0].deviceId : '');
+        const currentVideoId = selectedVideoDeviceId || (video.length > 0 ? video[0].deviceId : '');
+  
+        if (!selectedAudioDeviceId && currentAudioId) setSelectedAudioDeviceId(currentAudioId);
+        if (!selectedVideoDeviceId && currentVideoId) setSelectedVideoDeviceId(currentVideoId);
+  
+        if (!currentVideoId || !currentAudioId) {
+          throw new Error("No video or audio devices found.");
+        }
+  
+        const specificStream = await navigator.mediaDevices.getUserMedia({
+          video: { deviceId: { exact: currentVideoId } },
+          audio: { deviceId: { exact: currentAudioId } }
+        });
+  
+        if (isCancelled) {
+          specificStream.getTracks().forEach(track => track.stop());
+          return;
+        }
+  
+        setPreviewStream(specificStream);
+        if (previewVideoRef.current) {
+          previewVideoRef.current.srcObject = specificStream;
+        }
+  
+      } catch (error: any) {
+        if (isCancelled) return;
+        console.error('Permission or device setup failed:', error);
+        setHasCameraPermission(false);
+        setCameraCheck('error');
+        setMicCheck('error');
+      }
+    };
+  
+    setupDevicesAndStream();
+    
+    if (internetCheckStatus === 'pending') {
+        checkInternetSpeed();
+    }
+  
+    return () => {
+      isCancelled = true;
+    };
+  }, [stage, selectedAudioDeviceId, selectedVideoDeviceId, checkInternetSpeed, internetCheckStatus, previewStream]);
+
 
   const captureSnapshot = useCallback((): string => {
     if (videoRef.current && videoRef.current.readyState >= 2) {
@@ -492,35 +544,65 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <ul className="space-y-3">
-                        <li className="flex items-start justify-between p-3 rounded-lg bg-secondary flex-wrap">
-                            <div className="flex items-center gap-3">
-                                <Camera className="w-5 h-5 text-muted-foreground" />
-                                <span className="font-medium">Camera</span>
+                        <li className="p-3 rounded-lg bg-secondary space-y-3">
+                            <div className="flex items-start justify-between flex-wrap">
+                                <div className="flex items-center gap-3">
+                                    <Camera className="w-5 h-5 text-muted-foreground" />
+                                    <span className="font-medium">Camera</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    {cameraCheck === 'pending' && <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />}
+                                    {cameraCheck === 'success' && <CheckCircle className="w-5 h-5 text-green-500" />}
+                                    {cameraCheck === 'error' && <AlertTriangle className="w-5 h-5 text-destructive" />}
+                                </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                                {cameraCheck === 'pending' && <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />}
-                                {cameraCheck === 'success' && <CheckCircle className="w-5 h-5 text-green-500" />}
-                                {cameraCheck === 'error' && <AlertTriangle className="w-5 h-5 text-destructive" />}
-                            </div>
-                             {cameraCheck === 'success' && (
-                                <div className="relative w-full aspect-video mt-3 rounded-md border bg-slate-900 overflow-hidden">
-                                    <video ref={previewVideoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
+                            {cameraCheck === 'success' && (
+                                <div className='space-y-3'>
+                                    <div className="relative max-w-sm mx-auto aspect-video rounded-md border bg-slate-900 overflow-hidden">
+                                        <video ref={previewVideoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
+                                    </div>
+                                    <Select value={selectedVideoDeviceId} onValueChange={setSelectedVideoDeviceId} disabled={videoDevices.length === 0}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select camera" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {videoDevices.map(device => (
+                                                <SelectItem key={device.deviceId} value={device.deviceId}>{device.label}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                             )}
                         </li>
-                        <li className="flex items-center justify-between p-3 rounded-lg bg-secondary">
-                            <div className="flex items-center gap-3">
-                                <Mic className="w-5 h-5 text-muted-foreground" />
-                                <span className="font-medium">Microphone</span>
+                        <li className="p-3 rounded-lg bg-secondary space-y-3">
+                            <div className="flex items-center justify-between flex-wrap">
+                                <div className="flex items-center gap-3">
+                                    <Mic className="w-5 h-5 text-muted-foreground" />
+                                    <span className="font-medium">Microphone</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    {micCheck === 'pending' && <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />}
+                                    {micCheck === 'success' && <CheckCircle className="w-5 h-5 text-green-500" />}
+                                    {micCheck === 'error' && <AlertTriangle className="w-5 h-5 text-destructive" />}
+                                </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                                {micCheck === 'pending' && <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />}
-                                {micCheck === 'success' && <>
-                                    <MicrophoneVisualizer stream={previewStream} />
-                                    <CheckCircle className="w-5 h-5 text-green-500" />
-                                </>}
-                                {micCheck === 'error' && <AlertTriangle className="w-5 h-5 text-destructive" />}
-                            </div>
+                            {micCheck === 'success' && (
+                                <div className='space-y-3'>
+                                    <div className='flex justify-center'>
+                                        <MicrophoneVisualizer stream={previewStream} />
+                                    </div>
+                                    <Select value={selectedAudioDeviceId} onValueChange={setSelectedAudioDeviceId} disabled={audioDevices.length === 0}>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select microphone" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {audioDevices.map(device => (
+                                                <SelectItem key={device.deviceId} value={device.deviceId}>{device.label}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
                         </li>
                         <li className="flex items-center justify-between p-3 rounded-lg bg-secondary">
                             <div className="flex items-center gap-3">
@@ -662,3 +744,5 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     </Card>
   );
 }
+
+    
