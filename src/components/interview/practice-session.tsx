@@ -8,8 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Video, StopCircle, RefreshCw, Send, AlertTriangle, ArrowRight, PartyPopper, Camera } from 'lucide-react';
+import { Loader2, Video, StopCircle, RefreshCw, Send, AlertTriangle, ArrowRight, PartyPopper, Camera, CheckCircle, Wifi } from 'lucide-react';
 import { submitInterview } from '@/app/actions/interview';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 type InterviewQuestion = Pick<Question, 'id' | 'text' | 'category_id' | 'audio_url' | 'tags'> & { categoryName: string };
 
@@ -57,6 +58,9 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [cameraCheck, setCameraCheck] = useState<'pending' | 'success' | 'error'>('pending');
+  const [internetSpeed, setInternetSpeed] = useState<number | null>(null);
+  const [internetCheckStatus, setInternetCheckStatus] = useState<'pending' | 'running' | 'success' | 'error'>('pending');
 
   const videoRef = useRef<HTMLVideoElement>(null);
   // const audioRef = useRef<HTMLAudioElement>(null);
@@ -103,6 +107,59 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
         return false;
     }
   }, [toast]);
+
+  useEffect(() => {
+    if (stage === 'introduction') {
+        const checkCameraAndMic = async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                stream.getTracks().forEach(track => track.stop());
+                setCameraCheck('success');
+                setHasCameraPermission(true);
+            } catch (error) {
+                console.error('Camera/mic check failed:', error);
+                setCameraCheck('error');
+                setHasCameraPermission(false);
+            }
+        };
+
+        const checkInternetSpeed = async () => {
+            setInternetCheckStatus('running');
+            try {
+                const testFileUrl = 'https://storage.googleapis.com/stedi-assets/test-files/1MB.txt';
+                const fileSizeInBytes = 1000000;
+                const startTime = new Date().getTime();
+                
+                const response = await fetch(testFileUrl, { cache: 'no-store' });
+                 if (!response.ok) {
+                  throw new Error(`Test file fetch failed with status: ${response.status}`);
+                }
+                await response.blob();
+                
+                const endTime = new Date().getTime();
+                
+                const duration = (endTime - startTime) / 1000;
+                if (duration < 0.1) {
+                    setInternetSpeed(100);
+                } else {
+                  const bitsLoaded = fileSizeInBytes * 8;
+                  const speedBps = bitsLoaded / duration;
+                  const speedMbps = parseFloat((speedBps / 1000 / 1000).toFixed(2));
+                  setInternetSpeed(speedMbps);
+                }
+                setInternetCheckStatus('success');
+
+            } catch (error) {
+                console.error('Internet speed test failed:', error);
+                setInternetSpeed(null);
+                setInternetCheckStatus('error');
+            }
+        };
+
+        checkCameraAndMic();
+        checkInternetSpeed();
+    }
+  }, [stage]);
 
   const captureSnapshot = useCallback((): string => {
     if (videoRef.current && videoRef.current.readyState >= 2) {
@@ -335,17 +392,66 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
         {/* <audio ref={audioRef} /> */}
         {stage === 'introduction' && (
              <>
-                <CardHeader>
+                <CardHeader className="text-center">
                     <CardTitle>Your Interview is Ready</CardTitle>
-                    <CardDescription>You will be asked {questions.length} questions in this session. Good luck!</CardDescription>
+                    <CardDescription>First, let's check your setup. You'll be asked {questions.length} questions.</CardDescription>
                 </CardHeader>
-                <CardContent className="text-center">
-                    <p className="text-lg">Click the button below to begin.</p>
+                <CardContent className="space-y-4">
+                    <ul className="space-y-3">
+                        <li className="flex items-center justify-between p-3 rounded-lg bg-secondary">
+                            <div className="flex items-center gap-3">
+                                <Camera className="w-5 h-5 text-muted-foreground" />
+                                <span className="font-medium">Camera & Microphone</span>
+                            </div>
+                            {cameraCheck === 'pending' && <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />}
+                            {cameraCheck === 'success' && <CheckCircle className="w-5 h-5 text-green-500" />}
+                            {cameraCheck === 'error' && <AlertTriangle className="w-5 h-5 text-destructive" />}
+                        </li>
+                        <li className="flex items-center justify-between p-3 rounded-lg bg-secondary">
+                            <div className="flex items-center gap-3">
+                                <Wifi className="w-5 h-5 text-muted-foreground" />
+                                <span className="font-medium">Internet Connection</span>
+                            </div>
+                            {(internetCheckStatus === 'pending' || internetCheckStatus === 'running') && <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />}
+                            {internetCheckStatus === 'success' && (
+                                <div className="flex items-center gap-2 text-green-500">
+                                    {internetSpeed && <span className="text-sm font-bold">{internetSpeed} Mbps</span>}
+                                    <CheckCircle className="w-5 h-5" />
+                                </div>
+                            )}
+                            {internetCheckStatus === 'error' && <AlertTriangle className="w-5 h-5 text-destructive" />}
+                        </li>
+                    </ul>
+                    {cameraCheck === 'error' && (
+                        <Alert variant="destructive">
+                            <AlertTriangle className="h-4 w-4" />
+                            <AlertTitle>Permission Denied</AlertTitle>
+                            <AlertDescription>
+                                Please allow camera and microphone access in your browser settings to proceed.
+                            </AlertDescription>
+                        </Alert>
+                    )}
+                    {internetCheckStatus === 'error' && (
+                        <Alert variant="destructive">
+                            <AlertTriangle className="h-4 w-4" />
+                            <AlertTitle>Connection Unstable</AlertTitle>
+                            <AlertDescription>
+                                We could not verify your internet speed. A stable connection is recommended.
+                            </AlertDescription>
+                        </Alert>
+                    )}
                 </CardContent>
-                <CardFooter className="justify-center">
-                    <Button size="lg" onClick={handleStartInterview}>
+                <CardFooter className="flex-col items-center gap-4">
+                    <Button 
+                        size="lg" 
+                        onClick={handleStartInterview}
+                        disabled={cameraCheck !== 'success' || internetCheckStatus !== 'success'}
+                    >
                         Start Interview
                     </Button>
+                    {(cameraCheck !== 'success' || internetCheckStatus !== 'success') && (
+                        <p className="text-xs text-muted-foreground">Please resolve the issues above to begin.</p>
+                    )}
                 </CardFooter>
             </>
         )}
