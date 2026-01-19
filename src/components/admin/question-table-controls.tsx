@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, Edit, Trash2, Loader2, Sparkles, Tag, PlayCircle, Radio } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, Sparkles, Tag, PlayCircle, Radio, Clock, Timer } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -337,6 +337,16 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                                         </Select>
                                     </div>
                                 </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="read-time">Read Time (sec)</Label>
+                                        <Input id="read-time" name="read-time" type="number" placeholder="e.g., 15" defaultValue="15" required />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="answer-time">Answer Time (sec)</Label>
+                                        <Input id="answer-time" name="answer-time" type="number" placeholder="e.g., 60" defaultValue="60" required />
+                                    </div>
+                                </div>
                                 <Button type="submit" disabled={isPending}>
                                     {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                     Create Question
@@ -389,6 +399,7 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                     <TableHead>Category</TableHead>
                     <TableHead>Level</TableHead>
                     <TableHead>Tags</TableHead>
+                    <TableHead>Timers</TableHead>
                     <TableHead className="w-[100px] text-right">Actions</TableHead>
                     </TableRow>
                 </TableHeader>
@@ -396,14 +407,6 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                     {questions?.map((q) => (
                     <TableRow key={q.id}>
                         <TableCell className="font-medium max-w-sm truncate">
-                        {/* <div className="flex items-center gap-2">
-                             {q.audio_url && (
-                                <Button variant="ghost" size="icon" onClick={() => handlePlayAudio(q.audio_url!)} className="h-7 w-7">
-                                    <PlayCircle className={cn("h-5 w-5", playingAudio?.src === q.audio_url && "text-primary")} />
-                                </Button>
-                            )}
-                            {q.text}
-                        </div> */}
                         {q.text}
                         </TableCell>
                         <TableCell>
@@ -422,6 +425,18 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                                         {tag}
                                     </Badge>
                                 ))}
+                            </div>
+                        </TableCell>
+                        <TableCell>
+                            <div className="flex flex-col gap-1">
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                    <Clock className="w-3 h-3" />
+                                    Read: {q.read_time_seconds || 15}s
+                                </div>
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                    <Timer className="w-3 h-3" />
+                                    Answer: {q.answer_time_seconds || 60}s
+                                </div>
                             </div>
                         </TableCell>
                         <TableCell className="text-right">
@@ -463,7 +478,7 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                     {!questions ||
                     (questions.length === 0 && (
                         <TableRow>
-                        <TableCell colSpan={5} className="text-center">
+                        <TableCell colSpan={6} className="text-center">
                             No questions found.
                         </TableCell>
                         </TableRow>
@@ -515,6 +530,16 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                                             ))}
                                         </SelectContent>
                                     </Select>
+                                </div>
+                            </div>
+                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="read-time-edit">Read Time (sec)</Label>
+                                    <Input id="read-time-edit" name="read-time" type="number" placeholder="e.g., 15" defaultValue={editingQuestion.read_time_seconds || 15} required />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="answer-time-edit">Answer Time (sec)</Label>
+                                    <Input id="answer-time-edit" name="answer-time" type="number" placeholder="e.g., 60" defaultValue={editingQuestion.answer_time_seconds || 60} required />
                                 </div>
                             </div>
                             <div className="flex gap-2">

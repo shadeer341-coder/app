@@ -38,6 +38,8 @@ export type Question = {
   created_at: string;
   tags?: string[];
   audio_url?: string;
+  read_time_seconds?: number;
+  answer_time_seconds?: number;
   question_categories: { name: string }; // For joining data
 };
 

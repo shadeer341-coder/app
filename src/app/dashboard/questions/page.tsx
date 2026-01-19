@@ -20,67 +20,67 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-async function generateAndSaveAudio(questionId: number, questionText: string) {
-    'use server';
-    // Use the service role client to bypass RLS for storage writes
-    const supabase = createSupabaseServerActionClient({ service: true });
+// async function generateAndSaveAudio(questionId: number, questionText: string) {
+//     'use server';
+//     // Use the service role client to bypass RLS for storage writes
+//     const supabase = createSupabaseServerActionClient({ service: true });
     
-    if (!process.env.OPENAI_API_KEY) {
-        console.error("OpenAI API key is not configured. Skipping audio generation.");
-        return { success: false, message: "OpenAI API key is not configured." };
-    }
+//     if (!process.env.OPENAI_API_KEY) {
+//         console.error("OpenAI API key is not configured. Skipping audio generation.");
+//         return { success: false, message: "OpenAI API key is not configured." };
+//     }
 
-    try {
-        const speechResponse = await openai.audio.speech.create({
-            model: "gpt-4o-mini-tts",
-            voice: "alloy",
-            input: questionText,
-        });
+//     try {
+//         const speechResponse = await openai.audio.speech.create({
+//             model: "gpt-4o-mini-tts",
+//             voice: "alloy",
+//             input: questionText,
+//         });
         
-        const audioBuffer = Buffer.from(await speechResponse.arrayBuffer());
-        const filePath = `public/${questionId}_${Date.now()}.mp3`;
+//         const audioBuffer = Buffer.from(await speechResponse.arrayBuffer());
+//         const filePath = `public/${questionId}_${Date.now()}.mp3`;
 
-        const { error: uploadError } = await supabase.storage
-            .from('audio-questions')
-            .upload(filePath, audioBuffer, {
-                contentType: 'audio/mpeg',
-                upsert: true
-            });
+//         const { error: uploadError } = await supabase.storage
+//             .from('audio-questions')
+//             .upload(filePath, audioBuffer, {
+//                 contentType: 'audio/mpeg',
+//                 upsert: true
+//             });
 
-        if (uploadError) {
-            throw uploadError;
-        }
+//         if (uploadError) {
+//             throw uploadError;
+//         }
 
-        const { data: publicUrlData } = supabase.storage
-            .from('audio-questions')
-            .getPublicUrl(filePath);
+//         const { data: publicUrlData } = supabase.storage
+//             .from('audio-questions')
+//             .getPublicUrl(filePath);
 
-        if (!publicUrlData) {
-            throw new Error("Could not get public URL for audio file.");
-        }
+//         if (!publicUrlData) {
+//             throw new Error("Could not get public URL for audio file.");
+//         }
 
-        const { error: updateError } = await supabase
-            .from('questions')
-            .update({ audio_url: publicUrlData.publicUrl })
-            .eq('id', questionId);
+//         const { error: updateError } = await supabase
+//             .from('questions')
+//             .update({ audio_url: publicUrlData.publicUrl })
+//             .eq('id', questionId);
 
-        if (updateError) {
-            throw updateError;
-        }
+//         if (updateError) {
+//             throw updateError;
+//         }
 
-        revalidatePath('/dashboard/questions');
-        return { success: true, message: "Audio generated and linked successfully.", audioUrl: publicUrlData.publicUrl };
+//         revalidatePath('/dashboard/questions');
+//         return { success: true, message: "Audio generated and linked successfully.", audioUrl: publicUrlData.publicUrl };
 
-    } catch (error) {
-        if (error instanceof Error) {
-            console.error('Error generating or saving audio:', error.message);
-            return { success: false, message: error.message };
-        } else {
-            console.error('An unknown error occurred during audio processing:', error);
-            return { success: false, message: 'An unknown error occurred during audio processing.' };
-        }
-    }
-}
+//     } catch (error) {
+//         if (error instanceof Error) {
+//             console.error('Error generating or saving audio:', error.message);
+//             return { success: false, message: error.message };
+//         } else {
+//             console.error('An unknown error occurred during audio processing:', error);
+//             return { success: false, message: 'An unknown error occurred during audio processing.' };
+//         }
+//     }
+// }
 
 
 async function createQuestion(formData: FormData) {
@@ -103,6 +103,8 @@ async function createQuestion(formData: FormData) {
     category_id: Number(formData.get('question-category')),
     level: String(formData.get('question-level')) as QuestionLevel,
     tags: tags.length > 0 ? tags : null,
+    read_time_seconds: Number(formData.get('read-time')),
+    answer_time_seconds: Number(formData.get('answer-time')),
   };
 
   const { data, error } = await supabase.from('questions').insert(questionData).select().single();
@@ -112,9 +114,9 @@ async function createQuestion(formData: FormData) {
     return { success: false, message: error.message };
   } else {
     // Generate audio asynchronously, don't block the response
-    if (data?.id) {
-        generateAndSaveAudio(data.id, questionText);
-    }
+    // if (data?.id) {
+    //     generateAndSaveAudio(data.id, questionText);
+    // }
     revalidatePath('/dashboard/questions');
     return { success: true, message: "Question created successfully. Audio generation is in progress." };
   }
@@ -141,6 +143,8 @@ async function updateQuestion(formData: FormData) {
       category_id: Number(formData.get('question-category')),
       level: String(formData.get('question-level')) as QuestionLevel,
       tags: tags.length > 0 ? tags : null,
+      read_time_seconds: Number(formData.get('read-time')),
+      answer_time_seconds: Number(formData.get('answer-time')),
     };
 
     // Check if the text has changed to decide whether to regenerate audio
@@ -162,9 +166,9 @@ async function updateQuestion(formData: FormData) {
         return { success: false, message: error.message };
     } else {
         const textHasChanged = existingQuestion?.text !== questionText;
-        if (textHasChanged) {
-            generateAndSaveAudio(questionId, questionText);
-        }
+        // if (textHasChanged) {
+        //     generateAndSaveAudio(questionId, questionText);
+        // }
         revalidatePath('/dashboard/questions');
         return { success: true, message: `Question updated successfully. ${textHasChanged ? "Audio regeneration is in progress." : ""}` };
     }
@@ -187,10 +191,10 @@ async function deleteQuestion(formData: FormData) {
     }
 }
 
-async function generateQuestionAudioAction(questionId: number, questionText: string) {
-    'use server';
-    return await generateAndSaveAudio(questionId, questionText);
-}
+// async function generateQuestionAudioAction(questionId: number, questionText: string) {
+//     'use server';
+//     return await generateAndSaveAudio(questionId, questionText);
+// }
 
 
 export default async function QuestionsPage({ searchParams }: { searchParams: { [key: string]: string | string[] | undefined }}) {
@@ -237,7 +241,7 @@ export default async function QuestionsPage({ searchParams }: { searchParams: { 
 
   
   const categories = (categoriesData as QuestionCategory[] | null) || [];
-  const questions = (questionsData as any[] | null) || [];
+  const questions = (questionsData as Question[] | null) || [];
   const totalPages = Math.ceil((totalCount || 0) / ITEMS_PER_PAGE);
 
   return (
