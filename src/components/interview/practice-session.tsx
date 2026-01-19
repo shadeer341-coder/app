@@ -240,9 +240,11 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     }
   
     let isCancelled = false;
+    let specificStream: MediaStream | null = null;
   
     const setupDevicesAndStream = async () => {
       try {
+        // This will request permission if not already granted
         const initialStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         if (isCancelled) {
           initialStream.getTracks().forEach(track => track.stop());
@@ -259,6 +261,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
         setAudioDevices(audio);
         setVideoDevices(video);
   
+        // We can stop the initial generic stream now that we have the device list
         initialStream.getTracks().forEach(track => track.stop());
   
         const currentAudioId = selectedAudioDeviceId || (audio.length > 0 ? audio[0].deviceId : '');
@@ -271,7 +274,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
           throw new Error("No video or audio devices found.");
         }
   
-        const specificStream = await navigator.mediaDevices.getUserMedia({
+        specificStream = await navigator.mediaDevices.getUserMedia({
           video: { deviceId: { exact: currentVideoId } },
           audio: { deviceId: { exact: currentAudioId } }
         });
@@ -303,8 +306,11 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
   
     return () => {
       isCancelled = true;
+      if (specificStream) {
+        specificStream.getTracks().forEach(track => track.stop());
+      }
     };
-  }, [stage, selectedAudioDeviceId, selectedVideoDeviceId, checkInternetSpeed, internetCheckStatus, previewStream]);
+  }, [stage, selectedAudioDeviceId, selectedVideoDeviceId, checkInternetSpeed, internetCheckStatus]);
 
 
   const captureSnapshot = useCallback((): string => {
@@ -744,5 +750,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     </Card>
   );
 }
+
+    
 
     
