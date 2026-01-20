@@ -168,33 +168,44 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     }
   }, []);
 
-  const getCameraPermission = useCallback(async () => {
+  const getCameraPermission = useCallback(async (isInitial = false) => {
     if (streamRef.current && videoRef.current?.srcObject) {
         return true;
     }
-
     try {
+        const audioConstraint = selectedAudioDeviceId ? { deviceId: { exact: selectedAudioDeviceId } } : true;
+        const videoConstraint = selectedVideoDeviceId ? { deviceId: { exact: selectedVideoDeviceId } } : true;
+
         const stream = await navigator.mediaDevices.getUserMedia({
-            video: selectedVideoDeviceId ? { deviceId: { exact: selectedVideoDeviceId } } : true,
-            audio: selectedAudioDeviceId ? { deviceId: { exact: selectedAudioDeviceId } } : true
+            video: videoConstraint,
+            audio: audioConstraint
         });
-        streamRef.current = stream;
-        if (videoRef.current) {
-            videoRef.current.srcObject = stream;
+
+        if (isInitial) {
+            setPreviewStream(stream);
+            if (previewVideoRef.current) {
+                previewVideoRef.current.srcObject = stream;
+            }
+        } else {
+            streamRef.current = stream;
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+            }
         }
         setHasCameraPermission(true);
         return true;
     } catch (error) {
-        console.error('Error accessing camera:', error);
+        console.error('Error accessing media devices:', error);
         setHasCameraPermission(false);
         toast({
             variant: 'destructive',
-            title: 'Camera Access Denied',
+            title: 'Permission Denied',
             description: 'Please enable camera and microphone permissions in your browser settings.',
         });
         return false;
     }
   }, [selectedAudioDeviceId, selectedVideoDeviceId, toast]);
+
 
   const checkInternetSpeed = useCallback(async () => {
     setInternetCheckStatus('running');
@@ -246,9 +257,8 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     }
 
     let isCancelled = false;
-    let currentStream: MediaStream | null = null;
-
-    const setupDevicesAndStream = async () => {
+    
+    const setupDevices = async () => {
         try {
             const devices = await navigator.mediaDevices.enumerateDevices();
             if (isCancelled) return;
@@ -258,42 +268,21 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
             setAudioDevices(audio);
             setVideoDevices(video);
 
-            const hasPermissions = audio.length > 0 && video.length > 0 && audio[0].label && video[0].label;
+            const hasPermissions = audio.length > 0 && video.length > 0 && audio.some(d => d.label) && video.some(d => d.label);
 
-            if (!hasPermissions) {
-                 await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            if (hasPermissions) {
+                 if (!selectedAudioDeviceId) setSelectedAudioDeviceId(audio[0].deviceId);
+                 if (!selectedVideoDeviceId) setSelectedVideoDeviceId(video[0].deviceId);
+                 setCameraCheck('success');
+                 setMicCheck('success');
+                 getCameraPermission(true);
+            } else {
+                // Request permissions to get labels
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                stream.getTracks().forEach(track => track.stop());
+                setupDevices(); // Re-run to populate labels and lists
             }
-
-            setCameraCheck('success');
-            setMicCheck('success');
-            setHasCameraPermission(true);
-
-            const currentAudioId = selectedAudioDeviceId || (audio.length > 0 ? audio[0].deviceId : '');
-            const currentVideoId = selectedVideoDeviceId || (video.length > 0 ? video[0].deviceId : '');
-
-            if (!selectedAudioDeviceId && currentAudioId) setSelectedAudioDeviceId(currentAudioId);
-            if (!selectedVideoDeviceId && currentVideoId) setSelectedVideoDeviceId(currentVideoId);
-
-            if (!currentVideoId || !currentAudioId) {
-                throw new Error("No video or audio devices found.");
-            }
-
-            currentStream = await navigator.mediaDevices.getUserMedia({
-                video: { deviceId: { exact: currentVideoId } },
-                audio: { deviceId: { exact: currentAudioId } }
-            });
-
-            if (isCancelled) {
-                currentStream.getTracks().forEach(track => track.stop());
-                return;
-            }
-
-            setPreviewStream(currentStream);
-            if (previewVideoRef.current) {
-                previewVideoRef.current.srcObject = currentStream;
-            }
-
-        } catch (error: any) {
+        } catch (error) {
             if (isCancelled) return;
             console.error('Permission or device setup failed:', error);
             setHasCameraPermission(false);
@@ -302,7 +291,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
         }
     };
 
-    setupDevicesAndStream();
+    setupDevices();
     
     if (internetCheckStatus === 'pending') {
         checkInternetSpeed();
@@ -310,15 +299,8 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
 
     return () => {
         isCancelled = true;
-        if (currentStream) {
-            currentStream.getTracks().forEach(track => track.stop());
-        }
-         if (previewStream) {
-            previewStream.getTracks().forEach(track => track.stop());
-            setPreviewStream(null);
-        }
     };
-}, [stage, selectedAudioDeviceId, selectedVideoDeviceId, internetCheckStatus, checkInternetSpeed]);
+}, [stage, getCameraPermission, internetCheckStatus, checkInternetSpeed, selectedAudioDeviceId, selectedVideoDeviceId]);
 
 
   const captureSnapshot = useCallback((): string => {
@@ -484,6 +466,10 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
   
   const handleStartInterview = () => {
     setStage('answering');
+    if (previewStream) {
+        previewStream.getTracks().forEach(track => track.stop());
+        setPreviewStream(null);
+    }
     getCameraPermission();
   }
 
@@ -552,8 +538,8 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen w-full p-4 sm:p-6 lg:p-8">
-        <Card className="w-full max-w-6xl">
+    <div className="flex items-stretch min-h-screen w-full p-4 sm:p-6 lg:p-8">
+        <Card className="w-full flex flex-col">
             {/* <audio ref={audioRef} /> */}
             {stage === 'introduction' && (
                 <>
@@ -561,7 +547,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
                         <CardTitle className="font-headline text-3xl md:text-4xl">Your Interview is Ready</CardTitle>
                         <CardDescription>First, let's check your setup. You'll be asked {questions.length} questions.</CardDescription>
                     </CardHeader>
-                    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 items-start">
+                    <CardContent className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 items-center">
                         {/* Left Column */}
                         <div className="space-y-4">
                             <ul className="space-y-3">
@@ -698,9 +684,9 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
             )}
         
         {(stage === 'answering' || stage === 'recording') && (
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start pt-6">
+            <CardContent className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-8 items-center pt-6">
                 {/* Left column */}
-                <div className="space-y-6 flex flex-col h-full">
+                <div className="space-y-6 flex flex-col h-full justify-center">
                     <div className="space-y-2">
                         <CardTitle>Question {currentQuestionIndex + 1} of {questions.length}</CardTitle>
                         <CardDescription>Category: <strong>{currentQuestion?.categoryName}</strong></CardDescription>
@@ -724,7 +710,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
                 </div>
 
                 {/* Right column */}
-                <div className="space-y-4 sticky top-8">
+                <div className="space-y-4">
                     <div className="relative aspect-video w-full rounded-md border bg-slate-900 overflow-hidden">
                         <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
                         {hasCameraPermission === false && (
@@ -746,9 +732,9 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
         )}
         
         {stage === 'reviewing' && videoRecordings[currentQuestionIndex] && (
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start pt-6">
+            <CardContent className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-8 items-center pt-6">
                 {/* Left column */}
-                <div className="space-y-6">
+                <div className="space-y-6 flex flex-col justify-center">
                     <div className="space-y-2">
                         <CardTitle>Review Your Answer for Question {currentQuestionIndex + 1}</CardTitle>
                         <CardDescription>You can re-record or proceed. Note: this is a silent preview.</CardDescription>
@@ -766,7 +752,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
                     </div>
                 </div>
                 {/* Right column */}
-                <div className="space-y-4 sticky top-8">
+                <div className="space-y-4">
                     <div className="aspect-video w-full rounded-md border bg-black overflow-hidden">
                         <video src={videoRecordings[currentQuestionIndex]!} className="w-full h-full" playsInline autoPlay loop muted />
                     </div>
