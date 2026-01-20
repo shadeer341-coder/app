@@ -1,5 +1,4 @@
 
-
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import type { Question, QuestionCategory } from '@/lib/types';
 import { PracticeSession } from '@/components/interview/practice-session';
@@ -39,18 +38,20 @@ export default async function PracticePage() {
 
     if (categoriesError || questionsError) {
         return (
-            <Card>
-                <CardHeader>
-                    <CardTitle>Error</CardTitle>
-                    <CardDescription>Could not load interview questions at this time.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <p>There was a problem fetching the necessary data from the database. Please try again later.</p>
-                    <p className="text-sm text-muted-foreground mt-4">
-                        {categoriesError?.message} {questionsError?.message}
-                    </p>
-                </CardContent>
-            </Card>
+            <div className="flex items-center justify-center min-h-screen p-4">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Error</CardTitle>
+                        <CardDescription>Could not load interview questions at this time.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <p>There was a problem fetching the necessary data from the database. Please try again later.</p>
+                        <p className="text-sm text-muted-foreground mt-4">
+                            {categoriesError?.message} {questionsError?.message}
+                        </p>
+                    </CardContent>
+                </Card>
+            </div>
         );
     }
 
@@ -64,8 +65,21 @@ export default async function PracticePage() {
 
     // Generate the question queue
     let interviewQueue: (Pick<Question, 'id' | 'text' | 'category_id' | 'audio_url' | 'tags'> & { categoryName: string })[] = [];
+    const defaultCategory = categories.find(c => c.name.toLowerCase() === 'default');
+    const otherCategories = categories.filter(c => c.name.toLowerCase() !== 'default');
 
-    categories.forEach(category => {
+
+    // Add "Default" questions first, if they exist
+    if (defaultCategory) {
+        const defaultQuestions = questions.filter(q => q.category_id === defaultCategory.id);
+        const shuffledDefault = shuffle(defaultQuestions);
+        shuffledDefault.slice(0, defaultCategory.question_limit).forEach(q => {
+            interviewQueue.push({ ...q, categoryName: defaultCategory.name });
+        });
+    }
+
+    // Then add questions from other categories
+    otherCategories.forEach(category => {
         if (category.question_limit > 0) {
             const allCategoryQuestions = questions.filter(q => q.category_id === category.id);
             
@@ -95,19 +109,9 @@ export default async function PracticePage() {
     });
     
     return (
-        <div className="space-y-6">
-            <div>
-                <h1 className="font-headline text-3xl font-bold tracking-tight">
-                    Practice Interview
-                </h1>
-                <p className="text-muted-foreground">
-                    Answer the series of questions. You can review and re-record each answer before moving on.
-                </p>
-            </div>
-            <PracticeSession 
-                questions={interviewQueue.slice(0, 2)}
-                user={user}
-            />
-        </div>
+        <PracticeSession 
+            questions={interviewQueue.slice(0, 2)}
+            user={user}
+        />
     );
 }
