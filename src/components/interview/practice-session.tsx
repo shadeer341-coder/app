@@ -65,7 +65,13 @@ const MicrophoneVisualizer = ({ stream }: { stream: MediaStream | null }) => {
 
             const updateVolume = () => {
                 analyser.getByteFrequencyData(dataArray);
-                const average = dataArray.reduce((acc, val) => acc + val, 0) / bufferLength;
+                
+                let sum = 0;
+                for (let i = 0; i < bufferLength; i++) {
+                    sum += dataArray[i];
+                }
+                const average = sum / bufferLength;
+
                 const normalized = Math.min(average / 140, 1);
                 setVolume(normalized);
                 animationFrameIdRef.current = requestAnimationFrame(updateVolume);
@@ -244,6 +250,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     const setupDevicesAndStream = async () => {
       let specificStream: MediaStream | null = null;
       try {
+        // Request a temporary stream just to get permissions and enumerate devices
         const initialStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         if (isCancelled) {
           initialStream.getTracks().forEach(track => track.stop());
@@ -260,6 +267,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
         setAudioDevices(audio);
         setVideoDevices(video);
   
+        // We have the lists, stop the temporary stream
         initialStream.getTracks().forEach(track => track.stop());
   
         const currentAudioId = selectedAudioDeviceId || (audio.length > 0 ? audio[0].deviceId : '');
@@ -294,15 +302,9 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
         setCameraCheck('error');
         setMicCheck('error');
       }
-  
-      return () => {
-        if (specificStream) {
-          specificStream.getTracks().forEach(track => track.stop());
-        }
-      };
     };
   
-    const stopStream = setupDevicesAndStream();
+    setupDevicesAndStream();
     
     if (internetCheckStatus === 'pending') {
         checkInternetSpeed();
@@ -310,9 +312,12 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
   
     return () => {
       isCancelled = true;
-      stopStream.then(cleanup => cleanup && cleanup());
+      if (previewStream) {
+          previewStream.getTracks().forEach(track => track.stop());
+          setPreviewStream(null);
+      }
     };
-  }, [stage, selectedAudioDeviceId, selectedVideoDeviceId, checkInternetSpeed, internetCheckStatus]);
+  }, [stage, selectedAudioDeviceId, selectedVideoDeviceId, internetCheckStatus, checkInternetSpeed]);
 
 
   const captureSnapshot = useCallback((): string => {
