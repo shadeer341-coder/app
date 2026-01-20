@@ -317,7 +317,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
           setPreviewStream(null);
       }
     };
-  }, [stage, selectedAudioDeviceId, selectedVideoDeviceId, internetCheckStatus, checkInternetSpeed]);
+  }, [stage, selectedAudioDeviceId, selectedVideoDeviceId, internetCheckStatus, checkInternetSpeed, previewStream]);
 
 
   const captureSnapshot = useCallback((): string => {
@@ -552,18 +552,105 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
 
   return (
     <div className="flex items-center justify-center min-h-screen w-full p-4 sm:p-6 lg:p-8">
-        <Card className="w-full max-w-4xl">
+        <Card className="w-full max-w-6xl">
             {/* <audio ref={audioRef} /> */}
             {stage === 'introduction' && (
                 <>
                     <CardHeader className="text-center">
-                        <CardTitle>Your Interview is Ready</CardTitle>
+                        <CardTitle className="font-headline text-3xl md:text-4xl">Your Interview is Ready</CardTitle>
                         <CardDescription>First, let's check your setup. You'll be asked {questions.length} questions.</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                        <ul className="space-y-3">
-                            <li className="p-3 rounded-lg bg-secondary space-y-3">
-                                <div className="flex items-start justify-between flex-wrap">
+                    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 items-start">
+                        {/* Left Column */}
+                        <div className="space-y-4">
+                            <ul className="space-y-3">
+                                <li className="p-3 rounded-lg bg-secondary space-y-3">
+                                    <div className="flex items-center justify-between flex-wrap">
+                                        <div className="flex items-center gap-3">
+                                            <Mic className="w-5 h-5 text-muted-foreground" />
+                                            <span className="font-medium">Microphone</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {micCheck === 'pending' && <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />}
+                                            {micCheck === 'success' && <CheckCircle className="w-5 h-5 text-green-500" />}
+                                            {micCheck === 'error' && <AlertTriangle className="w-5 h-5 text-destructive" />}
+                                        </div>
+                                    </div>
+                                    {micCheck === 'success' && (
+                                        <div className='space-y-3'>
+                                            <div className="pt-2">
+                                                <MicrophoneVisualizer stream={previewStream} />
+                                            </div>
+                                            <Select value={selectedAudioDeviceId} onValueChange={setSelectedAudioDeviceId} disabled={audioDevices.length <= 1}>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select microphone" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {audioDevices.map(device => (
+                                                        <SelectItem key={device.deviceId} value={device.deviceId}>{device.label}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    )}
+                                </li>
+                                <li className="flex items-center justify-between p-3 rounded-lg bg-secondary">
+                                    <div className="flex items-center gap-3">
+                                        <Wifi className="w-5 h-5 text-muted-foreground" />
+                                        <span className="font-medium">Internet Connection</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        {(internetCheckStatus === 'pending' || internetCheckStatus === 'running') && <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />}
+                                        {internetCheckStatus === 'success' && (
+                                            <>
+                                                {internetSpeed !== null && <span className="text-sm font-bold text-green-500">{internetSpeed} Mbps</span>}
+                                                {downloadDuration !== null && <span className="text-xs text-muted-foreground">({downloadDuration}ms)</span>}
+                                                <CheckCircle className="w-5 h-5 text-green-500" />
+                                            </>
+                                        )}
+                                        {internetCheckStatus === 'error' && <AlertTriangle className="w-5 h-5 text-destructive" />}
+                                        
+                                        {(internetCheckStatus === 'success' || internetCheckStatus === 'error') && (
+                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={checkInternetSpeed}>
+                                                <RefreshCw className="w-4 h-4"/>
+                                                <span className="sr-only">Retry</span>
+                                            </Button>
+                                        )}
+                                    </div>
+                                </li>
+                            </ul>
+                            {cameraCheck === 'error' && (
+                                <Alert variant="destructive">
+                                    <AlertTriangle className="h-4 w-4" />
+                                    <AlertTitle>Camera Permission Denied</AlertTitle>
+                                    <AlertDescription>
+                                        Please allow camera access in your browser settings to proceed.
+                                    </AlertDescription>
+                                </Alert>
+                            )}
+                            {micCheck === 'error' && (
+                                <Alert variant="destructive">
+                                    <AlertTriangle className="h-4 w-4" />
+                                    <AlertTitle>Microphone Permission Denied</AlertTitle>
+                                    <AlertDescription>
+                                        Please allow microphone access in your browser settings to proceed.
+                                    </AlertDescription>
+                                </Alert>
+                            )}
+                            {internetCheckStatus === 'error' && (
+                                <Alert variant="destructive">
+                                    <AlertTriangle className="h-4 w-4" />
+                                    <AlertTitle>Connection Unstable</AlertTitle>
+                                    <AlertDescription>
+                                        We could not verify your internet speed. A stable connection is recommended.
+                                    </AlertDescription>
+                                </Alert>
+                            )}
+                        </div>
+                        {/* Right Column */}
+                         <div className="space-y-4">
+                            <div className="p-3 rounded-lg bg-secondary space-y-3">
+                                <div className="flex items-center justify-between flex-wrap">
                                     <div className="flex items-center gap-3">
                                         <Camera className="w-5 h-5 text-muted-foreground" />
                                         <span className="font-medium">Camera</span>
@@ -574,12 +661,12 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
                                         {cameraCheck === 'error' && <AlertTriangle className="w-5 h-5 text-destructive" />}
                                     </div>
                                 </div>
-                                {cameraCheck === 'success' && (
+                                 {cameraCheck === 'success' && (
                                     <div className='space-y-3'>
-                                        <div className="relative max-w-sm mx-auto aspect-video rounded-md border bg-slate-900 overflow-hidden">
+                                        <div className="relative w-full aspect-video rounded-md border bg-slate-900 overflow-hidden">
                                             <video ref={previewVideoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
                                         </div>
-                                        <Select value={selectedVideoDeviceId} onValueChange={setSelectedVideoDeviceId} disabled={videoDevices.length === 0}>
+                                        <Select value={selectedVideoDeviceId} onValueChange={setSelectedVideoDeviceId} disabled={videoDevices.length <= 1}>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Select camera" />
                                             </SelectTrigger>
@@ -591,89 +678,8 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
                                         </Select>
                                     </div>
                                 )}
-                            </li>
-                            <li className="p-3 rounded-lg bg-secondary space-y-3">
-                                <div className="flex items-center justify-between flex-wrap">
-                                    <div className="flex items-center gap-3">
-                                        <Mic className="w-5 h-5 text-muted-foreground" />
-                                        <span className="font-medium">Microphone</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        {micCheck === 'pending' && <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />}
-                                        {micCheck === 'success' && <CheckCircle className="w-5 h-5 text-green-500" />}
-                                        {micCheck === 'error' && <AlertTriangle className="w-5 h-5 text-destructive" />}
-                                    </div>
-                                </div>
-                                {micCheck === 'success' && (
-                                    <div className='space-y-3'>
-                                        <div className="pt-2">
-                                            <MicrophoneVisualizer stream={previewStream} />
-                                        </div>
-                                        <Select value={selectedAudioDeviceId} onValueChange={setSelectedAudioDeviceId} disabled={audioDevices.length === 0}>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Select microphone" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {audioDevices.map(device => (
-                                                    <SelectItem key={device.deviceId} value={device.deviceId}>{device.label}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                )}
-                            </li>
-                            <li className="flex items-center justify-between p-3 rounded-lg bg-secondary">
-                                <div className="flex items-center gap-3">
-                                    <Wifi className="w-5 h-5 text-muted-foreground" />
-                                    <span className="font-medium">Internet Connection</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    {(internetCheckStatus === 'pending' || internetCheckStatus === 'running') && <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />}
-                                    {internetCheckStatus === 'success' && (
-                                        <>
-                                            {internetSpeed !== null && <span className="text-sm font-bold text-green-500">{internetSpeed} Mbps</span>}
-                                            {downloadDuration !== null && <span className="text-xs text-muted-foreground">({downloadDuration}ms)</span>}
-                                            <CheckCircle className="w-5 h-5 text-green-500" />
-                                        </>
-                                    )}
-                                    {internetCheckStatus === 'error' && <AlertTriangle className="w-5 h-5 text-destructive" />}
-                                    
-                                    {(internetCheckStatus === 'success' || internetCheckStatus === 'error') && (
-                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={checkInternetSpeed}>
-                                            <RefreshCw className="w-4 h-4"/>
-                                            <span className="sr-only">Retry</span>
-                                        </Button>
-                                    )}
-                                </div>
-                            </li>
-                        </ul>
-                        {cameraCheck === 'error' && (
-                            <Alert variant="destructive">
-                                <AlertTriangle className="h-4 w-4" />
-                                <AlertTitle>Camera Permission Denied</AlertTitle>
-                                <AlertDescription>
-                                    Please allow camera access in your browser settings to proceed.
-                                </AlertDescription>
-                            </Alert>
-                        )}
-                        {micCheck === 'error' && (
-                            <Alert variant="destructive">
-                                <AlertTriangle className="h-4 w-4" />
-                                <AlertTitle>Microphone Permission Denied</AlertTitle>
-                                <AlertDescription>
-                                    Please allow microphone access in your browser settings to proceed.
-                                </AlertDescription>
-                            </Alert>
-                        )}
-                        {internetCheckStatus === 'error' && (
-                            <Alert variant="destructive">
-                                <AlertTriangle className="h-4 w-4" />
-                                <AlertTitle>Connection Unstable</AlertTitle>
-                                <AlertDescription>
-                                    We could not verify your internet speed. A stable connection is recommended.
-                                </AlertDescription>
-                            </Alert>
-                        )}
+                            </div>
+                        </div>
                     </CardContent>
                     <CardFooter className="flex-col items-center gap-4">
                         <Button 
@@ -691,17 +697,33 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
             )}
         
         {(stage === 'answering' || stage === 'recording') && (
-            <>
-                <CardHeader>
-                    <CardTitle>Question {currentQuestionIndex + 1} of {questions.length}</CardTitle>
-                    <CardDescription>Category: <strong>{currentQuestion?.categoryName}</strong></CardDescription>
-                    <Progress value={progressValue} className="mt-2" />
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    <div className="text-center p-8 border rounded-lg bg-secondary">
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start pt-6">
+                {/* Left column */}
+                <div className="space-y-6 flex flex-col h-full">
+                    <div className="space-y-2">
+                        <CardTitle>Question {currentQuestionIndex + 1} of {questions.length}</CardTitle>
+                        <CardDescription>Category: <strong>{currentQuestion?.categoryName}</strong></CardDescription>
+                        <Progress value={progressValue} className="mt-2" />
+                    </div>
+                    <div className="text-left p-6 border rounded-lg bg-secondary flex-grow flex items-center">
                         <p className="text-2xl font-bold font-headline">{currentQuestion?.text}</p>
                     </div>
+                    <div className="flex justify-start">
+                        {stage === 'answering' && (
+                            <Button size="lg" onClick={startRecording} disabled={hasCameraPermission !== true}>
+                                <Camera className="mr-2" /> Start Recording
+                            </Button>
+                        )}
+                        {stage === 'recording' && (
+                            <Button size="lg" variant="destructive" onClick={stopRecording}>
+                                <StopCircle className="mr-2" /> Stop Recording
+                            </Button>
+                        )}
+                    </div>
+                </div>
 
+                {/* Right column */}
+                <div className="space-y-4 sticky top-8">
                     <div className="relative aspect-video w-full rounded-md border bg-slate-900 overflow-hidden">
                         <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
                         {hasCameraPermission === false && (
@@ -718,35 +740,20 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
                             </div>
                         )}
                     </div>
-
-                    <div className="flex justify-center">
-                        {stage === 'answering' && (
-                            <Button size="lg" onClick={startRecording} disabled={hasCameraPermission !== true}>
-                                <Camera className="mr-2" /> Start Recording
-                            </Button>
-                        )}
-                        {stage === 'recording' && (
-                            <Button size="lg" variant="destructive" onClick={stopRecording}>
-                                <StopCircle className="mr-2" /> Stop Recording
-                            </Button>
-                        )}
-                    </div>
-                </CardContent>
-            </>
+                </div>
+            </CardContent>
         )}
         
         {stage === 'reviewing' && videoRecordings[currentQuestionIndex] && (
-            <>
-                <CardHeader>
-                    <CardTitle>Review Your Answer for Question {currentQuestionIndex + 1}</CardTitle>
-                    <CardDescription>You can re-record or proceed. Note: this is a silent preview.</CardDescription>
-                    <Progress value={((currentQuestionIndex + 1) / questions.length) * 100} className="mt-2" />
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    <div className="aspect-video w-full rounded-md border bg-black overflow-hidden">
-                        <video src={videoRecordings[currentQuestionIndex]!} className="w-full h-full" playsInline autoPlay loop muted />
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start pt-6">
+                {/* Left column */}
+                <div className="space-y-6">
+                    <div className="space-y-2">
+                        <CardTitle>Review Your Answer for Question {currentQuestionIndex + 1}</CardTitle>
+                        <CardDescription>You can re-record or proceed. Note: this is a silent preview.</CardDescription>
+                        <Progress value={((currentQuestionIndex + 1) / questions.length) * 100} className="mt-2" />
                     </div>
-                    <div className="flex justify-center gap-4">
+                    <div className="flex justify-start gap-4">
                         <Button size="lg" variant="outline" onClick={handleRerecord} disabled={isTranscribing}>
                             <RefreshCw className="mr-2" /> Re-record
                         </Button>
@@ -756,8 +763,14 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
                             {isLastQuestion ? 'Finish & Submit' : 'Next Question'}
                         </Button>
                     </div>
-                </CardContent>
-            </>
+                </div>
+                {/* Right column */}
+                <div className="space-y-4 sticky top-8">
+                    <div className="aspect-video w-full rounded-md border bg-black overflow-hidden">
+                        <video src={videoRecordings[currentQuestionIndex]!} className="w-full h-full" playsInline autoPlay loop muted />
+                    </div>
+                </div>
+            </CardContent>
         )}
         </Card>
     </div>
