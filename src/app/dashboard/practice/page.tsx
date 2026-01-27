@@ -1,4 +1,5 @@
 
+
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import type { Question, QuestionCategory } from '@/lib/types';
 import { PracticeSession } from '@/components/interview/practice-session';
@@ -25,6 +26,8 @@ export default async function PracticePage() {
         redirect('/');
     }
 
+    type QuestionQueueItem = Pick<Question, 'id' | 'text' | 'category_id' | 'audio_url' | 'tags' | 'read_time_seconds' | 'answer_time_seconds'> & { categoryName: string };
+
     // Fetch all data in parallel
     const [
         { data: categoriesData, error: categoriesError },
@@ -32,7 +35,7 @@ export default async function PracticePage() {
         { data: answeredAttempts, error: answeredError }
     ] = await Promise.all([
         supabase.from('question_categories').select('*').order('sort_order', { ascending: true }),
-        supabase.from('questions').select('id, text, category_id, audio_url, tags'),
+        supabase.from('questions').select('id, text, category_id, audio_url, tags, read_time_seconds, answer_time_seconds'),
         supabase.from('interview_attempts').select('question_id').eq('user_id', user.id)
     ]);
 
@@ -64,12 +67,21 @@ export default async function PracticePage() {
     const answeredQuestionIds = new Set(answeredAttempts?.map(a => a.question_id) || []);
 
     // Generate the question queue
-    let interviewQueue: (Pick<Question, 'id' | 'text' | 'category_id' | 'audio_url' | 'tags'> & { categoryName: string })[] = [];
+    let interviewQueue: QuestionQueueItem[] = [];
+
+    const preInterviewCheckCategory = categories.find(c => c.name === 'Pre-Interview Checks');
     const defaultCategory = categories.find(c => c.name.toLowerCase() === 'default');
-    const otherCategories = categories.filter(c => c.name.toLowerCase() !== 'default');
+    const otherCategories = categories.filter(c => c.name.toLowerCase() !== 'default' && c.name !== 'Pre-Interview Checks');
 
+    // 1. Add "Pre-Interview Checks" questions first. They are mandatory.
+    if (preInterviewCheckCategory) {
+        const checkQuestions = questions.filter(q => q.category_id === preInterviewCheckCategory.id);
+        checkQuestions.forEach(q => {
+            interviewQueue.push({ ...q, categoryName: preInterviewCheckCategory.name });
+        });
+    }
 
-    // Add "Default" questions first, if they exist
+    // 2. Add "Default" questions next, if they exist
     if (defaultCategory) {
         const defaultQuestions = questions.filter(q => q.category_id === defaultCategory.id);
         const shuffledDefault = shuffle(defaultQuestions);
@@ -78,25 +90,21 @@ export default async function PracticePage() {
         });
     }
 
-    // Then add questions from other categories
+    // 3. Then add questions from other categories
     otherCategories.forEach(category => {
         if (category.question_limit > 0) {
             const allCategoryQuestions = questions.filter(q => q.category_id === category.id);
             
-            // Separate unseen and seen questions
             const unseenQuestions = allCategoryQuestions.filter(q => !answeredQuestionIds.has(q.id));
             const seenQuestions = allCategoryQuestions.filter(q => answeredQuestionIds.has(q.id));
 
-            // Shuffle both lists to ensure randomness
             const shuffledUnseen = shuffle(unseenQuestions);
             const shuffledSeen = shuffle(seenQuestions);
 
             let selectedQuestions: typeof questions = [];
 
-            // Prioritize unseen questions
             selectedQuestions = shuffledUnseen.slice(0, category.question_limit);
 
-            // If we still need more questions, fill with seen ones
             if (selectedQuestions.length < category.question_limit) {
                 const needed = category.question_limit - selectedQuestions.length;
                 selectedQuestions = selectedQuestions.concat(shuffledSeen.slice(0, needed));
@@ -110,7 +118,7 @@ export default async function PracticePage() {
     
     return (
         <PracticeSession 
-            questions={interviewQueue.slice(0, 2)}
+            questions={interviewQueue}
             user={user}
         />
     );

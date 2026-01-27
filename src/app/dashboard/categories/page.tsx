@@ -118,6 +118,7 @@ async function moveCategory(categoryId: number, direction: 'up' | 'down') {
     const { data: allCategories, error: fetchError } = await supabase
         .from('question_categories')
         .select('id, sort_order')
+        .neq('name', 'Pre-Interview Checks')
         .order('sort_order', { ascending: true });
 
     if (fetchError) {
@@ -178,6 +179,7 @@ export default async function CategoriesPage() {
   const { data: categoriesData, error: categoriesError } = await supabase
     .from('question_categories')
     .select('*')
+    .neq('name', 'Pre-Interview Checks')
     .order('sort_order', { ascending: true });
 
   if (categoriesError) {

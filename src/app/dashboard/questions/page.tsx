@@ -1,4 +1,5 @@
 
+
 import { revalidatePath } from 'next/cache';
 import { createSupabaseServerActionClient, createSupabaseServerClient, SupabaseClient } from '@/lib/supabase/server';
 import type { Question, QuestionCategory, QuestionLevel } from '@/lib/types';
@@ -19,69 +20,6 @@ const ITEMS_PER_PAGE = 10;
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
-
-// async function generateAndSaveAudio(questionId: number, questionText: string) {
-//     'use server';
-//     // Use the service role client to bypass RLS for storage writes
-//     const supabase = createSupabaseServerActionClient({ service: true });
-    
-//     if (!process.env.OPENAI_API_KEY) {
-//         console.error("OpenAI API key is not configured. Skipping audio generation.");
-//         return { success: false, message: "OpenAI API key is not configured." };
-//     }
-
-//     try {
-//         const speechResponse = await openai.audio.speech.create({
-//             model: "gpt-4o-mini-tts",
-//             voice: "alloy",
-//             input: questionText,
-//         });
-        
-//         const audioBuffer = Buffer.from(await speechResponse.arrayBuffer());
-//         const filePath = `public/${questionId}_${Date.now()}.mp3`;
-
-//         const { error: uploadError } = await supabase.storage
-//             .from('audio-questions')
-//             .upload(filePath, audioBuffer, {
-//                 contentType: 'audio/mpeg',
-//                 upsert: true
-//             });
-
-//         if (uploadError) {
-//             throw uploadError;
-//         }
-
-//         const { data: publicUrlData } = supabase.storage
-//             .from('audio-questions')
-//             .getPublicUrl(filePath);
-
-//         if (!publicUrlData) {
-//             throw new Error("Could not get public URL for audio file.");
-//         }
-
-//         const { error: updateError } = await supabase
-//             .from('questions')
-//             .update({ audio_url: publicUrlData.publicUrl })
-//             .eq('id', questionId);
-
-//         if (updateError) {
-//             throw updateError;
-//         }
-
-//         revalidatePath('/dashboard/questions');
-//         return { success: true, message: "Audio generated and linked successfully.", audioUrl: publicUrlData.publicUrl };
-
-//     } catch (error) {
-//         if (error instanceof Error) {
-//             console.error('Error generating or saving audio:', error.message);
-//             return { success: false, message: error.message };
-//         } else {
-//             console.error('An unknown error occurred during audio processing:', error);
-//             return { success: false, message: 'An unknown error occurred during audio processing.' };
-//         }
-//     }
-// }
-
 
 async function createQuestion(formData: FormData) {
   'use server';
@@ -113,12 +51,8 @@ async function createQuestion(formData: FormData) {
     console.error('Error creating question:', error.message);
     return { success: false, message: error.message };
   } else {
-    // Generate audio asynchronously, don't block the response
-    // if (data?.id) {
-    //     generateAndSaveAudio(data.id, questionText);
-    // }
     revalidatePath('/dashboard/questions');
-    return { success: true, message: "Question created successfully. Audio generation is in progress." };
+    return { success: true, message: "Question created successfully." };
   }
 }
 
@@ -147,30 +81,14 @@ async function updateQuestion(formData: FormData) {
       answer_time_seconds: Number(formData.get('answer-time')),
     };
 
-    // Check if the text has changed to decide whether to regenerate audio
-    const { data: existingQuestion, error: fetchError } = await supabase
-        .from('questions')
-        .select('text')
-        .eq('id', questionId)
-        .single();
-    
-    if (fetchError) {
-        console.error('Error fetching existing question:', fetchError.message);
-        // Continue with update anyway
-    }
-
     const { error } = await supabase.from('questions').update(questionData).eq('id', questionId);
 
     if (error) {
         console.error('Error updating question:', error.message);
         return { success: false, message: error.message };
     } else {
-        const textHasChanged = existingQuestion?.text !== questionText;
-        // if (textHasChanged) {
-        //     generateAndSaveAudio(questionId, questionText);
-        // }
         revalidatePath('/dashboard/questions');
-        return { success: true, message: `Question updated successfully. ${textHasChanged ? "Audio regeneration is in progress." : ""}` };
+        return { success: true, message: `Question updated successfully.` };
     }
 }
 
@@ -191,23 +109,33 @@ async function deleteQuestion(formData: FormData) {
     }
 }
 
-// async function generateQuestionAudioAction(questionId: number, questionText: string) {
-//     'use server';
-//     return await generateAndSaveAudio(questionId, questionText);
-// }
-
 
 export default async function QuestionsPage({ searchParams }: { searchParams: { [key: string]: string | string[] | undefined }}) {
   const supabase = createSupabaseServerClient();
   const currentPage = Number(searchParams?.page || 1);
 
+  // Fetch categories, excluding the special "Pre-Interview Checks" category
   const { data: categoriesData, error: categoriesError } = await supabase
     .from('question_categories')
     .select('*')
+    .neq('name', 'Pre-Interview Checks')
     .order('name', { ascending: true });
     
+  // Get the ID of the special category to exclude its questions
+  const { data: specialCategory } = await supabase
+    .from('question_categories')
+    .select('id')
+    .eq('name', 'Pre-Interview Checks')
+    .single();
+
   let query = supabase.from('questions').select(`*, question_categories(name)`);
   let countQuery = supabase.from('questions').select('id', { count: 'exact', head: true });
+
+  // Exclude questions from the special category
+  if (specialCategory) {
+    query = query.neq('category_id', specialCategory.id);
+    countQuery = countQuery.neq('category_id', specialCategory.id);
+  }
 
   if (searchParams.q && typeof searchParams.q === 'string') {
       const filter = `%${searchParams.q}%`;
@@ -259,7 +187,6 @@ export default async function QuestionsPage({ searchParams }: { searchParams: { 
               createAction={createQuestion}
               updateAction={updateQuestion}
               deleteAction={deleteQuestion}
-              // generateAudioAction={generateQuestionAudioAction}
             />
           <div className="mt-6 flex justify-center">
             <PaginationControls

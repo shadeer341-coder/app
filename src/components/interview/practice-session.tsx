@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/select";
 
 
-type InterviewQuestion = Pick<Question, 'id' | 'text' | 'category_id' | 'audio_url' | 'tags'> & { categoryName: string };
+type InterviewQuestion = Pick<Question, 'id' | 'text' | 'category_id' | 'audio_url' | 'tags' | 'read_time_seconds' | 'answer_time_seconds'> & { categoryName: string };
 
 type PracticeSessionProps = {
   questions: InterviewQuestion[];
@@ -87,8 +87,9 @@ const MicrophoneVisualizer = ({ stream }: { stream: MediaStream | null }) => {
                 cancelAnimationFrame(animationFrameIdRef.current);
             }
             if (source) source.disconnect();
-            // @ts-ignore
-            if (audioContext && audioContext.state !== 'closed') audioContext.close();
+            if (audioContext && audioContext.state !== 'closed') {
+                audioContext.close().catch(console.error);
+            }
         };
     }, [stream]);
 
@@ -148,7 +149,6 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const previewVideoRef = useRef<HTMLVideoElement>(null);
-  // const audioRef = useRef<HTMLAudioElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
@@ -163,15 +163,12 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
     }
-    if (videoRef.current) {
+     if (videoRef.current) {
         videoRef.current.srcObject = null;
     }
   }, []);
 
   const getCameraPermission = useCallback(async (isInitial = false) => {
-    if (streamRef.current && videoRef.current?.srcObject) {
-        return true;
-    }
     try {
         const audioConstraint = selectedAudioDeviceId ? { deviceId: { exact: selectedAudioDeviceId } } : true;
         const videoConstraint = selectedVideoDeviceId ? { deviceId: { exact: selectedVideoDeviceId } } : true;
@@ -180,7 +177,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
             video: videoConstraint,
             audio: audioConstraint
         });
-
+        
         if (isInitial) {
             setPreviewStream(stream);
             if (previewVideoRef.current) {
@@ -260,28 +257,35 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     
     const setupDevices = async () => {
         try {
+            // First, request permissions to ensure we get device labels.
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            
             const devices = await navigator.mediaDevices.enumerateDevices();
-            if (isCancelled) return;
+            if (isCancelled) {
+                stream.getTracks().forEach(track => track.stop());
+                return;
+            }
 
             const audio = devices.filter(d => d.kind === 'audioinput');
             const video = devices.filter(d => d.kind === 'videoinput');
             setAudioDevices(audio);
             setVideoDevices(video);
-
-            const hasPermissions = audio.length > 0 && video.length > 0 && audio.some(d => d.label) && video.some(d => d.label);
-
-            if (hasPermissions) {
-                 if (!selectedAudioDeviceId) setSelectedAudioDeviceId(audio[0].deviceId);
-                 if (!selectedVideoDeviceId) setSelectedVideoDeviceId(video[0].deviceId);
-                 setCameraCheck('success');
-                 setMicCheck('success');
-                 getCameraPermission(true);
+            
+            if (audio.length > 0) {
+                if (!selectedAudioDeviceId) setSelectedAudioDeviceId(audio[0].deviceId);
+                setMicCheck('success');
             } else {
-                // Request permissions to get labels
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-                stream.getTracks().forEach(track => track.stop());
-                setupDevices(); // Re-run to populate labels and lists
+                setMicCheck('error');
             }
+            
+            if (video.length > 0) {
+                if (!selectedVideoDeviceId) setSelectedVideoDeviceId(video[0].deviceId);
+                setCameraCheck('success');
+            } else {
+                setCameraCheck('error');
+            }
+            
+            stream.getTracks().forEach(track => track.stop()); // Stop the initial permission stream
         } catch (error) {
             if (isCancelled) return;
             console.error('Permission or device setup failed:', error);
@@ -299,8 +303,26 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
 
     return () => {
         isCancelled = true;
+         if (previewStream) {
+            previewStream.getTracks().forEach(track => track.stop());
+        }
     };
-}, [stage, getCameraPermission, internetCheckStatus, checkInternetSpeed, selectedAudioDeviceId, selectedVideoDeviceId]);
+}, [stage, internetCheckStatus, checkInternetSpeed]);
+
+
+useEffect(() => {
+    if (stage === 'introduction' && cameraCheck === 'success' && micCheck === 'success') {
+      getCameraPermission(true);
+    }
+    
+    // Cleanup stream when device selection changes
+    return () => {
+        if (previewStream) {
+            previewStream.getTracks().forEach(track => track.stop());
+            setPreviewStream(null);
+        }
+    }
+}, [stage, cameraCheck, micCheck, selectedAudioDeviceId, selectedVideoDeviceId, getCameraPermission]);
 
 
   const captureSnapshot = useCallback((): string => {
@@ -322,28 +344,21 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     const permissionGranted = await getCameraPermission();
     if (!permissionGranted || !streamRef.current) return;
   
-    // if (audioRef.current) {
-    //   audioRef.current.pause();
-    //   audioRef.current.currentTime = 0;
-    // }
-  
     setIsRecording(true);
     setStage('recording');
     setCurrentSnapshots([]);
     recordedChunksRef.current = [];
   
-    // Only take snapshots for the first question
-    if (currentQuestionIndex === 0) {
-      // Capture 2 snapshots after a delay to ensure camera is ready
+    // Only take snapshots for the "Pre-Interview Checks" ID question
+    if (currentQuestion?.categoryName === 'Pre-Interview Checks' && currentQuestion?.text.includes('passport')) {
       setTimeout(() => {
         const snapshot1 = captureSnapshot();
         if (snapshot1) setCurrentSnapshots(prev => [...prev, snapshot1]);
-      }, 1000); // 1 second in
-  
+      }, 1000);
       setTimeout(() => {
         const snapshot2 = captureSnapshot();
         if (snapshot2) setCurrentSnapshots(prev => [...prev, snapshot2]);
-      }, 4000); // 4 seconds in
+      }, 4000);
     }
   
     mediaRecorderRef.current = new MediaRecorder(streamRef.current, { mimeType: 'video/webm' });
@@ -473,26 +488,13 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     getCameraPermission();
   }
 
-  // useEffect(() => {
-  //   if (stage === 'answering' && currentQuestion?.audio_url && audioRef.current) {
-  //       audioRef.current.src = currentQuestion.audio_url;
-  //       audioRef.current.play().catch(error => console.error("Audio playback failed:", error));
-  //   }
-  // }, [currentQuestion, stage]);
-
 
   useEffect(() => {
-    // This is the cleanup function that runs when the component unmounts.
     return () => {
-        // Stop any active camera streams.
         stopCamera();
-
-        // Stop any media recorder instance.
         if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
             mediaRecorderRef.current.stop();
         }
-
-        // Revoke any created object URLs to prevent memory leaks.
         Object.values(videoRecordings).forEach(url => {
             if (url) URL.revokeObjectURL(url);
         });
@@ -538,16 +540,15 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
   }
 
   return (
-    <div className="flex items-stretch min-h-screen w-full p-4 sm:p-6 lg:p-8">
-        <Card className="w-full flex flex-col">
-            {/* <audio ref={audioRef} /> */}
+    <div className="flex items-center justify-center min-h-screen w-full p-4 sm:p-6 lg:p-8">
+        <Card className="w-full max-w-6xl flex flex-col">
             {stage === 'introduction' && (
                 <>
                     <CardHeader className="text-center">
                         <CardTitle className="font-headline text-3xl md:text-4xl">Your Interview is Ready</CardTitle>
                         <CardDescription>First, let's check your setup. You'll be asked {questions.length} questions.</CardDescription>
                     </CardHeader>
-                    <CardContent className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 items-center">
+                    <CardContent className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 items-start">
                         {/* Left Column */}
                         <div className="space-y-4">
                             <ul className="space-y-3">
