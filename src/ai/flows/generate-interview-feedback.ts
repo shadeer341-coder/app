@@ -8,6 +8,7 @@ const FeedbackInputSchema = z.object({
   transcript: z.string().describe("The user's transcribed answer to the interview question."),
   questionText: z.string().describe("The text of the interview question that was asked."),
   questionTags: z.array(z.string()).optional().nullable().describe("A list of keywords or concepts expected in the answer."),
+  snapshots: z.array(z.string()).optional().describe("A list of image snapshots (as data URIs) captured during the answer for visual analysis."),
 });
 
 const FeedbackOutputSchema = z.object({
@@ -16,6 +17,7 @@ const FeedbackOutputSchema = z.object({
   grammarFeedback: z.string().describe("Feedback on the user's grammar, clarity, and use of filler words."),
   overallPerformance: z.string().describe("A summary of the overall performance."),
   score: z.number().int().min(0).max(100).describe("An overall score from 0 to 100 based on all factors."),
+  visualFeedback: z.string().optional().describe("Feedback on visual elements, if applicable (e.g., passport verification)."),
 });
 
 export type GenerateInterviewFeedbackInput = z.infer<typeof FeedbackInputSchema>;
@@ -65,13 +67,25 @@ async function analyzeTranscript(transcript: string, questionText: string, quest
     return JSON.parse(content);
 }
 
-export async function analyzeSnapshots(snapshots: string[]) {
+async function analyzePassportVerification(snapshots: string[]) {
     const prompt = `
-        You are a visual presentation coach. Analyze the user's visual presentation from the provided snapshots.
-        Focus on lighting, framing (is the user centered?), eye contact (are they looking towards the camera?), and overall professionalism of the background.
-        Provide a concise feedback summary in a JSON object with two fields:
-        - "visualFeedback": "A summary of the visual presentation quality. Focus on lighting, face appearance, framing, eye contact and background."
-        - "visualScore": A score from 0 to 100 based on the visual factors.
+        You are an identity verification specialist. Your task is to analyze the provided snapshots to determine if the user is correctly presenting their passport for verification.
+
+        Verification Criteria:
+        1.  A passport-like document must be visible.
+        2.  The user's face must be clearly visible and next to the passport.
+        3.  Both the face and the passport should be reasonably well-lit and in focus.
+
+        Analyze the snapshots and provide a score from 0 to 100 based on these criteria.
+        - A score of 100 means a clear face is held next to a clear passport.
+        - A score around 50 means a face is visible but the passport is blurry, obscured, or not present.
+        - A score of 0 means the user's face is not visible or they are not attempting to show a document.
+
+        Provide feedback on what the user did correctly or incorrectly.
+
+        Return a JSON object with two fields:
+        - "passportFeedback": "Your concise feedback for the user. For example, 'Great job showing your passport clearly next to your face.' or 'Your face was visible, but you were not holding a passport.'."
+        - "passportScore": A score from 0 to 100 based on the verification criteria.
 
         Do not include any other text or formatting.
     `;
@@ -93,7 +107,7 @@ export async function analyzeSnapshots(snapshots: string[]) {
     });
     
     const content = response.choices[0].message?.content;
-    if (!content) throw new Error("Snapshot analysis API returned empty response.");
+    if (!content) throw new Error("Passport analysis API returned empty response.");
     return JSON.parse(content);
 }
 
@@ -105,17 +119,27 @@ export async function generateInterviewFeedback(
     throw new Error('OpenAI API key is not configured.');
   }
 
-  const { transcript, questionText, questionTags } = FeedbackInputSchema.parse(input);
+  const { transcript, questionText, questionTags, snapshots } = FeedbackInputSchema.parse(input);
 
   try {
     const transcriptResult = await analyzeTranscript(transcript, questionText, questionTags);
+
+    let passportAnalysisResult: { passportFeedback: string, passportScore: number } | null = null;
+    let finalScore = transcriptResult.score;
+    
+    if (snapshots && snapshots.length > 0) {
+        passportAnalysisResult = await analyzePassportVerification(snapshots);
+        // Blend the scores. Give 50% weight to content and 50% to passport verification.
+        finalScore = Math.round((transcriptResult.score * 0.5) + (passportAnalysisResult.passportScore * 0.5));
+    }
 
     return FeedbackOutputSchema.parse({
       strengths: transcriptResult.strengths,
       weaknesses: transcriptResult.weaknesses,
       grammarFeedback: transcriptResult.grammarFeedback,
       overallPerformance: transcriptResult.overallPerformance,
-      score: transcriptResult.score,
+      score: finalScore,
+      visualFeedback: passportAnalysisResult?.passportFeedback,
     });
 
   } catch (error) {

@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Lightbulb, Presentation, PenTool, CheckCircle, AlertTriangle, Sparkles, BrainCircuit, Target, Video, Star, Loader2, PartyPopper, ServerCrash } from 'lucide-react';
+import { Lightbulb, Presentation, PenTool, CheckCircle, AlertTriangle, Sparkles, BrainCircuit, Target, Video, Star, Loader2, PartyPopper, ServerCrash, Camera } from 'lucide-react';
 import Image from 'next/image';
 import {
   Accordion,
@@ -124,7 +124,6 @@ export default async function InterviewFeedbackPage({ params }: InterviewFeedbac
     }
 
     const summary = session.summary as any;
-    const visualFeedback = session.visual_feedback as any;
 
     return (
         <div className="space-y-8">
@@ -159,15 +158,6 @@ export default async function InterviewFeedbackPage({ params }: InterviewFeedbac
                                <h4 className="font-semibold flex items-center gap-2"><Target className="text-yellow-500" />Key Areas for Improvement</h4>
                                <p className="text-muted-foreground">{summary?.overallWeaknesses || 'Not available.'}</p>
                            </div>
-                           {visualFeedback?.visualFeedback && (
-                                <>
-                                <Separator />
-                                <div className="space-y-2">
-                                    <h4 className="font-semibold flex items-center gap-2"><Video className="text-purple-500" />Visual Presentation</h4>
-                                    <p className="text-muted-foreground">{visualFeedback.visualFeedback}</p>
-                                </div>
-                                </>
-                           )}
                         </CardContent>
                          <CardFooter>
                             <Alert variant="default" className="bg-primary/10 border-primary/50">
@@ -230,6 +220,16 @@ export default async function InterviewFeedbackPage({ params }: InterviewFeedbac
                                                             )}
                                                         </>
                                                      )}
+
+                                                    {feedback?.visualFeedback && (
+                                                        <>
+                                                            <Separator />
+                                                            <div className="space-y-2">
+                                                                <h4 className="font-semibold flex items-center gap-2 text-sm"><Camera className="text-indigo-500 h-4 w-4" />Identity Verification</h4>
+                                                                <p className="text-muted-foreground text-sm">{feedback.visualFeedback}</p>
+                                                            </div>
+                                                        </>
+                                                    )}
 
                                                     {(feedback?.grammarFeedback && !isPerfect) && <Separator />}
                                                     
