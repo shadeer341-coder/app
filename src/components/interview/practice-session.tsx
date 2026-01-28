@@ -437,19 +437,7 @@ useEffect(() => {
 
   useEffect(() => {
     let timerId: NodeJS.Timeout;
-    if (stage === 'question_ready' && hasCameraPermission) {
-        setCountdown(5);
-        timerId = setInterval(() => {
-            setCountdown(prev => {
-                if (prev <= 1) {
-                    clearInterval(timerId);
-                    setStage('question_reading');
-                    return 0;
-                }
-                return prev - 1;
-            });
-        }, 1000);
-    } else if (stage === 'question_reading') {
+    if (stage === 'question_reading') {
         const readTime = currentQuestion.read_time_seconds || 15;
         setCountdown(readTime);
         timerId = setInterval(() => {
@@ -800,12 +788,18 @@ useEffect(() => {
                            </div>
                         )}
                         {(stage === 'question_ready') && (
-                             <div className="flex flex-col items-center gap-4">
-                                <h3 className="text-xl font-semibold">Get Ready...</h3>
-                                <CircularTimer
-                                    duration={5}
-                                    remaining={countdown}
-                                />
+                             <div className="flex flex-col items-center gap-6 text-center">
+                                <div className="bg-primary/10 p-4 rounded-full">
+                                    <Play className="w-12 h-12 text-primary" />
+                                </div>
+                                <h3 className="text-2xl font-bold">Ready for the next question?</h3>
+                                <p className="text-muted-foreground">
+                                    You will have {currentQuestion.read_time_seconds || 15} seconds to read the question.
+                                </p>
+                                <Button size="lg" onClick={() => setStage('question_reading')}>
+                                    <Play className="mr-2" />
+                                    Start Question
+                                </Button>
                             </div>
                         )}
                     </div>
@@ -885,5 +879,7 @@ useEffect(() => {
   );
 }
 
+
+    
 
     
