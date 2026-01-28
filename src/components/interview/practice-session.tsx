@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Video, StopCircle, RefreshCw, Send, AlertTriangle, ArrowRight, PartyPopper, Camera, CheckCircle, Wifi, Mic } from 'lucide-react';
+import { Loader2, Video, StopCircle, RefreshCw, Send, AlertTriangle, ArrowRight, PartyPopper, Camera, CheckCircle, Wifi, Mic, Play } from 'lucide-react';
 import { submitInterview } from '@/app/actions/interview';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
@@ -28,7 +28,14 @@ type PracticeSessionProps = {
   user: User | null;
 };
 
-type Stage = 'introduction' | 'answering' | 'recording' | 'reviewing' | 'submitting' | 'finished';
+type Stage = 
+    | 'introduction' 
+    | 'question_ready'
+    | 'question_reading'
+    | 'question_recording'
+    | 'question_review'
+    | 'submitting' 
+    | 'finished';
 
 type AttemptData = {
   questionId: number;
@@ -126,7 +133,6 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
   const [stage, setStage] = useState<Stage>('introduction');
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
-  const [isRecording, setIsRecording] = useState(false);
   
   const [videoRecordings, setVideoRecordings] = useState<Record<number, string | null>>({});
   const [attemptData, setAttemptData] = useState<AttemptData[]>([]);
@@ -134,6 +140,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
   const [currentSnapshots, setCurrentSnapshots] = useState<string[]>([]);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [countdown, setCountdown] = useState(0);
 
   const [cameraCheck, setCameraCheck] = useState<'pending' | 'success' | 'error'>('pending');
   const [micCheck, setMicCheck] = useState<'pending' | 'success' | 'error'>('pending');
@@ -343,9 +350,7 @@ useEffect(() => {
   const startRecording = async () => {
     const permissionGranted = await getCameraPermission();
     if (!permissionGranted || !streamRef.current) return;
-  
-    setIsRecording(true);
-    setStage('recording');
+
     setCurrentSnapshots([]);
     recordedChunksRef.current = [];
   
@@ -375,9 +380,7 @@ useEffect(() => {
       setVideoRecordings(prev => ({...prev, [currentQuestionIndex]: url}));
       setCurrentAudioBlob(blob);
   
-      setIsRecording(false);
-      setStage('reviewing');
-      
+      setStage('question_review');
       stopCamera();
     };
   
@@ -385,10 +388,47 @@ useEffect(() => {
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop();
     }
   };
+
+  useEffect(() => {
+    if (stage === 'question_reading') {
+        const readTime = currentQuestion.read_time_seconds || 15;
+        setCountdown(readTime);
+        const timer = setInterval(() => {
+            setCountdown(prev => {
+                if (prev <= 1) {
+                    clearInterval(timer);
+                    setStage('question_recording');
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+        return () => clearInterval(timer);
+    } else if (stage === 'question_recording') {
+        startRecording();
+        const answerTime = currentQuestion.answer_time_seconds || 60;
+        setCountdown(answerTime);
+        const timer = setInterval(() => {
+            setCountdown(prev => {
+                if (prev <= 1) {
+                    clearInterval(timer);
+                    stopRecording();
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+        return () => {
+            clearInterval(timer);
+            stopRecording();
+        };
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage, currentQuestionIndex]);
 
   const handleRerecord = () => {
     if (videoRecordings[currentQuestionIndex]) {
@@ -398,7 +438,7 @@ useEffect(() => {
     setCurrentAudioBlob(null);
     setCurrentSnapshots([]);
     recordedChunksRef.current = [];
-    setStage('answering');
+    setStage('question_ready');
     getCameraPermission();
   };
   
@@ -427,7 +467,7 @@ useEffect(() => {
             await handleSubmit(newAttemptData);
         } else {
             setCurrentQuestionIndex(prev => prev + 1);
-            setStage('answering');
+            setStage('question_ready');
             getCameraPermission();
         }
     } catch (error: any) {
@@ -473,14 +513,14 @@ useEffect(() => {
             title: "Submission Failed",
             description: error.message || "Could not submit your interview for analysis.",
         });
-        setStage('reviewing'); // Go back to review stage on failure
+        setStage('question_review'); // Go back to review stage on failure
       } finally {
         setIsSubmitting(false);
       }
   };
   
   const handleStartInterview = () => {
-    setStage('answering');
+    setStage('question_ready');
     if (previewStream) {
         previewStream.getTracks().forEach(track => track.stop());
         setPreviewStream(null);
@@ -540,15 +580,15 @@ useEffect(() => {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen w-full">
-        <Card className="w-full h-screen flex flex-col rounded-none border-none">
+    <div className="flex items-center justify-center min-h-screen w-full p-4">
+        <Card className="w-full max-w-6xl h-full max-h-[90vh] flex flex-col">
             {stage === 'introduction' && (
                 <>
                     <CardHeader className="text-center">
                         <CardTitle className="font-headline text-3xl md:text-4xl">Your Interview is Ready</CardTitle>
                         <CardDescription>First, let's check your setup. You'll be asked {questions.length} questions.</CardDescription>
                     </CardHeader>
-                    <CardContent className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 items-start">
+                    <CardContent className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 items-start overflow-y-auto">
                         {/* Left Column */}
                         <div className="space-y-4">
                             <ul className="space-y-3">
@@ -669,7 +709,7 @@ useEffect(() => {
                             </div>
                         </div>
                     </CardContent>
-                    <CardFooter className="flex-col items-center gap-4">
+                    <CardFooter className="flex-col items-center gap-4 pt-6">
                         <Button 
                             size="lg" 
                             onClick={handleStartInterview}
@@ -684,7 +724,7 @@ useEffect(() => {
                 </>
             )}
         
-        {(stage === 'answering' || stage === 'recording') && (
+        {(stage === 'question_ready' || stage === 'question_reading' || stage === 'question_recording') && (
             <CardContent className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-8 items-center pt-6">
                 {/* Left column */}
                 <div className="space-y-6 flex flex-col h-full justify-center">
@@ -693,18 +733,17 @@ useEffect(() => {
                         <CardDescription>Category: <strong>{currentQuestion?.categoryName}</strong></CardDescription>
                         <Progress value={progressValue} className="mt-2" />
                     </div>
-                    <div className="text-left p-6 border rounded-lg bg-secondary flex-grow flex items-center">
-                        <p className="text-2xl font-bold font-headline">{currentQuestion?.text}</p>
+                    <div className={cn("text-left p-6 border rounded-lg bg-secondary flex-grow flex items-center", stage !== 'question_recording' && 'justify-center')}>
+                        {stage === 'question_recording' ? (
+                            <p className="text-2xl font-bold font-headline">{currentQuestion?.text}</p>
+                        ) : (
+                             <p className="text-xl text-center text-muted-foreground">The question will appear here once you start recording.</p>
+                        )}
                     </div>
                     <div className="flex justify-start">
-                        {stage === 'answering' && (
-                            <Button size="lg" onClick={startRecording} disabled={hasCameraPermission !== true}>
-                                <Camera className="mr-2" /> Start Recording
-                            </Button>
-                        )}
-                        {stage === 'recording' && (
-                            <Button size="lg" variant="destructive" onClick={stopRecording}>
-                                <StopCircle className="mr-2" /> Stop Recording
+                        {stage === 'question_ready' && (
+                            <Button size="lg" onClick={() => setStage('question_reading')} disabled={hasCameraPermission !== true}>
+                               <Play className="mr-2"/> Start Reading
                             </Button>
                         )}
                     </div>
@@ -721,10 +760,31 @@ useEffect(() => {
                                 <p>Please allow camera and microphone access to record.</p>
                             </div>
                         )}
-                        {stage === 'recording' && (
+                        
+                        {stage === 'question_ready' && (
+                             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 text-white p-4 text-center">
+                                <h3 className="text-2xl font-bold">Get Ready</h3>
+                                <p className="mt-2 text-lg">You will have <strong>{currentQuestion.read_time_seconds || 15} seconds</strong> to read the question.</p>
+                                <p className="text-lg">You will have <strong>{currentQuestion.answer_time_seconds || 60} seconds</strong> to answer.</p>
+                            </div>
+                        )}
+
+                        {stage === 'question_reading' && (
+                            <div className="absolute inset-0 flex flex-col justify-between bg-black/70 text-white p-4">
+                                <div className="flex-grow flex items-center justify-center">
+                                    <p className="text-2xl font-bold text-center font-headline">{currentQuestion.text}</p>
+                                </div>
+                                <div className='space-y-2'>
+                                    <p className="text-center text-sm">Time to read: {countdown}s</p>
+                                    <Progress value={(countdown / (currentQuestion.read_time_seconds || 15)) * 100} className="h-2 [&>div]:bg-white" />
+                                </div>
+                            </div>
+                        )}
+                        
+                        {stage === 'question_recording' && (
                             <div className="absolute top-4 right-4 flex items-center gap-2 bg-black/50 text-white px-3 py-1 rounded-full">
                                 <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse"></div>
-                                <span>REC</span>
+                                <span>REC: {countdown}s</span>
                             </div>
                         )}
                     </div>
@@ -732,7 +792,7 @@ useEffect(() => {
             </CardContent>
         )}
         
-        {stage === 'reviewing' && videoRecordings[currentQuestionIndex] && (
+        {stage === 'question_review' && videoRecordings[currentQuestionIndex] && (
             <CardContent className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-8 items-center pt-6">
                 {/* Left column */}
                 <div className="space-y-6 flex flex-col justify-center">
@@ -764,3 +824,5 @@ useEffect(() => {
     </div>
   );
 }
+
+    
