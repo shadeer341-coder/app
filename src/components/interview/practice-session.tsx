@@ -619,7 +619,7 @@ useEffect(() => {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen w-full p-4 bg-secondary">
+    <div className="flex items-center justify-center min-h-screen w-full">
         <Card className="w-full max-w-7xl h-full max-h-[calc(100vh-2rem)] flex flex-col">
             {stage === 'introduction' && (
                 <>
@@ -843,6 +843,14 @@ useEffect(() => {
                             </div>
                         )}
                     </div>
+                     {stage === 'question_recording' && (
+                        <div className="flex justify-center">
+                            <Button onClick={stopRecording} variant="outline">
+                                <StopCircle className="mr-2" />
+                                Next
+                            </Button>
+                        </div>
+                    )}
                 </div>
             </CardContent>
         )}
