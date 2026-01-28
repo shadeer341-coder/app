@@ -436,41 +436,50 @@ useEffect(() => {
   };
 
   useEffect(() => {
-    if (stage === 'question_reading') {
-        const readTime = currentQuestion.read_time_seconds || 15;
-        setCountdown(readTime);
-        const timer = setInterval(() => {
+    let timerId: NodeJS.Timeout;
+    if (stage === 'question_ready' && hasCameraPermission) {
+        setCountdown(5);
+        timerId = setInterval(() => {
             setCountdown(prev => {
                 if (prev <= 1) {
-                    clearInterval(timer);
+                    clearInterval(timerId);
+                    setStage('question_reading');
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+    } else if (stage === 'question_reading') {
+        const readTime = currentQuestion.read_time_seconds || 15;
+        setCountdown(readTime);
+        timerId = setInterval(() => {
+            setCountdown(prev => {
+                if (prev <= 1) {
+                    clearInterval(timerId);
                     setStage('question_recording');
                     return 0;
                 }
                 return prev - 1;
             });
         }, 1000);
-        return () => clearInterval(timer);
     } else if (stage === 'question_recording') {
         startRecording();
         const answerTime = currentQuestion.answer_time_seconds || 60;
         setCountdown(answerTime);
-        const timer = setInterval(() => {
+        timerId = setInterval(() => {
             setCountdown(prev => {
                 if (prev <= 1) {
-                    clearInterval(timer);
+                    clearInterval(timerId);
                     stopRecording();
                     return 0;
                 }
                 return prev - 1;
             });
         }, 1000);
-        return () => {
-            clearInterval(timer);
-            stopRecording();
-        };
     }
+    return () => clearInterval(timerId);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage, currentQuestionIndex]);
+  }, [stage, currentQuestionIndex, hasCameraPermission]);
 
   const handleRerecord = () => {
     if (videoRecordings[currentQuestionIndex]) {
@@ -622,7 +631,7 @@ useEffect(() => {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen w-full p-4">
+    <div className="flex items-center justify-center min-h-screen w-full">
         <Card className="w-full max-w-7xl h-full max-h-[95vh] flex flex-col">
             {stage === 'introduction' && (
                 <>
@@ -630,7 +639,7 @@ useEffect(() => {
                         <CardTitle className="font-headline text-3xl md:text-4xl">Your Interview is Ready</CardTitle>
                         <CardDescription>First, let's check your setup. You'll be asked {questions.length} questions.</CardDescription>
                     </CardHeader>
-                    <CardContent className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 items-start overflow-y-auto">
+                    <CardContent className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 items-start overflow-y-auto p-6">
                         {/* Left Column */}
                         <div className="space-y-4">
                             <ul className="space-y-3">
@@ -786,23 +795,18 @@ useEffect(() => {
                             </div>
                         )}
                         {stage === 'question_recording' && (
-                            <div className="flex flex-col items-center gap-4 w-full">
-                                <p className="text-xl font-bold font-headline mb-4">{currentQuestion?.text}</p>
+                           <div className="flex flex-col items-center justify-center h-full">
+                                <p className="text-2xl font-bold font-headline text-center">{currentQuestion?.text}</p>
+                           </div>
+                        )}
+                        {(stage === 'question_ready') && (
+                             <div className="flex flex-col items-center gap-4">
+                                <h3 className="text-xl font-semibold">Get Ready...</h3>
                                 <CircularTimer
-                                    duration={currentQuestion.answer_time_seconds || 60}
+                                    duration={5}
                                     remaining={countdown}
                                 />
                             </div>
-                        )}
-                        {(stage === 'question_ready') && (
-                            <p className="text-xl text-center text-muted-foreground">Click "Start Reading" when you're ready.</p>
-                        )}
-                    </div>
-                    <div className="flex justify-start">
-                        {stage === 'question_ready' && (
-                            <Button size="lg" onClick={() => setStage('question_reading')} disabled={hasCameraPermission !== true}>
-                               <Play className="mr-2"/> Start Reading
-                            </Button>
                         )}
                     </div>
                 </div>
@@ -836,9 +840,11 @@ useEffect(() => {
                         )}
                         
                         {stage === 'question_recording' && (
-                            <div className="absolute top-4 right-4 flex items-center gap-2 bg-black/50 text-white px-3 py-1 rounded-full">
-                                <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse"></div>
+                            <div className="absolute top-4 right-4 flex items-center gap-2 bg-black/50 text-white px-3 py-1.5 rounded-full text-sm font-mono">
+                                <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></div>
                                 <span>REC</span>
+                                <span className="w-px h-4 bg-white/30"></span>
+                                <span>{countdown}s</span>
                             </div>
                         )}
                     </div>
@@ -878,3 +884,6 @@ useEffect(() => {
     </div>
   );
 }
+
+
+    
