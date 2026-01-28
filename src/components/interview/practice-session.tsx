@@ -110,6 +110,48 @@ const MicrophoneVisualizer = ({ stream }: { stream: MediaStream | null }) => {
     );
 };
 
+const CircularTimer = ({ duration, remaining }: { duration: number; remaining: number }) => {
+    const radius = 50;
+    const circumference = 2 * Math.PI * radius;
+    // Ensure progress doesn't go below 0
+    const progress = Math.max(0, remaining) / Math.max(1, duration);
+    const strokeDashoffset = circumference * (1 - progress);
+
+    return (
+        <div className="relative w-48 h-48">
+            <svg className="w-full h-full" viewBox="0 0 120 120">
+                <circle
+                    className="text-muted/20"
+                    strokeWidth="8"
+                    stroke="currentColor"
+                    fill="transparent"
+                    r={radius}
+                    cx="60"
+                    cy="60"
+                />
+                <circle
+                    className="text-primary"
+                    strokeWidth="8"
+                    stroke="currentColor"
+                    fill="transparent"
+                    r={radius}
+                    cx="60"
+                    cy="60"
+                    strokeLinecap="round"
+                    strokeDasharray={circumference}
+                    strokeDashoffset={strokeDashoffset}
+                    transform="rotate(-90 60 60)"
+                    style={{ transition: 'stroke-dashoffset 0.5s linear' }}
+                />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-5xl font-bold font-mono">{remaining}</span>
+                <span className="text-sm text-muted-foreground -mt-1">seconds left</span>
+            </div>
+        </div>
+    );
+};
+
 
 async function transcribeAudio(audioBlob: Blob): Promise<string> {
     const formData = new FormData();
@@ -733,11 +775,27 @@ useEffect(() => {
                         <CardDescription>Category: <strong>{currentQuestion?.categoryName}</strong></CardDescription>
                         <Progress value={progressValue} className="mt-2" />
                     </div>
-                    <div className={cn("text-left p-6 border rounded-lg bg-secondary flex-grow flex items-center", stage !== 'question_recording' && 'justify-center')}>
-                        {stage === 'question_recording' ? (
-                            <p className="text-2xl font-bold font-headline">{currentQuestion?.text}</p>
-                        ) : (
-                             <p className="text-xl text-center text-muted-foreground">The question will appear here once you start recording.</p>
+                    <div className={cn("text-center p-6 border rounded-lg bg-secondary flex-grow flex flex-col items-center justify-center")}>
+                         {stage === 'question_reading' && (
+                            <div className="flex flex-col items-center gap-4">
+                                <h3 className="text-xl font-semibold">Time to Read</h3>
+                                <CircularTimer
+                                    duration={currentQuestion.read_time_seconds || 15}
+                                    remaining={countdown}
+                                />
+                            </div>
+                        )}
+                        {stage === 'question_recording' && (
+                            <div className="flex flex-col items-center gap-4 w-full">
+                                <p className="text-xl font-bold font-headline mb-4">{currentQuestion?.text}</p>
+                                <CircularTimer
+                                    duration={currentQuestion.answer_time_seconds || 60}
+                                    remaining={countdown}
+                                />
+                            </div>
+                        )}
+                        {(stage === 'question_ready') && (
+                            <p className="text-xl text-center text-muted-foreground">Click "Start Reading" when you're ready.</p>
                         )}
                     </div>
                     <div className="flex justify-start">
@@ -770,13 +828,9 @@ useEffect(() => {
                         )}
 
                         {stage === 'question_reading' && (
-                            <div className="absolute inset-0 flex flex-col justify-between bg-black/70 text-white p-4">
+                            <div className="absolute inset-0 flex flex-col justify-center bg-black/70 text-white p-4">
                                 <div className="flex-grow flex items-center justify-center">
                                     <p className="text-2xl font-bold text-center font-headline">{currentQuestion.text}</p>
-                                </div>
-                                <div className='space-y-2'>
-                                    <p className="text-center text-sm">Time to read: {countdown}s</p>
-                                    <Progress value={(countdown / (currentQuestion.read_time_seconds || 15)) * 100} className="h-2 [&>div]:bg-white" />
                                 </div>
                             </div>
                         )}
@@ -784,7 +838,7 @@ useEffect(() => {
                         {stage === 'question_recording' && (
                             <div className="absolute top-4 right-4 flex items-center gap-2 bg-black/50 text-white px-3 py-1 rounded-full">
                                 <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse"></div>
-                                <span>REC: {countdown}s</span>
+                                <span>REC</span>
                             </div>
                         )}
                     </div>
@@ -824,5 +878,3 @@ useEffect(() => {
     </div>
   );
 }
-
-    
