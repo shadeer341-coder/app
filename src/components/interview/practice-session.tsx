@@ -619,8 +619,8 @@ useEffect(() => {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen w-full">
-        <Card className="w-full max-w-7xl h-full max-h-[95vh] flex flex-col">
+    <div className="flex items-center justify-center min-h-screen w-full p-4 bg-secondary">
+        <Card className="w-full max-w-7xl h-full max-h-[calc(100vh-2rem)] flex flex-col">
             {stage === 'introduction' && (
                 <>
                     <CardHeader className="text-center">
@@ -631,7 +631,7 @@ useEffect(() => {
                         {/* Left Column */}
                         <div className="space-y-4">
                             <ul className="space-y-3">
-                                <li className="p-3 rounded-lg bg-secondary space-y-3">
+                                <li className="p-3 rounded-lg bg-background space-y-3">
                                     <div className="flex items-center justify-between flex-wrap">
                                         <div className="flex items-center gap-3">
                                             <Mic className="w-5 h-5 text-muted-foreground" />
@@ -661,7 +661,7 @@ useEffect(() => {
                                         </div>
                                     )}
                                 </li>
-                                <li className="flex items-center justify-between p-3 rounded-lg bg-secondary">
+                                <li className="flex items-center justify-between p-3 rounded-lg bg-background">
                                     <div className="flex items-center gap-3">
                                         <Wifi className="w-5 h-5 text-muted-foreground" />
                                         <span className="font-medium">Internet Connection</span>
@@ -716,7 +716,7 @@ useEffect(() => {
                         </div>
                         {/* Right Column */}
                          <div className="space-y-4">
-                            <div className="p-3 rounded-lg bg-secondary space-y-3">
+                            <div className="p-3 rounded-lg bg-background space-y-3">
                                 <div className="flex items-center justify-between flex-wrap">
                                     <div className="flex items-center gap-3">
                                         <Camera className="w-5 h-5 text-muted-foreground" />
@@ -748,7 +748,7 @@ useEffect(() => {
                             </div>
                         </div>
                     </CardContent>
-                    <CardFooter className="flex-col items-center gap-4 pt-6">
+                    <CardFooter className="flex-col items-center gap-4 pt-6 border-t">
                         <Button 
                             size="lg" 
                             onClick={handleStartInterview}
@@ -766,7 +766,7 @@ useEffect(() => {
         {(stage === 'question_ready' || stage === 'question_reading' || stage === 'question_recording') && (
             <CardContent className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-8 items-center pt-6">
                 {/* Left column */}
-                <div className="space-y-6 flex flex-col h-full justify-center">
+                <div className="space-y-6 flex flex-col h-full justify-between">
                     <div className="space-y-2">
                         <CardTitle>Question {currentQuestionIndex + 1} of {questions.length}</CardTitle>
                         <CardDescription>Category: <strong>{currentQuestion?.categoryName}</strong></CardDescription>
@@ -783,8 +783,8 @@ useEffect(() => {
                             </div>
                         )}
                         {stage === 'question_recording' && (
-                           <div className="flex flex-col items-center justify-center h-full">
-                                <p className="text-2xl font-bold font-headline text-center">{currentQuestion?.text}</p>
+                           <div className="flex flex-col items-center justify-center h-full text-center">
+                                <p className="text-2xl font-bold font-headline">{currentQuestion?.text}</p>
                            </div>
                         )}
                         {(stage === 'question_ready') && (
@@ -803,10 +803,11 @@ useEffect(() => {
                             </div>
                         )}
                     </div>
+                     <div/>
                 </div>
 
                 {/* Right column */}
-                <div className="space-y-4">
+                <div className="space-y-4 h-full flex flex-col justify-center">
                     <div className="relative aspect-video w-full rounded-md border bg-slate-900 overflow-hidden">
                         <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
                         {hasCameraPermission === false && (
@@ -852,7 +853,7 @@ useEffect(() => {
                 <div className="space-y-6 flex flex-col justify-center">
                     <div className="space-y-2">
                         <CardTitle>Review Your Answer for Question {currentQuestionIndex + 1}</CardTitle>
-                        <CardDescription>You can re-record or proceed. Note: this is a silent preview.</CardDescription>
+                        <CardDescription>You can re-record or proceed. The preview includes audio.</CardDescription>
                         <Progress value={((currentQuestionIndex + 1) / questions.length) * 100} className="mt-2" />
                     </div>
                     <div className="flex justify-start gap-4">
@@ -869,7 +870,7 @@ useEffect(() => {
                 {/* Right column */}
                 <div className="space-y-4">
                     <div className="aspect-video w-full rounded-md border bg-black overflow-hidden">
-                        <video src={videoRecordings[currentQuestionIndex]!} className="w-full h-full" playsInline autoPlay loop muted />
+                        <video src={videoRecordings[currentQuestionIndex]!} className="w-full h-full" playsInline controls autoPlay />
                     </div>
                 </div>
             </CardContent>
@@ -878,8 +879,3 @@ useEffect(() => {
     </div>
   );
 }
-
-
-    
-
-    
