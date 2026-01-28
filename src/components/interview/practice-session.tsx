@@ -581,7 +581,7 @@ useEffect(() => {
 
   return (
     <div className="flex items-center justify-center min-h-screen w-full p-4">
-        <Card className="w-full max-w-6xl h-full max-h-[90vh] flex flex-col">
+        <Card className="w-full max-w-7xl h-full max-h-[95vh] flex flex-col">
             {stage === 'introduction' && (
                 <>
                     <CardHeader className="text-center">
