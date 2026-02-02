@@ -12,6 +12,7 @@ export type User = {
   level: UserLevel;
   agencyId?: string;
   onboardingCompleted: boolean;
+  interview_quota?: number;
   gender?: string;
   age?: number;
   nationality?: string;

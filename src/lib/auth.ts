@@ -31,6 +31,7 @@ export async function getCurrentUser(): Promise<User | null> {
           role: 'user', // Default role
           level: 'UG', // Default level
           onboardingCompleted: false,
+          interview_quota: 0,
         };
     }
 
@@ -46,6 +47,7 @@ export async function getCurrentUser(): Promise<User | null> {
       level: profile.level || 'UG',
       agencyId: profile.agency_id,
       onboardingCompleted: profile.onboarding_completed || false,
+      interview_quota: profile.interview_quota ?? 0,
       gender: profile.gender,
       age: profile.age,
       nationality: profile.nationality,

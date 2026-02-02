@@ -19,6 +19,22 @@ export async function submitInterview(interviewData: AttemptDataItem[]) {
         return { success: false, message: "User not authenticated." };
     }
 
+    const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('interview_quota, role')
+        .eq('id', user.id)
+        .single();
+
+    if (profileError || !profile) {
+        return { success: false, message: "Could not retrieve user profile." };
+    }
+
+    // Only enforce quota for standard 'user' roles
+    if (profile.role === 'user' && (profile.interview_quota === null || profile.interview_quota <= 0)) {
+        return { success: false, message: "You have no remaining interview attempts." };
+    }
+
+
     try {
         // 1. Create a new interview session with a 'pending' status
         const twentyMinutesFromNow = new Date(Date.now() + 20 * 60 * 1000).toISOString();
@@ -53,7 +69,22 @@ export async function submitInterview(interviewData: AttemptDataItem[]) {
             }
         }
         
+        // 3. Decrement quota for standard 'user' roles
+        if (profile.role === 'user') {
+            const { error: updateError } = await supabase
+                .from('profiles')
+                .update({ interview_quota: (profile.interview_quota || 1) - 1 })
+                .eq('id', user.id);
+
+            if (updateError) {
+                // Log this, but don't fail the entire process for the user as the interview is already saved.
+                console.error(`CRITICAL: Failed to decrement quota for user ${user.id}:`, updateError.message);
+            }
+        }
+
         revalidatePath('/dashboard/interviews');
+        revalidatePath('/dashboard');
+        revalidatePath('/dashboard/practice');
         return { success: true, message: "Interview submitted for processing.", sessionId: session.id };
 
     } catch (error: any) {

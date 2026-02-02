@@ -1,6 +1,6 @@
 
 import Link from "next/link";
-import { ArrowRight, Bot, Building, HardHat, PlusCircle, Video } from "lucide-react";
+import { ArrowRight, Bot, Building, HardHat, PlusCircle, Video, Repeat } from "lucide-react";
 import { redirect } from 'next/navigation';
 
 import { getCurrentUser } from "@/lib/auth";
@@ -67,6 +67,18 @@ export default async function DashboardPage() {
                 {averageScore.toFixed(1)}%
               </div>
               <p className="text-xs text-muted-foreground">Based on completed interviews</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Attempts Remaining</CardTitle>
+              <Repeat className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {user.interview_quota ?? 0}
+              </div>
+              <p className="text-xs text-muted-foreground">Your available interview quota.</p>
             </CardContent>
           </Card>
         </div>
@@ -167,7 +179,7 @@ export default async function DashboardPage() {
           </p>
         </div>
         {user.role !== 'admin' && (
-            <Button asChild size="lg">
+            <Button asChild size="lg" disabled={user.role === 'user' && (user.interview_quota ?? 0) <= 0}>
             <Link href="/dashboard/practice">
                 <PlusCircle className="mr-2 h-5 w-5" />
                 Start New Interview

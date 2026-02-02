@@ -163,6 +163,11 @@ export function OnboardingPageClient() {
         }
     }
 
+    let interviewQuota = 0;
+    if (String(groupId) === '3') {
+        interviewQuota = 3;
+    }
+
     const selectedProgram = programOptions.find(p => p.value === data.program);
   
     const profileData = {
@@ -171,6 +176,7 @@ export function OnboardingPageClient() {
       role: userRole,
       level: selectedProgram?.level || 'UG',
       onboarding_completed: true,
+      interview_quota: interviewQuota,
     };
   
     const { error } = await supabase
@@ -439,5 +445,3 @@ export function OnboardingPageClient() {
     
 
     
-
-

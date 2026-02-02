@@ -6,6 +6,9 @@ import { PracticeSession } from '@/components/interview/practice-session';
 import { getCurrentUser } from '@/lib/auth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { redirect } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import { AlertCircle, FilePlus } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,6 +27,29 @@ export default async function PracticePage() {
 
     if (!user) {
         redirect('/');
+    }
+
+    // For standard users, check if they have any attempts left. Admins and other roles bypass this.
+    if (user.role === 'user' && (user.interview_quota === null || user.interview_quota <= 0)) {
+        return (
+             <div className="flex items-center justify-center min-h-screen p-4 bg-secondary">
+                <Card className="max-w-lg text-center">
+                    <CardHeader>
+                        <div className="mx-auto bg-destructive/10 p-4 rounded-full mb-4 w-fit">
+                            <AlertCircle className="w-12 h-12 text-destructive" />
+                        </div>
+                        <CardTitle>No Attempts Remaining</CardTitle>
+                        <CardDescription>You have used all of your available interview attempts.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <p>To continue practicing, please contact an administrator or your agency to request more attempts.</p>
+                        <Button asChild className="mt-6">
+                            <Link href="/dashboard">Return to Dashboard</Link>
+                        </Button>
+                    </CardContent>
+                </Card>
+            </div>
+        );
     }
 
     type QuestionQueueItem = Pick<Question, 'id' | 'text' | 'category_id' | 'audio_url' | 'tags' | 'read_time_seconds' | 'answer_time_seconds'> & { categoryName: string };
