@@ -29,7 +29,7 @@ export default async function PracticePage() {
         redirect('/');
     }
 
-    if (user.role === 'user' && (user.interview_quota === null || user.interview_quota <= 0)) {
+    if (user.role !== 'admin' && (user.interview_quota === null || user.interview_quota <= 0)) {
          return (
             <div className="flex items-center justify-center min-h-screen p-4">
                 <Card className="max-w-xl text-center">

@@ -28,18 +28,18 @@ export async function startInterview() {
         return { success: false, message: "Could not retrieve user profile." };
     }
 
-    // Only enforce quota for standard 'user' roles
-    if (profile.role === 'user' && (profile.interview_quota === null || profile.interview_quota <= 0)) {
+    // Only enforce quota for non-admin roles
+    if (profile.role !== 'admin' && (profile.interview_quota === null || profile.interview_quota <= 0)) {
         return { success: false, message: "You have no remaining interview attempts." };
     }
 
 
     try {
-        // Decrement quota for standard 'user' roles
-        if (profile.role === 'user') {
+        // Decrement quota for non-admin roles
+        if (profile.role !== 'admin') {
             const { error: updateError } = await supabase
                 .from('profiles')
-                .update({ interview_quota: (profile.interview_quota || 1) - 1 })
+                .update({ interview_quota: (profile.interview_quota || 0) - 1 })
                 .eq('id', user.id);
 
             if (updateError) {
