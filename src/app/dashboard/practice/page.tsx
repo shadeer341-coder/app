@@ -4,11 +4,11 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import type { Question, QuestionCategory } from '@/lib/types';
 import { PracticeSession } from '@/components/interview/practice-session';
 import { getCurrentUser } from '@/lib/auth';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { redirect } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { AlertCircle, FilePlus } from 'lucide-react';
+import { AlertCircle, FilePlus, Repeat } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,6 +27,34 @@ export default async function PracticePage() {
 
     if (!user) {
         redirect('/');
+    }
+
+    if (user.role === 'user' && (user.interview_quota === null || user.interview_quota <= 0)) {
+         return (
+            <div className="flex items-center justify-center min-h-screen p-4">
+                <Card className="max-w-xl text-center">
+                    <CardHeader>
+                        <div className="mx-auto bg-destructive/10 p-4 rounded-full mb-4 w-fit">
+                            <AlertCircle className="w-12 h-12 text-destructive" />
+                        </div>
+                        <CardTitle className="font-headline">Out of Attempts</CardTitle>
+                        <CardDescription>You have used all of your available interview attempts.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <p>To continue practicing, please upgrade your plan or wait for your quota to refresh.</p>
+                    </CardContent>
+                    <CardFooter className="flex-col gap-4">
+                         <Button asChild>
+                            <Link href="/dashboard">Return to Dashboard</Link>
+                        </Button>
+                        <Button variant="outline" disabled>
+                            <Repeat className="mr-2"/>
+                            Buy More Attempts (Coming Soon)
+                        </Button>
+                    </CardFooter>
+                </Card>
+            </div>
+        );
     }
 
     type QuestionQueueItem = Pick<Question, 'id' | 'text' | 'category_id' | 'audio_url' | 'tags' | 'read_time_seconds' | 'answer_time_seconds'> & { categoryName: string };
