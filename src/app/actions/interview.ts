@@ -10,8 +10,7 @@ type AttemptDataItem = {
     snapshots: string[];
 };
 
-// This function only saves the raw data. The AI processing will be handled by a separate cron job.
-export async function submitInterview(interviewData: AttemptDataItem[]) {
+export async function startInterview() {
     const supabase = createSupabaseServerActionClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -36,40 +35,7 @@ export async function submitInterview(interviewData: AttemptDataItem[]) {
 
 
     try {
-        // 1. Create a new interview session with a 'pending' status
-        const twentyMinutesFromNow = new Date(Date.now() + 20 * 60 * 1000).toISOString();
-
-        const { data: session, error: sessionError } = await supabase
-            .from('interview_sessions')
-            .insert({ 
-                user_id: user.id,
-                status: 'pending', // Set initial status
-                process_at: twentyMinutesFromNow, // Schedule for 20 mins in the future
-            })
-            .select()
-            .single();
-        
-        if (sessionError) throw new Error(`Could not create interview session: ${sessionError.message}`);
-
-        // 2. Save each attempt linked to the new session
-        for (const attempt of interviewData) {
-            const { error: attemptError } = await supabase
-                .from('interview_attempts')
-                .insert({
-                    user_id: user.id,
-                    session_id: session.id,
-                    question_id: attempt.questionId,
-                    transcript: attempt.transcript,
-                    snapshots: attempt.snapshots,
-                });
-
-            if (attemptError) {
-                // If an attempt fails, log it and continue. Consider a more robust retry/cleanup later.
-                console.error(`Error saving attempt for question ID ${attempt.questionId}:`, attemptError.message);
-            }
-        }
-        
-        // 3. Decrement quota for standard 'user' roles
+        // Decrement quota for standard 'user' roles
         if (profile.role === 'user') {
             const { error: updateError } = await supabase
                 .from('profiles')
@@ -77,15 +43,88 @@ export async function submitInterview(interviewData: AttemptDataItem[]) {
                 .eq('id', user.id);
 
             if (updateError) {
-                // Log this, but don't fail the entire process for the user as the interview is already saved.
-                console.error(`CRITICAL: Failed to decrement quota for user ${user.id}:`, updateError.message);
+                throw new Error(`Failed to update quota: ${updateError.message}`);
             }
         }
+        
+        // Create a new interview session with a 'pending' status but no process_at time
+        const { data: session, error: sessionError } = await supabase
+            .from('interview_sessions')
+            .insert({ 
+                user_id: user.id,
+                status: 'pending',
+            })
+            .select('id')
+            .single();
+        
+        if (sessionError) {
+            // Ideally, we'd roll back the quota decrement here.
+            // For now, log a critical error.
+            console.error(`CRITICAL: Quota consumed for user ${user.id} but session creation failed.`, sessionError);
+            throw new Error(`Could not create interview session: ${sessionError.message}`);
+        }
+
+        revalidatePath('/dashboard/practice');
+        revalidatePath('/dashboard');
+        
+        return { success: true, sessionId: session.id };
+
+    } catch (error: any) {
+        console.error("An error occurred during interview start:", error);
+        return { success: false, message: error.message || "An unknown error occurred." };
+    }
+}
+
+
+// This function now takes a session ID and saves the raw data.
+export async function submitInterview(sessionId: string, interviewData: AttemptDataItem[]) {
+    const supabase = createSupabaseServerActionClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return { success: false, message: "User not authenticated." };
+    }
+
+    // Verify session ownership
+     const { data: session, error: sessionError } = await supabase
+        .from('interview_sessions')
+        .select('id, user_id')
+        .eq('id', sessionId)
+        .single();
+    
+    if (sessionError || !session || session.user_id !== user.id) {
+        return { success: false, message: "Invalid session or permission denied." };
+    }
+
+    try {
+        // 1. Save each attempt linked to the session
+        for (const attempt of interviewData) {
+            const { error: attemptError } = await supabase
+                .from('interview_attempts')
+                .insert({
+                    user_id: user.id,
+                    session_id: sessionId,
+                    question_id: attempt.questionId,
+                    transcript: attempt.transcript,
+                    snapshots: attempt.snapshots,
+                });
+
+            if (attemptError) {
+                console.error(`Error saving attempt for question ID ${attempt.questionId}:`, attemptError.message);
+            }
+        }
+        
+        // 2. Schedule the session for processing by setting `process_at`
+        const twentyMinutesFromNow = new Date(Date.now() + 20 * 60 * 1000).toISOString();
+        const { error: updateError } = await supabase
+            .from('interview_sessions')
+            .update({ process_at: twentyMinutesFromNow })
+            .eq('id', sessionId);
+        
+        if (updateError) throw new Error(`Could not schedule interview for processing: ${updateError.message}`);
 
         revalidatePath('/dashboard/interviews');
-        revalidatePath('/dashboard');
-        revalidatePath('/dashboard/practice');
-        return { success: true, message: "Interview submitted for processing.", sessionId: session.id };
+        return { success: true, message: "Interview submitted for processing.", sessionId: sessionId };
 
     } catch (error: any) {
         console.error("An error occurred during interview submission:", error);

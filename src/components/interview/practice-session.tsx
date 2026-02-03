@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Video, StopCircle, RefreshCw, Send, AlertTriangle, ArrowRight, PartyPopper, Camera, CheckCircle, Wifi, Mic, Play } from 'lucide-react';
-import { submitInterview } from '@/app/actions/interview';
+import { startInterview, submitInterview } from '@/app/actions/interview';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
 import {
@@ -183,6 +183,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [countdown, setCountdown] = useState(0);
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   const [cameraCheck, setCameraCheck] = useState<'pending' | 'success' | 'error'>('pending');
   const [micCheck, setMicCheck] = useState<'pending' | 'success' | 'error'>('pending');
@@ -523,6 +524,17 @@ useEffect(() => {
 
 
   const handleSubmit = async (finalInterviewData: AttemptData[]) => {
+      if (!sessionId) {
+        toast({
+            variant: "destructive",
+            title: "Session Error",
+            description: "No active session ID found. Cannot submit interview.",
+        });
+        setIsSubmitting(false);
+        setStage('question_review');
+        return;
+      }
+
       setIsSubmitting(true);
       toast({
           title: "Submitting Interview...",
@@ -534,7 +546,7 @@ useEffect(() => {
             throw new Error("No answers were recorded.");
         }
         
-        const result = await submitInterview(finalInterviewData);
+        const result = await submitInterview(sessionId, finalInterviewData);
 
         if (result.success && result.sessionId) {
             toast({
@@ -558,13 +570,24 @@ useEffect(() => {
       }
   };
   
-  const handleStartInterview = () => {
-    setStage('question_ready');
-    if (previewStream) {
-        previewStream.getTracks().forEach(track => track.stop());
-        setPreviewStream(null);
+  const handleStartInterview = async () => {
+    const result = await startInterview();
+
+    if (result.success && result.sessionId) {
+        setSessionId(result.sessionId);
+        setStage('question_ready');
+        if (previewStream) {
+            previewStream.getTracks().forEach(track => track.stop());
+            setPreviewStream(null);
+        }
+        getCameraPermission();
+    } else {
+        toast({
+            variant: "destructive",
+            title: "Could Not Start Interview",
+            description: result.message,
+        });
     }
-    getCameraPermission();
   }
 
 
