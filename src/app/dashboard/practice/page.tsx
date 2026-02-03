@@ -29,33 +29,9 @@ export default async function PracticePage() {
         redirect('/');
     }
 
-    if (user.role !== 'admin' && (user.interview_quota === null || user.interview_quota <= 0)) {
-         return (
-            <div className="flex items-center justify-center min-h-screen p-4">
-                <Card className="max-w-xl text-center">
-                    <CardHeader>
-                        <div className="mx-auto bg-destructive/10 p-4 rounded-full mb-4 w-fit">
-                            <AlertCircle className="w-12 h-12 text-destructive" />
-                        </div>
-                        <CardTitle className="font-headline">Out of Attempts</CardTitle>
-                        <CardDescription>You have used all of your available interview attempts.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <p>To continue practicing, please upgrade your plan or wait for your quota to refresh.</p>
-                    </CardContent>
-                    <CardFooter className="flex-col gap-4">
-                         <Button asChild>
-                            <Link href="/dashboard">Return to Dashboard</Link>
-                        </Button>
-                        <Button variant="outline" disabled>
-                            <Repeat className="mr-2"/>
-                            Buy More Attempts (Coming Soon)
-                        </Button>
-                    </CardFooter>
-                </Card>
-            </div>
-        );
-    }
+    // The check for interview quota is now handled in the `startInterview` server action
+    // to prevent a double-decrement issue. Users will be able to see the setup screen
+    // but will receive a toast notification if they have no quota when they try to start.
 
     type QuestionQueueItem = Pick<Question, 'id' | 'text' | 'category_id' | 'audio_url' | 'tags' | 'read_time_seconds' | 'answer_time_seconds'> & { categoryName: string };
 
