@@ -1,6 +1,7 @@
 
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { createClient } from '@supabase/supabase-js';
 
 export function createSupabaseServerClient({ service }: { service?: boolean } = {}) {
   const cookieStore = cookies()
@@ -57,3 +58,16 @@ export function createSupabaseServerActionClient({ service }: { service?: boolea
       }
     )
   }
+
+export function createSupabaseServiceRoleClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
+  );
+}

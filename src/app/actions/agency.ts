@@ -2,7 +2,7 @@
 'use server';
 
 import { z } from 'zod';
-import { createSupabaseServerActionClient } from '@/lib/supabase/server';
+import { createSupabaseServiceRoleClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { getCurrentUser } from '@/lib/auth';
 
@@ -31,7 +31,7 @@ export async function createStudentByAgency(formData: FormData) {
     return { success: false, message: "Permission denied. You must be an agency to create students." };
   }
 
-  const supabase = createSupabaseServerActionClient({ service: true });
+  const supabase = createSupabaseServiceRoleClient();
   let agencyId = agencyUser.agencyId;
 
   // This is a self-healing mechanism. If an agency user from the old system
