@@ -81,9 +81,8 @@ export async function createStudentByAgency(formData: FormData) {
   const selectedProgram = programOptions.find(p => p.value === program);
   const level = selectedProgram?.level || 'UG';
 
-  // Step 2: Create the profile in the profiles table
-  const profileData = {
-    id: newUserId,
+  // Step 2: Update the profile that was auto-created by the trigger
+  const profileDataForUpdate = {
     full_name,
     program,
     level,
@@ -94,13 +93,16 @@ export async function createStudentByAgency(formData: FormData) {
     agency_id: agencyId,
   };
 
-  const { error: profileError } = await supabase.from('profiles').insert(profileData);
+  const { error: profileError } = await supabase
+    .from('profiles')
+    .update(profileDataForUpdate)
+    .eq('id', newUserId);
 
   if (profileError) {
-    console.error('Error creating user profile:', profileError);
+    console.error('Error updating user profile:', profileError);
     // If profile creation fails, we should delete the auth user to prevent orphans.
     await supabase.auth.admin.deleteUser(newUserId);
-    return { success: false, message: `Failed to create student profile: ${profileError.message}` };
+    return { success: false, message: `Failed to update student profile: ${profileError.message}` };
   }
 
   revalidatePath('/dashboard/agency/students');
