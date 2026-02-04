@@ -9,17 +9,20 @@ export const dynamic = 'force-dynamic';
 
 export default async function AgencyStudentsPage() {
   const user = await getCurrentUser();
-  if (!user || user.role !== 'agency' || !user.agencyId) {
+  if (!user || user.role !== 'agency') {
     redirect('/dashboard');
   }
 
   const supabase = createSupabaseServerClient();
 
-  const { data: studentsData, error } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('agency_id', user.agencyId)
-    .order('created_at', { ascending: false });
+  const { data: studentsData, error } = user.agencyId 
+    ? await supabase
+      .from('profiles')
+      .select('*')
+      .eq('agency_id', user.agencyId)
+      .order('created_at', { ascending: false })
+    : { data: null, error: null };
+
 
   if (error) {
     console.error("Error fetching students:", error.message);
