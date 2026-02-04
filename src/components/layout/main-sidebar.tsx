@@ -14,6 +14,8 @@ import {
   HelpCircle,
   AreaChart,
   FolderKanban,
+  CreditCard,
+  ShoppingCart,
 } from "lucide-react";
 import {
   Sidebar,
@@ -23,6 +25,9 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarFooter,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
 } from "@/components/ui/sidebar";
 import { Logo } from "@/components/icons";
 import type { User } from "@/lib/types";
@@ -30,12 +35,15 @@ import { cn } from "@/lib/utils";
 
 const commonLinks = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
-  { href: "/dashboard/interviews", label: "Interviews", icon: FileText },
-  { href: "/dashboard/progress", label: "Progress", icon: BarChart },
+  { href: "/dashboard/interviews", label: "My Interviews", icon: FileText },
+  { href: "/dashboard/progress", label: "My Progress", icon: BarChart },
 ];
 
-const agencyLinks = [
-  { href: "/dashboard/agency", label: "Agency", icon: Building },
+const agencySubLinks = [
+    { href: "/dashboard/agency/interviews", label: "Recent Interviews", icon: FileText },
+    { href: "/dashboard/agency/usage", label: "Usage", icon: AreaChart },
+    { href: "/dashboard/agency/plan", label: "Plan", icon: CreditCard },
+    { href: "/dashboard/agency/recharge", label: "Recharge", icon: ShoppingCart },
 ];
 
 const adminLinks = [
@@ -51,16 +59,54 @@ export function MainSidebar({ user }: { user: User }) {
   const pathname = usePathname();
 
   if (!user) return null;
+  
+  const isAgencyPage = pathname.startsWith('/dashboard/agency');
 
-  let userLinks = commonLinks;
-
+  // Admin has a completely separate sidebar
   if (user.role === 'admin') {
-    userLinks = adminLinks;
-  } else if (user.role === 'agency_admin') {
-    userLinks = [...commonLinks, ...agencyLinks];
+    return (
+        <Sidebar>
+            <SidebarHeader>
+                <Link href="/dashboard" className="flex items-center gap-2 font-headline text-xl font-bold">
+                    <Logo className="h-8 w-8 text-primary" />
+                    <span className="group-data-[collapsible=icon]:hidden">precasprep</span>
+                </Link>
+            </SidebarHeader>
+            <SidebarContent>
+                <SidebarMenu>
+                {adminLinks.map((link) => (
+                    <SidebarMenuItem key={link.href}>
+                    <SidebarMenuButton
+                        asChild
+                        isActive={pathname.startsWith(link.href) && (link.href !== '/dashboard' || pathname === '/dashboard')}
+                        tooltip={link.label}
+                    >
+                        <Link href={link.href}>
+                        <link.icon />
+                        <span>{link.label}</span>
+                        </Link>
+                    </SidebarMenuButton>
+                    </SidebarMenuItem>
+                ))}
+                </SidebarMenu>
+            </SidebarContent>
+            <SidebarFooter>
+                <SidebarMenu>
+                    <SidebarMenuItem>
+                        <SidebarMenuButton asChild tooltip="Settings" isActive={pathname === '/dashboard/settings'}>
+                            <Link href="/dashboard/settings">
+                                <Settings />
+                                <span>Settings</span>
+                            </Link>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                </SidebarMenu>
+            </SidebarFooter>
+        </Sidebar>
+    )
   }
 
-
+  // Combined sidebar for user and agency_admin
   return (
     <Sidebar>
       <SidebarHeader>
@@ -71,7 +117,7 @@ export function MainSidebar({ user }: { user: User }) {
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu>
-          {userLinks.map((link) => (
+          {commonLinks.map((link) => (
             <SidebarMenuItem key={link.href}>
               <SidebarMenuButton
                 asChild
@@ -85,6 +131,30 @@ export function MainSidebar({ user }: { user: User }) {
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))}
+          
+          {user.role === 'agency_admin' && (
+            <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isAgencyPage && pathname === '/dashboard/agency'} tooltip="Agency">
+                    <Link href="/dashboard/agency">
+                        <Building />
+                        <span>Agency</span>
+                    </Link>
+                </SidebarMenuButton>
+                <SidebarMenuSub>
+                    {agencySubLinks.map((subLink) => (
+                        <SidebarMenuSubItem key={subLink.href}>
+                            <SidebarMenuSubButton asChild isActive={pathname === subLink.href}>
+                                <Link href={subLink.href}>
+                                    <subLink.icon />
+                                    <span>{subLink.label}</span>
+                                </Link>
+                            </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                    ))}
+                </SidebarMenuSub>
+            </SidebarMenuItem>
+          )}
+
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter>
