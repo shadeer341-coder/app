@@ -236,6 +236,7 @@ export function OnboardingPageClient() {
         onboarding_completed: true,
         interview_quota: interviewQuota,
         level: isStudent ? (selectedProgram?.level || 'UG') : 'UG',
+        from_agency: !!user.user_metadata?.agency_id,
         
         // Student-specific data
         gender: isStudent ? data.gender : null,
