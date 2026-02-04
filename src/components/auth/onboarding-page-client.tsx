@@ -222,6 +222,7 @@ export function OnboardingPageClient() {
     }
 
     const selectedProgram = programOptions.find(p => p.value === data.program);
+    const isFromAgency = !!user.user_metadata?.agency_id;
   
     let agencyTierFromMeta: string | null = null;
     if (isAgency) {
@@ -246,12 +247,13 @@ export function OnboardingPageClient() {
         last_education: isStudent ? data.last_education : null,
         
         // Agency-specific data
-        agency_id: isAgency ? user.id : null,
+        agency_id: user.user_metadata?.agency_id || (isAgency ? user.id : null),
         agency_name: isAgency ? data.agency_name : null,
         agency_job_title: isAgency ? data.agency_job_title : null,
         agency_tier: agencyTierFromMeta,
         agency_country: isAgency ? data.agency_country : null,
-        mobile_number: isAgency ? data.mobile_number : null
+        mobile_number: isAgency ? data.mobile_number : null,
+        from_agency: isFromAgency,
     };
   
     const { error } = await supabase

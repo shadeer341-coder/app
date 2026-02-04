@@ -29,6 +29,7 @@ import { PlusCircle, Loader2, EyeOff, Eye } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 
 
 const createStudentSchema = z.object({
@@ -133,6 +134,7 @@ export function StudentManagement({ students }: { students: User[] }) {
                             <TableHead>Email</TableHead>
                             <TableHead>Program</TableHead>
                             <TableHead>Interview Quota</TableHead>
+                            <TableHead>Status</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -149,11 +151,16 @@ export function StudentManagement({ students }: { students: User[] }) {
                                 </TableCell>
                                 <TableCell>{student.email}</TableCell>
                                 <TableCell>{student.program || 'N/A'}</TableCell>
-                                <TableCell>{student.interview_quota ?? 0}</TableCell>
+                                <TableCell>{student.status === 'active' ? student.interview_quota ?? 0 : 'N/A'}</TableCell>
+                                 <TableCell>
+                                    <Badge variant={student.status === 'active' ? 'default' : 'secondary'}>
+                                        {student.status === 'active' ? 'Active' : 'Pending Onboarding'}
+                                    </Badge>
+                                </TableCell>
                             </TableRow>
                         )) : (
                             <TableRow>
-                                <TableCell colSpan={4} className="h-24 text-center">
+                                <TableCell colSpan={5} className="h-24 text-center">
                                     You haven't added any students yet.
                                 </TableCell>
                             </TableRow>
