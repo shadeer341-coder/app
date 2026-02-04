@@ -6,23 +6,11 @@ import { createSupabaseServiceRoleClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { getCurrentUser } from '@/lib/auth';
 
-const programOptions = [
-    { value: "Foundation + Degree", level: 'UG' },
-    { value: "Degree (Undergraduate)", level: 'UG' },
-    { value: "Top-Up / Final Year", level: 'UG' },
-    { value: "Masters (Postgraduate)", level: 'PG' }
-];
 
 const createStudentSchema = z.object({
   full_name: z.string().min(2, "Full name is required."),
   email: z.string().email("Invalid email address."),
   password: z.string().min(8, "Password must be at least 8 characters long."),
-  gender: z.string().optional(),
-  age: z.coerce.number().min(16).optional(),
-  nationality: z.string().optional(),
-  program: z.string().optional(),
-  university: z.string().optional(),
-  last_education: z.string().optional(),
 });
 
 export async function createStudentByAgency(formData: FormData) {
@@ -59,50 +47,25 @@ export async function createStudentByAgency(formData: FormData) {
     return { success: false, message: firstError || "Invalid data provided.", errors: validatedData.error.flatten().fieldErrors };
   }
 
-  const { full_name, email, password, program, ...rest } = validatedData.data;
+  const { full_name, email, password } = validatedData.data;
 
-  // Step 1: Create the user in Supabase Auth
+  // Create the user in Supabase Auth with specific metadata
   const { data: authData, error: authError } = await supabase.auth.admin.createUser({
     email,
     password,
-    email_confirm: true, // User will be sent a confirmation email
+    email_confirm: true, // Corresponds to email_verified: true
     user_metadata: {
       full_name,
+      plan: "Individual",
+      group_id: 1,
+      agency_id: agencyId,
+      password_is_temporary: true
     },
   });
 
   if (authError) {
     console.error('Error creating user in Auth:', authError);
     return { success: false, message: authError.message };
-  }
-
-  const newUserId = authData.user.id;
-  
-  const selectedProgram = programOptions.find(p => p.value === program);
-  const level = selectedProgram?.level || 'UG';
-
-  // Step 2: Update the profile that was auto-created by the trigger
-  const profileDataForUpdate = {
-    full_name,
-    program,
-    level,
-    ...rest,
-    role: 'user',
-    onboarding_completed: true, // The agency is onboarding them
-    interview_quota: 3, // Default quota for agency-created students
-    agency_id: agencyId,
-  };
-
-  const { error: profileError } = await supabase
-    .from('profiles')
-    .update(profileDataForUpdate)
-    .eq('id', newUserId);
-
-  if (profileError) {
-    console.error('Error updating user profile:', profileError);
-    // If profile creation fails, we should delete the auth user to prevent orphans.
-    await supabase.auth.admin.deleteUser(newUserId);
-    return { success: false, message: `Failed to update student profile: ${profileError.message}` };
   }
 
   revalidatePath('/dashboard/agency/students');
