@@ -16,6 +16,7 @@ import {
   Command,
   CommandEmpty,
   CommandGroup,
+  CommandInput,
   CommandItem,
   CommandList,
 } from "@/components/ui/command"
@@ -455,9 +456,9 @@ export function OnboardingPageClient() {
                                         </FormControl>
                                         </PopoverTrigger>
                                         <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                        <Command>
-                                            <CommandInput 
-                                                placeholder="Search university..." 
+                                        <Command key={currentStep}>
+                                            <CommandInput
+                                                placeholder="Search university..."
                                                 value={universitySearch}
                                                 onValueChange={setUniversitySearch}
                                             />
