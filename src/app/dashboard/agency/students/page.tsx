@@ -19,20 +19,23 @@ export default async function AgencyStudentsPage() {
   const supabase = createSupabaseServerClient();
   const supabaseService = createSupabaseServiceRoleClient();
 
-  // 1. Fetch all users from Auth created by this agency
+  // 1. Fetch all users from Auth created by this agency, ensuring they are students (group_id: 1)
   const { data: authData, error: authError } = await supabaseService.auth.admin.listUsers({ perPage: 1000 });
 
   if (authError) {
     console.error("Error fetching auth users:", authError.message);
   }
-  const agencyAuthUsers = authData?.users.filter(u => u.user_metadata?.agency_id === user.agencyId) || [];
+  const agencyAuthUsers = authData?.users.filter(
+      u => u.user_metadata?.agency_id === user.agencyId && String(u.user_metadata?.group_id) === '1'
+  ) || [];
 
 
-  // 2. Fetch all profiles that are already onboarded for this agency
+  // 2. Fetch all student profiles that are already onboarded for this agency
   const { data: profilesData, error: profilesError } = await supabase
     .from('profiles')
     .select('*')
-    .eq('agency_id', user.agencyId);
+    .eq('agency_id', user.agencyId)
+    .eq('role', 'user'); // Only select users with the 'user' role
 
   if (profilesError) {
     console.error("Error fetching student profiles:", profilesError.message);
