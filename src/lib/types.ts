@@ -22,6 +22,8 @@ export type User = {
   agency_name?: string;
   agency_job_title?: string;
   agency_tier?: string;
+  agency_country?: string;
+  mobile_number?: string;
 };
 
 export type QuestionCategory = {

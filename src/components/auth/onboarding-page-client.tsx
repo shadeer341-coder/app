@@ -16,7 +16,6 @@ import {
   Command,
   CommandEmpty,
   CommandGroup,
-  CommandInput,
   CommandItem,
   CommandList,
 } from "@/components/ui/command"
@@ -29,7 +28,7 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, ArrowLeft, Check, ChevronsUpDown, BookOpen, GraduationCap, ArrowUpRightFromSquare, Briefcase, Building, User } from 'lucide-react';
+import { Loader2, ArrowLeft, Check, ChevronsUpDown, BookOpen, GraduationCap, ArrowUpRightFromSquare, Briefcase, Building, User, Mail, Phone, Globe } from 'lucide-react';
 import { Logo } from '@/components/icons';
 import nationalities from '@/lib/nationalities.json';
 import { cn } from '@/lib/utils';
@@ -40,17 +39,21 @@ import { createSupabaseClient } from '@/lib/supabase/client';
 type University = { name: string; country: string; };
 
 const formSchema = z.object({
+  // Common / Student
   full_name: z.string().min(2, "Full name is required."),
-  gender: z.string().min(1, "Gender is required."),
-  age: z.coerce.number().min(16, "You must be at least 16 years old.").max(100),
-  nationality: z.string().min(1, "Nationality is required."),
-  // Student fields
+  gender: z.string().optional(),
+  age: z.coerce.number().optional(),
+  nationality: z.string().optional(), // Person's nationality
   program: z.string().optional(),
   university: z.string().optional(),
   last_education: z.string().optional(),
-  // Agency fields
+  
+  // Agency
   agency_name: z.string().optional(),
-  agency_job_title: z.string().optional(),
+  agency_country: z.string().optional(),
+  agency_job_title: z.string().optional(), // Occupation
+  mobile_number: z.string().optional(),
+  email: z.string().email().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -62,8 +65,8 @@ const studentStepFields: Record<number, FieldName<FormData>[]> = {
 };
 
 const agencyStepFields: Record<number, FieldName<FormData>[]> = {
-    1: ['full_name', 'gender', 'age', 'nationality'],
-    2: ['agency_name', 'agency_job_title'],
+    1: ['agency_name', 'agency_country'],
+    2: ['full_name', 'agency_job_title', 'mobile_number'],
 };
 
 const programOptions = [
@@ -82,6 +85,7 @@ export function OnboardingPageClient() {
   const supabase = createSupabaseClient();
   
   const [userType, setUserType] = useState<'student' | 'agency' | 'loading'>('loading');
+  const [userEmail, setUserEmail] = useState<string>('');
   const [detectedAgencyPlan, setDetectedAgencyPlan] = useState<string | null>(null);
   const [popoverOpen, setPopoverOpen] = useState(false)
   const [universitySearch, setUniversitySearch] = useState("");
@@ -103,14 +107,26 @@ export function OnboardingPageClient() {
       university: '',
       last_education: '',
       agency_name: '',
+      agency_country: '',
       agency_job_title: '',
+      mobile_number: '',
+      email: '',
     },
   });
 
   useEffect(() => {
-    const determineUserType = async () => {
+    const determineUserTypeAndEmail = async () => {
         const { data: { user } } = await supabase.auth.getUser();
         
+        if (user) {
+            setUserEmail(user.email || '');
+            form.setValue('email', user.email || '');
+            // Prefill name for agency signer if available from signup
+            if (user.user_metadata?.full_name) {
+              form.setValue('full_name', user.user_metadata.full_name);
+            }
+        }
+
         if (String(user?.user_metadata?.group_id) === '2') {
             setUserType('agency');
             const planString = user?.user_metadata?.plan || ''; // e.g., "Agency - Advanced"
@@ -120,8 +136,8 @@ export function OnboardingPageClient() {
             setUserType('student');
         }
     };
-    determineUserType();
-  }, [supabase]);
+    determineUserTypeAndEmail();
+  }, [supabase, form]);
 
   useEffect(() => {
     if (isAgency) return; // Don't search for universities for agencies
@@ -161,17 +177,6 @@ export function OnboardingPageClient() {
     if (fieldsToValidate && fieldsToValidate.length > 0) {
         const isValid = await form.trigger(fieldsToValidate);
         if (!isValid) return;
-
-        if (isAgency && currentStep === 2) {
-            if (!form.getValues('agency_name')) {
-                form.setError('agency_name', { type: 'manual', message: 'Agency name is required.' });
-                return;
-            }
-             if (!form.getValues('agency_job_title')) {
-                form.setError('agency_job_title', { type: 'manual', message: 'Job title is required.' });
-                return;
-            }
-        }
     }
     
     setCurrentStep(prev => Math.min(prev + 1, totalSteps));
@@ -224,23 +229,27 @@ export function OnboardingPageClient() {
     }
 
     const profileData = {
-      id: user.id,
-      role: userRole,
-      full_name: data.full_name,
-      gender: data.gender,
-      age: data.age,
-      nationality: data.nationality,
-      onboarding_completed: true,
-      interview_quota: interviewQuota,
-      // Student-specific data
-      level: isAgency ? 'UG' : (selectedProgram?.level || 'UG'),
-      program: isStudent ? data.program : null,
-      university: isStudent ? data.university : null,
-      last_education: isStudent ? data.last_education : null,
-      // Agency-specific data
-      agency_name: isAgency ? data.agency_name : null,
-      agency_job_title: isAgency ? data.agency_job_title : null,
-      agency_tier: agencyTierFromMeta,
+        id: user.id,
+        role: userRole,
+        full_name: data.full_name,
+        onboarding_completed: true,
+        interview_quota: interviewQuota,
+        level: isStudent ? (selectedProgram?.level || 'UG') : 'UG',
+        
+        // Student-specific data
+        gender: isStudent ? data.gender : null,
+        age: isStudent ? data.age : null,
+        nationality: isStudent ? data.nationality : null,
+        program: isStudent ? data.program : null,
+        university: isStudent ? data.university : null,
+        last_education: isStudent ? data.last_education : null,
+        
+        // Agency-specific data
+        agency_name: isAgency ? data.agency_name : null,
+        agency_job_title: isAgency ? data.agency_job_title : null,
+        agency_tier: agencyTierFromMeta,
+        agency_country: isAgency ? data.agency_country : null,
+        mobile_number: isAgency ? data.mobile_number : null
     };
   
     const { error } = await supabase
@@ -293,15 +302,19 @@ export function OnboardingPageClient() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                 <div className="text-center mb-8">
                     <p className="text-primary font-semibold mb-2">STEP {currentStep} / {totalSteps}</p>
-                    {currentStep === 1 && <h1 className="font-headline text-3xl md:text-4xl font-bold">First, tell us about yourself.</h1>}
-                    {currentStep === 2 && isStudent && <h1 className="font-headline text-3xl md:text-4xl font-bold">What are your academic goals?</h1>}
-                    {currentStep === 2 && isAgency && <h1 className="font-headline text-3xl md:text-4xl font-bold">Tell us about your agency.</h1>}
-                    {currentStep === 3 && isStudent && <h1 className="font-headline text-3xl md:text-4xl font-bold">What's your educational background?</h1>}
-                    {((isStudent && currentStep === 4) || (isAgency && currentStep === 3)) && <h1 className="font-headline text-3xl md:text-4xl font-bold">Please review and confirm.</h1>}
+                    {isStudent && currentStep === 1 && <h1 className="font-headline text-3xl md:text-4xl font-bold">First, tell us about yourself.</h1>}
+                    {isStudent && currentStep === 2 && <h1 className="font-headline text-3xl md:text-4xl font-bold">What are your academic goals?</h1>}
+                    {isStudent && currentStep === 3 && <h1 className="font-headline text-3xl md:text-4xl font-bold">What's your educational background?</h1>}
+                    {isStudent && currentStep === 4 && <h1 className="font-headline text-3xl md:text-4xl font-bold">Please review and confirm.</h1>}
+
+                    {isAgency && currentStep === 1 && <h1 className="font-headline text-3xl md:text-4xl font-bold">Tell us about your agency.</h1>}
+                    {isAgency && currentStep === 2 && <h1 className="font-headline text-3xl md:text-4xl font-bold">Who is setting up this account?</h1>}
+                    {isAgency && currentStep === 3 && <h1 className="font-headline text-3xl md:text-4xl font-bold">Please review and confirm.</h1>}
                 </div>
 
                 <div className="max-w-xl mx-auto">
-                    {currentStep === 1 && (
+                    {/* STUDENT: Step 1 */}
+                    {isStudent && currentStep === 1 && (
                         <div className="space-y-4">
                             <FormField control={form.control} name="full_name" render={({ field }) => (
                                 <FormItem>
@@ -350,7 +363,39 @@ export function OnboardingPageClient() {
                             </div>
                         </div>
                     )}
-                    {currentStep === 2 && isStudent && (
+
+                    {/* AGENCY: Step 1 */}
+                    {isAgency && currentStep === 1 && (
+                        <div className="space-y-4">
+                            <FormField control={form.control} name="agency_name" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="flex items-center gap-2"><Building className="w-4 h-4" /> Agency Name</FormLabel>
+                                    <FormControl><Input placeholder="e.g., Global Education Ltd." {...field} /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                            <FormField control={form.control} name="agency_country" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="flex items-center gap-2"><Globe className="w-4 h-4" /> Based in (Country)</FormLabel>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <FormControl><SelectTrigger><SelectValue placeholder="Select a country" /></SelectTrigger></FormControl>
+                                            <SelectContent>
+                                                {nationalities.map((nat) => (
+                                                    <SelectItem key={nat.value} value={nat.label}>
+                                                        {nat.label}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
+                        </div>
+                    )}
+
+
+                    {/* STUDENT: Step 2 */}
+                    {isStudent && currentStep === 2 && (
                         <div className="space-y-4">
                             <FormField
                                 control={form.control}
@@ -451,25 +496,43 @@ export function OnboardingPageClient() {
                                 />
                         </div>
                     )}
-                    {currentStep === 2 && isAgency && (
-                        <div className="space-y-4">
-                            <FormField control={form.control} name="agency_name" render={({ field }) => (
+                    
+                    {/* AGENCY: Step 2 */}
+                    {isAgency && currentStep === 2 && (
+                         <div className="space-y-4">
+                            <FormField control={form.control} name="full_name" render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel className="flex items-center gap-2"><Building className="w-4 h-4" /> Agency Name</FormLabel>
-                                    <FormControl><Input placeholder="e.g., Global Education Ltd." {...field} /></FormControl>
+                                    <FormLabel className="flex items-center gap-2"><User className="w-4 h-4" /> Your Name</FormLabel>
+                                    <FormControl><Input placeholder="e.g., Jane Doe" {...field} /></FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )} />
                             <FormField control={form.control} name="agency_job_title" render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel className="flex items-center gap-2"><User className="w-4 h-4" /> Your Job Title</FormLabel>
+                                    <FormLabel className="flex items-center gap-2"><Briefcase className="w-4 h-4" /> Your Occupation</FormLabel>
                                     <FormControl><Input placeholder="e.g., Senior Counselor" {...field} /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                            <FormField control={form.control} name="email" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="flex items-center gap-2"><Mail className="w-4 h-4" /> Your Email</FormLabel>
+                                    <FormControl><Input {...field} disabled /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
+                            <FormField control={form.control} name="mobile_number" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="flex items-center gap-2"><Phone className="w-4 h-4" /> Your Mobile Number</FormLabel>
+                                    <FormControl><Input placeholder="e.g., +44 123 456 7890" {...field} /></FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )} />
                         </div>
                     )}
-                    {currentStep === 3 && isStudent && (
+
+                    {/* STUDENT: Step 3 */}
+                    {isStudent && currentStep === 3 && (
                          <div className="space-y-4">
                             <FormField control={form.control} name="last_education" render={({ field }) => (
                                 <FormItem>
@@ -492,17 +555,18 @@ export function OnboardingPageClient() {
                         </div>
                     )}
 
+                    {/* Review Step */}
                     {((isStudent && currentStep === 4) || (isAgency && currentStep === 3)) && (
                         <div className="space-y-6">
-                            <div className="space-y-2 rounded-md border p-4 bg-secondary/50">
-                                <h4 className="font-medium text-lg">Personal Information</h4>
-                                <p><strong>Full Name:</strong> {form.getValues().full_name}</p>
-                                <p><strong>Gender:</strong> {form.getValues().gender}</p>
-                                <p><strong>Age:</strong> {form.getValues().age}</p>
-                                <p><strong>Nationality:</strong> {form.getValues().nationality}</p>
-                            </div>
                             {isStudent && (
                                 <>
+                                    <div className="space-y-2 rounded-md border p-4 bg-secondary/50">
+                                        <h4 className="font-medium text-lg">Personal Information</h4>
+                                        <p><strong>Full Name:</strong> {form.getValues().full_name}</p>
+                                        <p><strong>Gender:</strong> {form.getValues().gender}</p>
+                                        <p><strong>Age:</strong> {form.getValues().age}</p>
+                                        <p><strong>Nationality:</strong> {form.getValues().nationality}</p>
+                                    </div>
                                     <div className="space-y-2 rounded-md border p-4 bg-secondary/50">
                                         <h4 className="font-medium text-lg">Academic Goals</h4>
                                         <p><strong>Applying for:</strong> {form.getValues().program}</p>
@@ -515,12 +579,21 @@ export function OnboardingPageClient() {
                                 </>
                             )}
                              {isAgency && (
-                                <div className="space-y-2 rounded-md border p-4 bg-secondary/50">
-                                    <h4 className="font-medium text-lg">Agency Details</h4>
-                                    <p><strong>Agency Name:</strong> {form.getValues().agency_name}</p>
-                                    <p><strong>Job Title:</strong> {form.getValues().agency_job_title}</p>
-                                    <p><strong>Selected Plan:</strong> {detectedAgencyPlan || 'Not Detected'}</p>
-                                </div>
+                                <>
+                                    <div className="space-y-2 rounded-md border p-4 bg-secondary/50">
+                                        <h4 className="font-medium text-lg">Agency Details</h4>
+                                        <p><strong>Agency Name:</strong> {form.getValues().agency_name}</p>
+                                        <p><strong>Based In:</strong> {form.getValues().agency_country}</p>
+                                        <p><strong>Selected Plan:</strong> {detectedAgencyPlan || 'Not Detected'}</p>
+                                    </div>
+                                    <div className="space-y-2 rounded-md border p-4 bg-secondary/50">
+                                        <h4 className="font-medium text-lg">Signer Details</h4>
+                                        <p><strong>Name:</strong> {form.getValues().full_name}</p>
+                                        <p><strong>Occupation:</strong> {form.getValues().agency_job_title}</p>
+                                        <p><strong>Email:</strong> {form.getValues().email}</p>
+                                        <p><strong>Mobile:</strong> {form.getValues().mobile_number}</p>
+                                    </div>
+                                </>
                             )}
                             <p className="text-sm text-muted-foreground text-center">Please review your information. By clicking "Submit," you confirm that the details are correct.</p>
                         </div>
