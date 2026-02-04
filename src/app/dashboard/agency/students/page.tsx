@@ -30,18 +30,18 @@ export default async function AgencyStudentsPage() {
   ) || [];
 
 
-  // 2. Fetch all student profiles that are already onboarded for this agency
-  const { data: profilesData, error: profilesError } = await supabase
+  // 2. Fetch all profiles associated with this agency
+  const { data: allAgencyProfiles, error: profilesError } = await supabase
     .from('profiles')
     .select('*')
-    .eq('agency_id', user.agencyId)
-    .eq('role', 'user'); // Only select users with the 'user' role
+    .eq('agency_id', user.agencyId);
 
   if (profilesError) {
     console.error("Error fetching student profiles:", profilesError.message);
   }
   
-  const onboardedProfiles = (profilesData as User[]) || [];
+  // Exclude the agency owner's profile to get only the student profiles
+  const onboardedProfiles = ((allAgencyProfiles as User[]) || []).filter(profile => profile.id !== user.id);
   const onboardedProfileIds = new Set(onboardedProfiles.map(p => p.id));
 
   // 3. Identify pending users (in auth but not in profiles)
