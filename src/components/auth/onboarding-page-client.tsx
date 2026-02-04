@@ -86,6 +86,7 @@ export function OnboardingPageClient() {
   const [isSearching, setIsSearching] = useState(false);
 
   const isAgency = userType === 'agency';
+  const isStudent = userType === 'student';
   const totalSteps = isAgency ? 3 : 4;
   
   const form = useForm<FormData>({
@@ -523,6 +524,8 @@ export function OnboardingPageClient() {
     </div>
   );
 }
+
+    
 
     
 
