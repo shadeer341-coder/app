@@ -68,6 +68,22 @@ export async function createStudentByAgency(formData: FormData) {
     return { success: false, message: authError.message };
   }
 
+  // Per your request, skip the profiles row. Since a trigger automatically
+  // creates it, we will now delete it to keep the table clean.
+  if (authData.user) {
+    const { error: deleteError } = await supabase
+      .from('profiles')
+      .delete()
+      .eq('id', authData.user.id);
+    
+    if (deleteError) {
+      // This is not a critical error for the user, but good to log.
+      // The student account was still created successfully.
+      console.warn(`User auth account was created, but their auto-generated profile row could not be deleted. Error: ${deleteError.message}`);
+    }
+  }
+
+
   revalidatePath('/dashboard/agency/students');
   return { success: true, message: `Student account for ${full_name} has been created.` };
 }
