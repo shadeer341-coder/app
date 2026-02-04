@@ -27,9 +27,28 @@ const createStudentSchema = z.object({
 
 export async function createStudentByAgency(formData: FormData) {
   const agencyUser = await getCurrentUser();
-  if (!agencyUser || agencyUser.role !== 'agency' || !agencyUser.agencyId) {
-    return { success: false, message: "Permission denied. You must be part of an agency to create students." };
+  if (!agencyUser || agencyUser.role !== 'agency') {
+    return { success: false, message: "Permission denied. You must be an agency to create students." };
   }
+
+  const supabase = createSupabaseServerActionClient({ service: true });
+  let agencyId = agencyUser.agencyId;
+
+  // This is a self-healing mechanism. If an agency user from the old system
+  // doesn't have an agencyId, we assign their own user ID as the agencyId.
+  if (!agencyId) {
+    const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ agency_id: agencyUser.id })
+        .eq('id', agencyUser.id);
+    
+    if (updateError) {
+        console.error('Error self-assigning agency_id:', updateError);
+        return { success: false, message: "Could not initialize your agency profile. Please contact support." };
+    }
+    agencyId = agencyUser.id;
+  }
+
 
   const rawFormData = Object.fromEntries(formData.entries());
   
@@ -41,8 +60,6 @@ export async function createStudentByAgency(formData: FormData) {
   }
 
   const { full_name, email, password, program, ...rest } = validatedData.data;
-
-  const supabase = createSupabaseServerActionClient({ service: true });
 
   // Step 1: Create the user in Supabase Auth
   const { data: authData, error: authError } = await supabase.auth.admin.createUser({
@@ -75,7 +92,7 @@ export async function createStudentByAgency(formData: FormData) {
     role: 'user',
     onboarding_completed: true, // The agency is onboarding them
     interview_quota: 3, // Default quota for agency-created students
-    agency_id: agencyUser.agencyId,
+    agency_id: agencyId,
   };
 
   const { error: profileError } = await supabase.from('profiles').insert(profileData);
