@@ -2,7 +2,7 @@ import type { User, Agency, QuestionCategory, Question, InterviewAttempt, UserLe
 
 export const users: User[] = [
   { id: 'user-1', name: 'Alex Johnson', email: 'alex@example.com', avatarUrl: 'https://picsum.photos/seed/u1/100/100', role: 'user', level: 'PG' },
-  { id: 'user-2', name: 'Maria Garcia', email: 'maria@example.com', avatarUrl: 'https://picsum.photos/seed/u2/100/100', role: 'agency_admin', level: 'PG', agencyId: 'agency-1' },
+  { id: 'user-2', name: 'Maria Garcia', email: 'maria@example.com', avatarUrl: 'https://picsum.photos/seed/u2/100/100', role: 'agency', level: 'PG', agencyId: 'agency-1' },
   { id: 'user-3', name: 'Chen Wei', email: 'chen@example.com', avatarUrl: 'https://picsum.photos/seed/u3/100/100', role: 'admin', level: 'PG' },
   { id: 'user-4', name: 'Ben Carter', email: 'ben@agency.com', avatarUrl: 'https://picsum.photos/seed/u4/100/100', role: 'user', level: 'UG', agencyId: 'agency-1' },
 ];

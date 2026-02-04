@@ -106,7 +106,7 @@ export function MainSidebar({ user }: { user: User }) {
     )
   }
 
-  // Combined sidebar for user and agency_admin
+  // Combined sidebar for user and agency
   return (
     <Sidebar>
       <SidebarHeader>
@@ -132,7 +132,7 @@ export function MainSidebar({ user }: { user: User }) {
             </SidebarMenuItem>
           ))}
           
-          {user.role === 'agency_admin' && (
+          {user.role === 'agency' && (
             <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={isAgencyPage && pathname === '/dashboard/agency'} tooltip="Agency">
                     <Link href="/dashboard/agency">

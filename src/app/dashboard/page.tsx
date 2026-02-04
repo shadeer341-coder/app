@@ -163,7 +163,7 @@ export default async function DashboardPage() {
 
   const roleDashboards = {
     user: renderUserDashboard(),
-    agency_admin: renderAgencyAdminDashboard(),
+    agency: renderAgencyAdminDashboard(),
     admin: renderAdminDashboard(),
   };
 

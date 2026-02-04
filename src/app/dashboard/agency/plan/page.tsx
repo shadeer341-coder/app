@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 
 export default async function AgencyPlanPage() {
     const user = await getCurrentUser();
-    if (!user || user.role !== 'agency_admin') {
+    if (!user || user.role !== 'agency') {
         redirect('/dashboard');
     }
     
@@ -87,4 +87,3 @@ export default async function AgencyPlanPage() {
         </div>
     );
 }
-

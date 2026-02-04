@@ -6,7 +6,7 @@ import { Users, FileText, BarChart } from "lucide-react";
 
 export default async function AgencyPage() {
     const user = await getCurrentUser();
-    if (!user || user.role !== 'agency_admin') {
+    if (!user || user.role !== 'agency') {
         redirect('/dashboard');
     }
 
