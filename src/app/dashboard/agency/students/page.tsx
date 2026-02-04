@@ -35,8 +35,9 @@ export default async function AgencyStudentsPage() {
   let allStudents: User[] = [];
 
   if (studentIds.length > 0) {
-    // 2. Fetch all existing profiles for these students
-    const { data: profiles, error: profilesError } = await supabase
+    // 2. Fetch all existing profiles for these students using the service client
+    // to bypass RLS, since we've already confirmed these students belong to the agency.
+    const { data: profiles, error: profilesError } = await supabaseService
       .from('profiles')
       .select('*')
       .in('id', studentIds);
