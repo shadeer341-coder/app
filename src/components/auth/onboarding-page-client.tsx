@@ -246,6 +246,7 @@ export function OnboardingPageClient() {
         last_education: isStudent ? data.last_education : null,
         
         // Agency-specific data
+        agency_id: isAgency ? user.id : null,
         agency_name: isAgency ? data.agency_name : null,
         agency_job_title: isAgency ? data.agency_job_title : null,
         agency_tier: agencyTierFromMeta,
@@ -456,7 +457,7 @@ export function OnboardingPageClient() {
                                         </FormControl>
                                         </PopoverTrigger>
                                         <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                        <Command key={currentStep}>
+                                        <Command key={`university-search-${currentStep}`}>
                                             <CommandInput
                                                 placeholder="Search university..."
                                                 value={universitySearch}
