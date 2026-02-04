@@ -30,42 +30,55 @@ export default async function AgencyStudentsPage() {
       u => u.user_metadata?.agency_id === user.agencyId && String(u.user_metadata?.group_id) === '3'
   ) || [];
 
-
-  // 2. Fetch all student profiles associated with this agency that have completed onboarding
-  const { data: onboardedProfiles, error: profilesError } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('agency_id', user.agencyId)
-    .eq('from_agency', true);
-
-  if (profilesError) {
-    console.error("Error fetching student profiles:", profilesError.message);
-  }
+  const studentIds = agencyAuthUsers.map(u => u.id);
   
-  const onboardedStudentProfiles = (onboardedProfiles as User[]) || [];
-  const onboardedProfileIds = new Set(onboardedStudentProfiles.map(p => p.id));
+  let allStudents: User[] = [];
 
-  // 3. Identify pending users (in auth but not in profiles table with from_agency=true)
-  const pendingUsers: User[] = agencyAuthUsers
-    .filter(authUser => !onboardedProfileIds.has(authUser.id))
-    .map(authUser => ({
-        id: authUser.id,
-        name: authUser.user_metadata?.full_name || 'Pending User',
-        email: authUser.email || 'no-email@example.com',
-        role: 'user',
-        status: 'pending',
-        onboardingCompleted: false,
-        avatarUrl: `https://picsum.photos/seed/${authUser.id}/100/100`,
-        level: 'UG',
-    }));
+  if (studentIds.length > 0) {
+    // 2. Fetch all existing profiles for these students
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('*')
+      .in('id', studentIds);
 
-  // 4. Mark onboarded users as 'active'
-  const activeUsers: User[] = onboardedStudentProfiles.map(profile => ({
-      ...profile,
-      status: 'active',
-  }));
+    if (profilesError) {
+      console.error("Error fetching profiles for students:", profilesError.message);
+    }
 
-  const allStudents = [...activeUsers, ...pendingUsers].sort((a, b) => {
+    const profilesMap = new Map(profiles?.map(p => [p.id, p as User]));
+
+    // 3. Construct the list of all students, determining their status
+    allStudents = agencyAuthUsers.map(authUser => {
+      const profile = profilesMap.get(authUser.id);
+      
+      if (profile) {
+        // Active student (profile exists)
+        return {
+          ...profile,
+          id: authUser.id,
+          email: authUser.email || 'no-email@example.com',
+          name: profile.full_name || authUser.user_metadata?.full_name || 'Unnamed User',
+          avatarUrl: profile.avatar_url || `https://picsum.photos/seed/${authUser.id}/100/100`,
+          status: 'active',
+          onboardingCompleted: true,
+        };
+      } else {
+        // Pending student (no profile yet)
+        return {
+          id: authUser.id,
+          name: authUser.user_metadata?.full_name || 'Pending User',
+          email: authUser.email || 'no-email@example.com',
+          role: 'user',
+          status: 'pending',
+          onboardingCompleted: false,
+          avatarUrl: `https://picsum.photos/seed/${authUser.id}/100/100`,
+          level: 'UG',
+        };
+      }
+    });
+  }
+
+  allStudents.sort((a, b) => {
     if (a.status === 'pending' && b.status !== 'pending') return -1;
     if (a.status !== 'pending' && b.status === 'pending') return 1;
     return (a.name || '').localeCompare(b.name || '');
