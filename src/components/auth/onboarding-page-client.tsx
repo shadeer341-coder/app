@@ -29,7 +29,7 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, ArrowLeft, Check, ChevronsUpDown, BookOpen, GraduationCap, ArrowUpRightFromSquare, Briefcase } from 'lucide-react';
+import { Loader2, ArrowLeft, Check, ChevronsUpDown, BookOpen, GraduationCap, ArrowUpRightFromSquare, Briefcase, Building } from 'lucide-react';
 import { Logo } from '@/components/icons';
 import nationalities from '@/lib/nationalities.json';
 import { cn } from '@/lib/utils';
@@ -45,18 +45,23 @@ const formSchema = z.object({
   gender: z.string().min(1, "Gender is required."),
   age: z.coerce.number().min(16, "You must be at least 16 years old.").max(100),
   nationality: z.string().min(1, "Nationality is required."),
-  program: z.string().min(1, "Program choice is required."),
-  university: z.string().min(2, "University is required."),
+  // Student fields
+  program: z.string().optional(),
+  university: z.string().optional(),
   last_education: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
 
-
-const stepFields: Record<number, FieldName<FormData>[]> = {
+const studentStepFields: Record<number, FieldName<FormData>[]> = {
     1: ['full_name', 'gender', 'age', 'nationality'],
     2: ['program', 'university'],
     3: [] // No validation for optional step 3
+};
+
+const agencyStepFields: Record<number, FieldName<FormData>[]> = {
+    1: ['full_name', 'gender', 'age', 'nationality'],
+    2: ['university'], // Re-used for agency name
 };
 
 const programOptions = [
@@ -73,12 +78,15 @@ export function OnboardingPageClient() {
   const router = useRouter();
   const { toast } = useToast();
   const supabase = createSupabaseClient();
-  const totalSteps = 4;
   
+  const [userType, setUserType] = useState<'student' | 'agency' | 'loading'>('loading');
   const [popoverOpen, setPopoverOpen] = useState(false)
   const [universitySearch, setUniversitySearch] = useState("");
   const [universities, setUniversities] = useState<University[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+
+  const isAgency = userType === 'agency';
+  const totalSteps = isAgency ? 3 : 4;
   
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -94,6 +102,21 @@ export function OnboardingPageClient() {
   });
 
   useEffect(() => {
+    const determineUserType = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        // group_id: 2 is for agencies
+        if (String(user?.user_metadata?.group_id) === '2') {
+            setUserType('agency');
+        } else {
+            setUserType('student');
+        }
+    };
+    determineUserType();
+  }, [supabase]);
+
+  useEffect(() => {
+    if (isAgency) return; // Don't search for universities for agencies
+
     const search = async () => {
       if (universitySearch.length > 2) {
         setIsSearching(true);
@@ -120,19 +143,39 @@ export function OnboardingPageClient() {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [universitySearch]);
+  }, [universitySearch, isAgency]);
 
   const nextStep = async () => {
+    const stepFields = isAgency ? agencyStepFields : studentStepFields;
     const fieldsToValidate = stepFields[currentStep];
+
     if (fieldsToValidate && fieldsToValidate.length > 0) {
         const isValid = await form.trigger(fieldsToValidate);
         if (!isValid) {
             return;
         }
+        if (isAgency && currentStep === 2 && !form.getValues('university')) {
+            form.setError('university', { type: 'manual', message: 'Agency name is required.' });
+            return;
+        }
     }
-    setCurrentStep(prev => Math.min(prev + 1, totalSteps));
+    
+    // For agencies, step 2 is the last input step, so we jump to the review step (3)
+    if (isAgency && currentStep === 2) {
+      setCurrentStep(3);
+    } else {
+      setCurrentStep(prev => Math.min(prev + 1, totalSteps));
+    }
   };
-  const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
+
+  const prevStep = () => {
+    // For agencies, from review (3), go back to agency name (2)
+    if (isAgency && currentStep === 3) {
+        setCurrentStep(2);
+    } else {
+        setCurrentStep(prev => Math.max(prev - 1, 1));
+    }
+  };
 
   const onSubmit = async (data: FormData) => {
     setLoading(true);
@@ -174,7 +217,10 @@ export function OnboardingPageClient() {
       ...data,
       id: user.id,
       role: userRole,
-      level: selectedProgram?.level || 'UG',
+      level: isAgency ? 'UG' : (selectedProgram?.level || 'UG'),
+      program: isAgency ? 'Agency' : data.program,
+      university: data.university, // Contains agency name for agencies
+      last_education: isAgency ? null : data.last_education,
       onboarding_completed: true,
       interview_quota: interviewQuota,
     };
@@ -194,6 +240,14 @@ export function OnboardingPageClient() {
   };
 
   const progressValue = (currentStep / totalSteps) * 100;
+  
+  if (userType === 'loading') {
+    return (
+        <div className="flex min-h-screen items-center justify-center">
+            <Loader2 className="h-16 w-16 animate-spin text-primary" />
+        </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4 sm:p-6 lg:p-8">
@@ -222,9 +276,10 @@ export function OnboardingPageClient() {
                 <div className="text-center mb-8">
                     <p className="text-primary font-semibold mb-2">STEP {currentStep} / {totalSteps}</p>
                     {currentStep === 1 && <h1 className="font-headline text-3xl md:text-4xl font-bold">First, tell us about yourself.</h1>}
-                    {currentStep === 2 && <h1 className="font-headline text-3xl md:text-4xl font-bold">What are your academic goals?</h1>}
-                    {currentStep === 3 && <h1 className="font-headline text-3xl md:text-4xl font-bold">What's your educational background?</h1>}
-                    {currentStep === 4 && <h1 className="font-headline text-3xl md:text-4xl font-bold">Please review and confirm.</h1>}
+                    {currentStep === 2 && isStudent && <h1 className="font-headline text-3xl md:text-4xl font-bold">What are your academic goals?</h1>}
+                    {currentStep === 2 && isAgency && <h1 className="font-headline text-3xl md:text-4xl font-bold">Tell us about your agency.</h1>}
+                    {currentStep === 3 && isStudent && <h1 className="font-headline text-3xl md:text-4xl font-bold">What's your educational background?</h1>}
+                    {(currentStep === 4 && isStudent) || (currentStep === 3 && isAgency) && <h1 className="font-headline text-3xl md:text-4xl font-bold">Please review and confirm.</h1>}
                 </div>
 
                 <div className="max-w-xl mx-auto">
@@ -277,7 +332,7 @@ export function OnboardingPageClient() {
                             </div>
                         </div>
                     )}
-                    {currentStep === 2 && (
+                    {currentStep === 2 && isStudent && (
                         <div className="space-y-4">
                             <FormField
                                 control={form.control}
@@ -378,7 +433,24 @@ export function OnboardingPageClient() {
                                 />
                         </div>
                     )}
-                    {currentStep === 3 && (
+                    {currentStep === 2 && isAgency && (
+                        <div className="space-y-4">
+                            <FormField
+                                control={form.control}
+                                name="university" // Re-using university field for agency name
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="flex items-center gap-2"><Building className="w-4 h-4" /> Agency Name</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="e.g., Global Education Ltd." {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+                    )}
+                    {currentStep === 3 && isStudent && (
                          <div className="space-y-4">
                             <FormField control={form.control} name="last_education" render={({ field }) => (
                                 <FormItem>
@@ -400,7 +472,7 @@ export function OnboardingPageClient() {
                              <p className="text-sm text-muted-foreground text-center pt-2">This step is optional. You can proceed without making a selection.</p>
                         </div>
                     )}
-                    {currentStep === 4 && (
+                    {((currentStep === 4 && isStudent) || (currentStep === 3 && isAgency)) && (
                         <div className="space-y-6">
                             <div className="space-y-2 rounded-md border p-4 bg-secondary/50">
                                 <h4 className="font-medium text-lg">Personal Information</h4>
@@ -409,15 +481,25 @@ export function OnboardingPageClient() {
                                 <p><strong>Age:</strong> {form.getValues().age}</p>
                                 <p><strong>Nationality:</strong> {form.getValues().nationality}</p>
                             </div>
-                            <div className="space-y-2 rounded-md border p-4 bg-secondary/50">
-                                <h4 className="font-medium text-lg">Academic Goals</h4>
-                                <p><strong>Applying for:</strong> {form.getValues().program}</p>
-                                <p><strong>University:</strong> {form.getValues().university}</p>
-                            </div>
-                            <div className="space-y-2 rounded-md border p-4 bg-secondary/50">
-                                <h4 className="font-medium text-lg">Educational Background</h4>
-                                <p><strong>Last Education:</strong> {form.getValues().last_education || 'Not provided'}</p>
-                            </div>
+                            {isStudent && (
+                                <>
+                                    <div className="space-y-2 rounded-md border p-4 bg-secondary/50">
+                                        <h4 className="font-medium text-lg">Academic Goals</h4>
+                                        <p><strong>Applying for:</strong> {form.getValues().program}</p>
+                                        <p><strong>University:</strong> {form.getValues().university}</p>
+                                    </div>
+                                    <div className="space-y-2 rounded-md border p-4 bg-secondary/50">
+                                        <h4 className="font-medium text-lg">Educational Background</h4>
+                                        <p><strong>Last Education:</strong> {form.getValues().last_education || 'Not provided'}</p>
+                                    </div>
+                                </>
+                            )}
+                             {isAgency && (
+                                <div className="space-y-2 rounded-md border p-4 bg-secondary/50">
+                                    <h4 className="font-medium text-lg">Agency Details</h4>
+                                    <p><strong>Agency Name:</strong> {form.getValues().university}</p>
+                                </div>
+                            )}
                             <p className="text-sm text-muted-foreground text-center">Please review your information. By clicking "Submit," you confirm that the details are correct.</p>
                         </div>
                     )}
@@ -441,6 +523,8 @@ export function OnboardingPageClient() {
     </div>
   );
 }
+
+    
 
     
 
