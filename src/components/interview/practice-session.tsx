@@ -372,7 +372,7 @@ useEffect(() => {
             setPreviewStream(null);
         }
     }
-}, [stage, cameraCheck, micCheck, selectedAudioDeviceId, selectedVideoDeviceId, getCameraPermission]);
+}, [stage, cameraCheck, micCheck, selectedAudioDeviceId, selectedVideoDeviceId, getCameraPermission, previewStream]);
 
 
   const captureSnapshot = useCallback((): string => {
@@ -594,6 +594,9 @@ useEffect(() => {
   useEffect(() => {
     return () => {
         stopCamera();
+        if (previewStream) {
+            previewStream.getTracks().forEach(track => track.stop());
+        }
         if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
             mediaRecorderRef.current.stop();
         }
@@ -601,7 +604,7 @@ useEffect(() => {
             if (url) URL.revokeObjectURL(url);
         });
     }
-  }, [stopCamera, videoRecordings]);
+  }, [stopCamera, videoRecordings, previewStream]);
 
   if (questions.length === 0) {
     return (
