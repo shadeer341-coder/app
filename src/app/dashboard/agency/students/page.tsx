@@ -1,7 +1,32 @@
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth";
+import { redirect } from "next/navigation";
+import { StudentManagement } from "@/components/agency/student-management";
+import type { User } from "@/lib/types";
 
-export default function AgencyStudentsPage() {
+export const dynamic = 'force-dynamic';
+
+export default async function AgencyStudentsPage() {
+  const user = await getCurrentUser();
+  if (!user || user.role !== 'agency' || !user.agencyId) {
+    redirect('/dashboard');
+  }
+
+  const supabase = createSupabaseServerClient();
+
+  const { data: studentsData, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('agency_id', user.agencyId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error("Error fetching students:", error.message);
+  }
+
+  const students = (studentsData as unknown as User[]) || [];
+  
   return (
     <div className="space-y-6">
        <div>
@@ -12,19 +37,7 @@ export default function AgencyStudentsPage() {
             Add, view, and manage all students in your agency.
           </p>
         </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>All Students</CardTitle>
-          <CardDescription>
-            This page will contain a table for managing your students.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center h-40 rounded-lg bg-muted/50">
-              <p className="text-sm text-muted-foreground">Student management table coming soon...</p>
-          </div>
-        </CardContent>
-      </Card>
+        <StudentManagement students={students} />
     </div>
   );
 }
