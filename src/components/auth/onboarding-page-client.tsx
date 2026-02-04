@@ -222,7 +222,6 @@ export function OnboardingPageClient() {
     }
 
     const selectedProgram = programOptions.find(p => p.value === data.program);
-    const isFromAgency = !!user.user_metadata?.agency_id;
   
     let agencyTierFromMeta: string | null = null;
     if (isAgency) {
@@ -253,7 +252,6 @@ export function OnboardingPageClient() {
         agency_tier: agencyTierFromMeta,
         agency_country: isAgency ? data.agency_country : null,
         mobile_number: isAgency ? data.mobile_number : null,
-        from_agency: isFromAgency,
     };
   
     const { error } = await supabase

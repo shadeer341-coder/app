@@ -25,7 +25,6 @@ export type User = {
   agency_country?: string;
   mobile_number?: string;
   status?: 'pending' | 'active';
-  from_agency?: boolean;
 };
 
 export type QuestionCategory = {
