@@ -29,7 +29,7 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, ArrowLeft, Check, ChevronsUpDown, BookOpen, GraduationCap, ArrowUpRightFromSquare, Briefcase, Building, User, Award, Star, Gem } from 'lucide-react';
+import { Loader2, ArrowLeft, Check, ChevronsUpDown, BookOpen, GraduationCap, ArrowUpRightFromSquare, Briefcase, Building, User } from 'lucide-react';
 import { Logo } from '@/components/icons';
 import nationalities from '@/lib/nationalities.json';
 import { cn } from '@/lib/utils';
@@ -51,7 +51,6 @@ const formSchema = z.object({
   // Agency fields
   agency_name: z.string().optional(),
   agency_job_title: z.string().optional(),
-  agency_tier: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -65,7 +64,6 @@ const studentStepFields: Record<number, FieldName<FormData>[]> = {
 const agencyStepFields: Record<number, FieldName<FormData>[]> = {
     1: ['full_name', 'gender', 'age', 'nationality'],
     2: ['agency_name', 'agency_job_title'],
-    3: ['agency_tier'],
 };
 
 const programOptions = [
@@ -73,12 +71,6 @@ const programOptions = [
     { value: "Degree (Undergraduate)", label: "Degree (Undergraduate)", icon: GraduationCap, level: 'UG' },
     { value: "Top-Up / Final Year", label: "Top-Up / Final Year", icon: ArrowUpRightFromSquare, level: 'UG' },
     { value: "Masters (Postgraduate)", label: "Masters (Postgraduate)", icon: Briefcase, level: 'PG' }
-];
-
-const agencyTierOptions = [
-    { value: "Starter", label: "Starter", icon: Award, description: "For up to 10 students." },
-    { value: "Standard", label: "Standard", icon: Star, description: "For up to 25 students, and includes custom branding." },
-    { value: "Advanced", label: "Advanced", icon: Gem, description: "For up to 50 students, and includes priority support." },
 ];
 
 
@@ -90,6 +82,7 @@ export function OnboardingPageClient() {
   const supabase = createSupabaseClient();
   
   const [userType, setUserType] = useState<'student' | 'agency' | 'loading'>('loading');
+  const [detectedAgencyPlan, setDetectedAgencyPlan] = useState<string | null>(null);
   const [popoverOpen, setPopoverOpen] = useState(false)
   const [universitySearch, setUniversitySearch] = useState("");
   const [universities, setUniversities] = useState<University[]>([]);
@@ -97,7 +90,7 @@ export function OnboardingPageClient() {
 
   const isAgency = userType === 'agency';
   const isStudent = userType === 'student';
-  const totalSteps = isAgency ? 4 : 4;
+  const totalSteps = isAgency ? 3 : 4;
   
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -111,16 +104,18 @@ export function OnboardingPageClient() {
       last_education: '',
       agency_name: '',
       agency_job_title: '',
-      agency_tier: '',
     },
   });
 
   useEffect(() => {
     const determineUserType = async () => {
         const { data: { user } } = await supabase.auth.getUser();
-        // group_id: 2 is for agencies
+        
         if (String(user?.user_metadata?.group_id) === '2') {
             setUserType('agency');
+            const planString = user?.user_metadata?.plan || ''; // e.g., "Agency - Advanced"
+            const plan = planString.split(' - ')[1] || null; // e.g., "Advanced"
+            setDetectedAgencyPlan(plan);
         } else {
             setUserType('student');
         }
@@ -222,6 +217,12 @@ export function OnboardingPageClient() {
 
     const selectedProgram = programOptions.find(p => p.value === data.program);
   
+    let agencyTierFromMeta: string | null = null;
+    if (isAgency) {
+        const planString = user?.user_metadata?.plan || ''; // e.g., "Agency - Advanced"
+        agencyTierFromMeta = planString.split(' - ')[1] || null; // e.g., "Advanced"
+    }
+
     const profileData = {
       id: user.id,
       role: userRole,
@@ -239,7 +240,7 @@ export function OnboardingPageClient() {
       // Agency-specific data
       agency_name: isAgency ? data.agency_name : null,
       agency_job_title: isAgency ? data.agency_job_title : null,
-      agency_tier: isAgency ? data.agency_tier : null,
+      agency_tier: agencyTierFromMeta,
     };
   
     const { error } = await supabase
@@ -296,8 +297,7 @@ export function OnboardingPageClient() {
                     {currentStep === 2 && isStudent && <h1 className="font-headline text-3xl md:text-4xl font-bold">What are your academic goals?</h1>}
                     {currentStep === 2 && isAgency && <h1 className="font-headline text-3xl md:text-4xl font-bold">Tell us about your agency.</h1>}
                     {currentStep === 3 && isStudent && <h1 className="font-headline text-3xl md:text-4xl font-bold">What's your educational background?</h1>}
-                    {currentStep === 3 && isAgency && <h1 className="font-headline text-3xl md:text-4xl font-bold">Choose your agency plan.</h1>}
-                    {currentStep === 4 && <h1 className="font-headline text-3xl md:text-4xl font-bold">Please review and confirm.</h1>}
+                    {((isStudent && currentStep === 4) || (isAgency && currentStep === 3)) && <h1 className="font-headline text-3xl md:text-4xl font-bold">Please review and confirm.</h1>}
                 </div>
 
                 <div className="max-w-xl mx-auto">
@@ -491,46 +491,8 @@ export function OnboardingPageClient() {
                              <p className="text-sm text-muted-foreground text-center pt-2">This step is optional. You can proceed without making a selection.</p>
                         </div>
                     )}
-                    {currentStep === 3 && isAgency && (
-                        <FormField
-                            control={form.control}
-                            name="agency_tier"
-                            render={({ field }) => (
-                            <FormItem className="space-y-3">
-                                <FormLabel>Which plan best suits your agency?</FormLabel>
-                                <FormControl>
-                                <RadioGroup
-                                    onValueChange={field.onChange}
-                                    defaultValue={field.value}
-                                    className="grid grid-cols-1 md:grid-cols-3 gap-4"
-                                >
-                                    {agencyTierOptions.map(option => (
-                                    <FormItem key={option.value}>
-                                        <FormControl>
-                                        <RadioGroupItem value={option.value} id={field.name + option.value} className="sr-only" />
-                                        </FormControl>
-                                        <Label
-                                            htmlFor={field.name + option.value}
-                                            className={cn(
-                                                "flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground cursor-pointer transition-colors h-full",
-                                                field.value === option.value && "border-primary bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
-                                            )}
-                                        >
-                                            <option.icon className="w-8 h-8 mb-3" />
-                                            <span className="font-bold text-lg">{option.label}</span>
-                                            <span className="text-center text-xs mt-1">{option.description}</span>
-                                        </Label>
-                                    </FormItem>
-                                    ))}
-                                </RadioGroup>
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
-                    )}
 
-                    {currentStep === 4 && (
+                    {((isStudent && currentStep === 4) || (isAgency && currentStep === 3)) && (
                         <div className="space-y-6">
                             <div className="space-y-2 rounded-md border p-4 bg-secondary/50">
                                 <h4 className="font-medium text-lg">Personal Information</h4>
@@ -557,7 +519,7 @@ export function OnboardingPageClient() {
                                     <h4 className="font-medium text-lg">Agency Details</h4>
                                     <p><strong>Agency Name:</strong> {form.getValues().agency_name}</p>
                                     <p><strong>Job Title:</strong> {form.getValues().agency_job_title}</p>
-                                    <p><strong>Selected Plan:</strong> {form.getValues().agency_tier}</p>
+                                    <p><strong>Selected Plan:</strong> {detectedAgencyPlan || 'Not Detected'}</p>
                                 </div>
                             )}
                             <p className="text-sm text-muted-foreground text-center">Please review your information. By clicking "Submit," you confirm that the details are correct.</p>
@@ -583,11 +545,3 @@ export function OnboardingPageClient() {
     </div>
   );
 }
-
-    
-
-    
-
-    
-
-    
