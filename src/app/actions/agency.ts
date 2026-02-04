@@ -85,7 +85,6 @@ export async function createStudentByAgency(formData: FormData) {
   const profileData = {
     id: newUserId,
     full_name,
-    email,
     program,
     level,
     ...rest,
