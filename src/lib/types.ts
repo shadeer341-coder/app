@@ -19,6 +19,9 @@ export type User = {
   program?: string;
   university?: string;
   lastEducation?: string;
+  agency_name?: string;
+  agency_job_title?: string;
+  agency_tier?: string;
 };
 
 export type QuestionCategory = {

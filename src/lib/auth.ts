@@ -1,3 +1,4 @@
+
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import type { User } from '@/lib/types';
 
@@ -54,6 +55,9 @@ export async function getCurrentUser(): Promise<User | null> {
       program: profile.program,
       university: profile.university,
       lastEducation: profile.last_education,
+      agency_name: profile.agency_name,
+      agency_job_title: profile.agency_job_title,
+      agency_tier: profile.agency_tier,
     };
   } catch (error) {
     console.error('Error getting current user:', error);
