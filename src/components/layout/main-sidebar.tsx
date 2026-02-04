@@ -37,6 +37,7 @@ const userLinks = [
 
 const agencyLinks = [
     { href: "/dashboard/agency", label: "Dashboard", icon: Building },
+    { href: "/dashboard/agency/students", label: "Manage Students", icon: Users },
     { href: "/dashboard/agency/interviews", label: "Recent Interviews", icon: FileText },
     { href: "/dashboard/agency/usage", label: "Usage", icon: AreaChart },
     { href: "/dashboard/agency/plan", label: "Plan", icon: CreditCard },
