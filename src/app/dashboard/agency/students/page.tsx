@@ -19,14 +19,14 @@ export default async function AgencyStudentsPage() {
   const supabase = createSupabaseServerClient();
   const supabaseService = createSupabaseServiceRoleClient();
 
-  // 1. Fetch all users from Auth created by this agency, ensuring they are students (group_id: 1)
+  // 1. Fetch all users from Auth created by this agency, ensuring they are students (group_id: 3)
   const { data: authData, error: authError } = await supabaseService.auth.admin.listUsers({ perPage: 1000 });
 
   if (authError) {
     console.error("Error fetching auth users:", authError.message);
   }
   const agencyAuthUsers = authData?.users.filter(
-      u => u.user_metadata?.agency_id === user.agencyId && String(u.user_metadata?.group_id) === '1'
+      u => u.user_metadata?.agency_id === user.agencyId && String(u.user_metadata?.group_id) === '3'
   ) || [];
 
 

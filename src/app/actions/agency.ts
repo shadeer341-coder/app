@@ -57,7 +57,7 @@ export async function createStudentByAgency(formData: FormData) {
     user_metadata: {
       full_name,
       plan: "Individual",
-      group_id: 1,
+      group_id: 3,
       agency_id: agencyId,
       password_is_temporary: true
     },
