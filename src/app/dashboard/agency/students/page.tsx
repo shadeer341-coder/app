@@ -30,21 +30,21 @@ export default async function AgencyStudentsPage() {
   ) || [];
 
 
-  // 2. Fetch all profiles associated with this agency
-  const { data: allAgencyProfiles, error: profilesError } = await supabase
+  // 2. Fetch all student profiles associated with this agency that have completed onboarding
+  const { data: onboardedProfiles, error: profilesError } = await supabase
     .from('profiles')
     .select('*')
-    .eq('agency_id', user.agencyId);
+    .eq('agency_id', user.agencyId)
+    .eq('from_agency', true);
 
   if (profilesError) {
     console.error("Error fetching student profiles:", profilesError.message);
   }
   
-  // Exclude the agency owner's profile to get only the student profiles
-  const onboardedProfiles = ((allAgencyProfiles as User[]) || []).filter(profile => profile.id !== user.id);
-  const onboardedProfileIds = new Set(onboardedProfiles.map(p => p.id));
+  const onboardedStudentProfiles = (onboardedProfiles as User[]) || [];
+  const onboardedProfileIds = new Set(onboardedStudentProfiles.map(p => p.id));
 
-  // 3. Identify pending users (in auth but not in profiles)
+  // 3. Identify pending users (in auth but not in profiles table with from_agency=true)
   const pendingUsers: User[] = agencyAuthUsers
     .filter(authUser => !onboardedProfileIds.has(authUser.id))
     .map(authUser => ({
@@ -59,7 +59,7 @@ export default async function AgencyStudentsPage() {
     }));
 
   // 4. Mark onboarded users as 'active'
-  const activeUsers: User[] = onboardedProfiles.map(profile => ({
+  const activeUsers: User[] = onboardedStudentProfiles.map(profile => ({
       ...profile,
       status: 'active',
   }));
