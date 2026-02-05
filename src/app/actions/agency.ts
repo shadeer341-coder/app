@@ -19,6 +19,11 @@ export async function createStudentByAgency(formData: FormData) {
     return { success: false, message: "Permission denied. You must be an agency to create students." };
   }
 
+  // Check if the agency has enough quota to add a new student
+  if (agencyUser.interview_quota === undefined || agencyUser.interview_quota === null || agencyUser.interview_quota <= 0) {
+    return { success: false, message: "You have no remaining attempts to create new students. Please recharge your plan." };
+  }
+
   const supabase = createSupabaseServiceRoleClient();
   let agencyId = agencyUser.agencyId;
 
@@ -80,6 +85,19 @@ export async function createStudentByAgency(formData: FormData) {
       // This is not a critical error for the user, but good to log.
       // The student account was still created successfully.
       console.warn(`User auth account was created, but their auto-generated profile row could not be deleted. Error: ${deleteError.message}`);
+    }
+
+    // Decrement the agency's interview quota
+    const newQuota = (agencyUser.interview_quota || 0) - 1;
+    const { error: quotaError } = await supabase
+      .from('profiles')
+      .update({ interview_quota: newQuota })
+      .eq('id', agencyUser.id); // Update the agency's profile
+    
+    if (quotaError) {
+      // This is a non-fatal error for the user but critical for system integrity. Log it.
+      // We can't easily roll back the auth user creation, so we log and proceed.
+      console.error(`CRITICAL: Student created for agency ${agencyUser.id}, but failed to decrement quota. Error: ${quotaError.message}`);
     }
   }
 
