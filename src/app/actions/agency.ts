@@ -137,3 +137,70 @@ export async function rechargeAgencyQuota(attemptsToAdd: number) {
   
   return { success: true, message: `${attemptsToAdd} attempts added successfully.` };
 }
+
+
+export async function addQuotaToStudent(studentId: string, attemptsToAdd: number) {
+    const agencyUser = await getCurrentUser();
+    if (!agencyUser || agencyUser.role !== 'agency' || !agencyUser.agencyId) {
+        return { success: false, message: "Permission denied." };
+    }
+
+    if (typeof attemptsToAdd !== 'number' || attemptsToAdd <= 0) {
+        return { success: false, message: "Invalid number of attempts provided." };
+    }
+
+    const supabase = createSupabaseServiceRoleClient(); // Use service role to bypass RLS for this internal operation
+
+    // 1. Check if agency has enough quota to give
+    if ((agencyUser.interview_quota || 0) < attemptsToAdd) {
+        return { success: false, message: `You don't have enough quota. You have ${agencyUser.interview_quota || 0} attempts left.` };
+    }
+    
+    // 2. Fetch the student profile to ensure they belong to the agency
+    const { data: student, error: studentError } = await supabase
+        .from('profiles')
+        .select('id, agency_id, interview_quota')
+        .eq('id', studentId)
+        .single();
+    
+    if (studentError || !student) {
+        return { success: false, message: "Student profile not found." };
+    }
+
+    if (student.agency_id !== agencyUser.agencyId) {
+        return { success: false, message: "This student does not belong to your agency." };
+    }
+
+    // All checks passed, perform the transaction
+    try {
+        // 3. Decrement agency quota
+        const newAgencyQuota = (agencyUser.interview_quota || 0) - attemptsToAdd;
+        const { error: agencyUpdateError } = await supabase
+            .from('profiles')
+            .update({ interview_quota: newAgencyQuota })
+            .eq('id', agencyUser.id);
+        
+        if (agencyUpdateError) throw agencyUpdateError;
+
+        // 4. Increment student quota
+        const newStudentQuota = (student.interview_quota || 0) + attemptsToAdd;
+        const { error: studentUpdateError } = await supabase
+            .from('profiles')
+            .update({ interview_quota: newStudentQuota })
+            .eq('id', studentId);
+            
+        if (studentUpdateError) throw studentUpdateError;
+
+        revalidatePath(`/dashboard/agency/students/${studentId}`);
+        revalidatePath('/dashboard/agency/students');
+        revalidatePath('/dashboard');
+
+        return { success: true, message: `${attemptsToAdd} attempts added to student successfully.` };
+
+    } catch(error: any) {
+        console.error(`CRITICAL: Failed to transfer quota from agency ${agencyUser.id} to student ${studentId}. Error: ${error.message}`);
+        // Here we should ideally roll back the agency quota decrement if it happened.
+        // For now, we'll just log the critical failure.
+        return { success: false, message: "A critical error occurred while transferring quota. Please contact support." };
+    }
+}

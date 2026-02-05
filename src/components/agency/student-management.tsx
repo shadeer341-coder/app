@@ -25,11 +25,12 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Loader2, EyeOff, Eye } from 'lucide-react';
+import { PlusCircle, Loader2, EyeOff, Eye, ArrowRight } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import Link from 'next/link';
 
 
 const createStudentSchema = z.object({
@@ -135,6 +136,7 @@ export function StudentManagement({ students }: { students: User[] }) {
                             <TableHead>Program</TableHead>
                             <TableHead>Interview Quota</TableHead>
                             <TableHead>Status</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -157,10 +159,17 @@ export function StudentManagement({ students }: { students: User[] }) {
                                         {student.status === 'active' ? 'Active' : 'Pending Onboarding'}
                                     </Badge>
                                 </TableCell>
+                                <TableCell className="text-right">
+                                    <Button asChild variant="outline" size="sm">
+                                        <Link href={`/dashboard/agency/students/${student.id}`}>
+                                            View <ArrowRight className="ml-2 h-4 w-4" />
+                                        </Link>
+                                    </Button>
+                                </TableCell>
                             </TableRow>
                         )) : (
                             <TableRow>
-                                <TableCell colSpan={5} className="h-24 text-center">
+                                <TableCell colSpan={6} className="h-24 text-center">
                                     You haven't added any students yet.
                                 </TableCell>
                             </TableRow>
