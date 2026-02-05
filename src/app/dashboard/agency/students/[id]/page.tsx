@@ -30,7 +30,7 @@ export default async function StudentDetailPage({ params }: { params: { id: stri
         redirect('/dashboard');
     }
 
-    const supabase = createSupabaseServerClient();
+    const supabase = createSupabaseServerClient({ service: true });
 
     // 1. Fetch the student's profile
     const { data: student, error: studentError } = await supabase
