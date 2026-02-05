@@ -32,20 +32,17 @@ export default async function StudentDetailPage({ params }: { params: { id: stri
 
     const supabase = createSupabaseServerClient({ service: true });
 
-    // 1. Fetch the student's profile
+    // 1. Fetch the student's profile, but only if they belong to the current agency
     const { data: student, error: studentError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', params.id)
+        .eq('agency_id', agencyUser.agencyId) // <-- This is the new, more robust check
         .single();
     
+    // This will now correctly trigger notFound if the student doesn't exist OR doesn't belong to the agency.
     if (studentError || !student) {
-        console.error("Error fetching student profile:", studentError);
-        notFound();
-    }
-
-    // Security Check: Ensure the student belongs to the current agency
-    if (student.agency_id !== agencyUser.agencyId) {
+        console.error("Error fetching student profile for agency, or student not found:", studentError?.message);
         notFound();
     }
 
