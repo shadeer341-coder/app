@@ -217,18 +217,36 @@ export function OnboardingPageClient() {
     }
 
     let interviewQuota = 0;
-    if (String(groupId) === '3') {
-        interviewQuota = 3;
+    let agencyTierFromMeta: string | null = null;
+    const wasInvitedByAgency = !!user.user_metadata?.agency_id;
+
+    if (isAgency) { // The user completing onboarding is an Agency
+        const planString = user?.user_metadata?.plan || ''; // e.g., "Agency - Starter"
+        agencyTierFromMeta = planString.split(' - ')[1] || 'Starter'; // Default to Starter
+        
+        switch (agencyTierFromMeta.toLowerCase()) {
+            case 'starter':
+                interviewQuota = 10;
+                break;
+            case 'standard':
+                interviewQuota = 25;
+                break;
+            case 'advanced':
+                interviewQuota = 50;
+                break;
+            default:
+                interviewQuota = 10; // Default to starter quota
+        }
+    } else { // The user completing onboarding is an individual student
+        if (wasInvitedByAgency) {
+            interviewQuota = 1;
+        } else {
+            interviewQuota = 3;
+        }
     }
 
     const selectedProgram = programOptions.find(p => p.value === data.program);
   
-    let agencyTierFromMeta: string | null = null;
-    if (isAgency) {
-        const planString = user?.user_metadata?.plan || ''; // e.g., "Agency - Advanced"
-        agencyTierFromMeta = planString.split(' - ')[1] || null; // e.g., "Advanced"
-    }
-
     const profileData = {
         id: user.id,
         role: userRole,
