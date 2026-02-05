@@ -1,4 +1,5 @@
 
+
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { notFound, redirect } from "next/navigation";
@@ -105,7 +106,7 @@ export default async function StudentDetailPage({ params }: { params: { id: stri
                                 return (
                                     <TableRow key={session.id}>
                                         <TableCell className="font-medium">
-                                        {format(new Date(session.created_at), "PPP, p")}
+                                        {session.created_at ? format(new Date(session.created_at), "PPP, p") : "No date"}
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
