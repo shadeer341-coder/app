@@ -26,21 +26,23 @@ const statusConfig: Record<InterviewSessionStatus, { label: string, icon: React.
 
 export default async function StudentDetailPage({ params }: { params: { id: string }}) {
     const agencyUser = await getCurrentUser();
-    if (!agencyUser || agencyUser.role !== 'agency' || !agencyUser.agencyId) {
+    if (!agencyUser || agencyUser.role !== 'agency') {
         redirect('/dashboard');
     }
 
     const supabase = createSupabaseServerClient({ service: true });
+    
+    // The agency's unique identifier is their own user ID. This is the most reliable check.
+    const agencyId = agencyUser.id;
 
     // 1. Fetch the student's profile, but only if they belong to the current agency
     const { data: student, error: studentError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', params.id)
-        .eq('agency_id', agencyUser.agencyId) // <-- This is the new, more robust check
+        .eq('agency_id', agencyId) 
         .single();
     
-    // This will now correctly trigger notFound if the student doesn't exist OR doesn't belong to the agency.
     if (studentError || !student) {
         console.error("Error fetching student profile for agency, or student not found:", studentError?.message);
         notFound();
