@@ -2,7 +2,7 @@
 'use server';
 
 import { z } from 'zod';
-import { createSupabaseServiceRoleClient } from '@/lib/supabase/server';
+import { createSupabaseServiceRoleClient, createSupabaseServerActionClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { getCurrentUser } from '@/lib/auth';
 
@@ -104,4 +104,36 @@ export async function createStudentByAgency(formData: FormData) {
 
   revalidatePath('/dashboard/agency/students');
   return { success: true, message: `Student account for ${full_name} has been created.` };
+}
+
+
+export async function rechargeAgencyQuota(attemptsToAdd: number) {
+  const agencyUser = await getCurrentUser();
+  if (!agencyUser || agencyUser.role !== 'agency') {
+    return { success: false, message: "Permission denied. You must be an agency to recharge quota." };
+  }
+  
+  if (typeof attemptsToAdd !== 'number' || attemptsToAdd <= 0) {
+      return { success: false, message: "Invalid number of attempts provided." };
+  }
+
+  const supabase = createSupabaseServerActionClient();
+  
+  const currentQuota = agencyUser.interview_quota || 0;
+  const newQuota = currentQuota + attemptsToAdd;
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ interview_quota: newQuota })
+    .eq('id', agencyUser.id);
+  
+  if (error) {
+    console.error(`CRITICAL: Failed to recharge quota for agency ${agencyUser.id}. Error: ${error.message}`);
+    return { success: false, message: "Could not update your quota. Please contact support." };
+  }
+
+  revalidatePath('/dashboard/agency/recharge');
+  revalidatePath('/dashboard');
+  
+  return { success: true, message: `${attemptsToAdd} attempts added successfully.` };
 }
