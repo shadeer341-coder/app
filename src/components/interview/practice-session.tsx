@@ -218,7 +218,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     }
   }, []);
 
-  const getCameraPermission = useCallback(async (isInitial = false) => {
+  const getCameraPermission = useCallback(async () => {
     try {
         const audioConstraint = selectedAudioDeviceId ? { deviceId: { exact: selectedAudioDeviceId } } : true;
         const videoConstraint = selectedVideoDeviceId ? { deviceId: { exact: selectedVideoDeviceId } } : true;
@@ -228,17 +228,11 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
             audio: audioConstraint
         });
         
-        if (isInitial) {
-            setPreviewStream(stream);
-            if (previewVideoRef.current) {
-                previewVideoRef.current.srcObject = stream;
-            }
-        } else {
-            streamRef.current = stream;
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream;
-            }
+        streamRef.current = stream;
+        if (videoRef.current) {
+            videoRef.current.srcObject = stream;
         }
+        
         setHasCameraPermission(true);
         return true;
     } catch (error) {
@@ -294,85 +288,116 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
   }, []);
 
 
+  // Combined effect for introduction stage device setup and preview
   useEffect(() => {
     if (stage !== 'introduction') {
-        if (previewStream) {
-            previewStream.getTracks().forEach(track => track.stop());
-            setPreviewStream(null);
-        }
-        return;
+      // If we leave the intro stage, ensure any preview stream is stopped.
+      if (previewStream) {
+        previewStream.getTracks().forEach((track) => track.stop());
+        setPreviewStream(null);
+      }
+      return;
     }
 
     let isCancelled = false;
-    
-    const setupDevices = async () => {
-        try {
-            // First, request permissions to ensure we get device labels.
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-            
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            if (isCancelled) {
-                stream.getTracks().forEach(track => track.stop());
-                return;
-            }
+    let currentStream: MediaStream | null = null;
 
-            const audio = devices.filter(d => d.kind === 'audioinput');
-            const video = devices.filter(d => d.kind === 'videoinput');
-            setAudioDevices(audio);
-            setVideoDevices(video);
-            
-            if (audio.length > 0) {
-                if (!selectedAudioDeviceId) setSelectedAudioDeviceId(audio[0].deviceId);
-                setMicCheck('success');
-            } else {
-                setMicCheck('error');
-            }
-            
-            if (video.length > 0) {
-                if (!selectedVideoDeviceId) setSelectedVideoDeviceId(video[0].deviceId);
-                setCameraCheck('success');
-            } else {
-                setCameraCheck('error');
-            }
-            
-            stream.getTracks().forEach(track => track.stop()); // Stop the initial permission stream
-        } catch (error) {
-            if (isCancelled) return;
-            console.error('Permission or device setup failed:', error);
-            setHasCameraPermission(false);
-            setCameraCheck('error');
-            setMicCheck('error');
+    const setupAndPreview = async () => {
+      // 1. Enumerate devices to check for camera/mic and populate selectors
+      try {
+        // A temporary stream to get permissions and device labels
+        const tempStream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true,
+        });
+
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        if (isCancelled) {
+          tempStream.getTracks().forEach((track) => track.stop());
+          return;
         }
+
+        const audio = devices.filter((d) => d.kind === 'audioinput');
+        const video = devices.filter((d) => d.kind === 'videoinput');
+        setAudioDevices(audio);
+        setVideoDevices(video);
+
+        const hasMic = audio.length > 0;
+        const hasCam = video.length > 0;
+
+        if (hasMic) {
+          if (!selectedAudioDeviceId) setSelectedAudioDeviceId(audio[0].deviceId);
+          setMicCheck('success');
+        } else {
+          setMicCheck('error');
+        }
+
+        if (hasCam) {
+          if (!selectedVideoDeviceId) setSelectedVideoDeviceId(video[0].deviceId);
+          setCameraCheck('success');
+        } else {
+          setCameraCheck('error');
+        }
+
+        tempStream.getTracks().forEach((track) => track.stop());
+
+        // 2. If we have devices, create the preview stream
+        if (hasMic && hasCam) {
+          const audioConstraint = selectedAudioDeviceId
+            ? { deviceId: { exact: selectedAudioDeviceId } }
+            : true;
+          const videoConstraint = selectedVideoDeviceId
+            ? { deviceId: { exact: selectedVideoDeviceId } }
+            : true;
+
+          currentStream = await navigator.mediaDevices.getUserMedia({
+            video: videoConstraint,
+            audio: audioConstraint,
+          });
+
+          if (isCancelled) {
+            currentStream.getTracks().forEach((track) => track.stop());
+            return;
+          }
+
+          setPreviewStream(currentStream);
+          if (previewVideoRef.current) {
+            previewVideoRef.current.srcObject = currentStream;
+          }
+          setHasCameraPermission(true);
+        } else {
+          setHasCameraPermission(false);
+        }
+      } catch (error) {
+        if (isCancelled) return;
+        console.error('Permission or device setup failed:', error);
+        setHasCameraPermission(false);
+        setCameraCheck('error');
+        setMicCheck('error');
+      }
     };
 
-    setupDevices();
-    
-    if (internetCheckStatus === 'pending') {
-        checkInternetSpeed();
-    }
+    setupAndPreview();
 
+    // Cleanup function for this effect
     return () => {
-        isCancelled = true;
-         if (previewStream) {
-            previewStream.getTracks().forEach(track => track.stop());
-        }
+      isCancelled = true;
+      if (currentStream) {
+        currentStream.getTracks().forEach((track) => track.stop());
+      }
+      if (previewVideoRef.current) {
+        previewVideoRef.current.srcObject = null;
+      }
     };
-}, [stage, internetCheckStatus, checkInternetSpeed]);
+    // The dependencies that should trigger a full device/stream refresh
+  }, [stage, selectedAudioDeviceId, selectedVideoDeviceId]);
 
-
-useEffect(() => {
-    if (stage === 'introduction' && cameraCheck === 'success' && micCheck === 'success') {
-      getCameraPermission(true);
+  // Separate small effect for the internet check
+  useEffect(() => {
+    if (stage === 'introduction' && internetCheckStatus === 'pending') {
+      checkInternetSpeed();
     }
-    
-    // Cleanup stream when device selection changes
-    return () => {
-        if (previewStream) {
-            previewStream.getTracks().forEach(track => track.stop());
-            setPreviewStream(null);
-        }
-    }
-}, [stage, cameraCheck, micCheck, selectedAudioDeviceId, selectedVideoDeviceId, getCameraPermission, previewStream]);
+  }, [stage, internetCheckStatus, checkInternetSpeed]);
 
 
   const captureSnapshot = useCallback((): string => {
@@ -576,10 +601,6 @@ useEffect(() => {
     if (result.success && result.sessionId) {
         setSessionId(result.sessionId);
         setStage('question_ready');
-        if (previewStream) {
-            previewStream.getTracks().forEach(track => track.stop());
-            setPreviewStream(null);
-        }
         getCameraPermission();
     } else {
         toast({
