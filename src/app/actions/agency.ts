@@ -20,8 +20,8 @@ export async function createStudentByAgency(formData: FormData) {
   }
 
   // Check if the agency has enough quota to add a new student
-  if (agencyUser.interview_quota === undefined || agencyUser.interview_quota === null || agencyUser.interview_quota <= 0) {
-    return { success: false, message: "You have no remaining attempts to create new students. Please recharge your plan." };
+  if (agencyUser.interview_quota === undefined || agencyUser.interview_quota === null || agencyUser.interview_quota < 3) {
+    return { success: false, message: "You need at least 3 attempts to create a new student. Please recharge your plan." };
   }
 
   const supabase = createSupabaseServiceRoleClient();
@@ -88,7 +88,7 @@ export async function createStudentByAgency(formData: FormData) {
     }
 
     // Decrement the agency's interview quota
-    const newQuota = (agencyUser.interview_quota || 0) - 1;
+    const newQuota = (agencyUser.interview_quota || 0) - 3;
     const { error: quotaError } = await supabase
       .from('profiles')
       .update({ interview_quota: newQuota })

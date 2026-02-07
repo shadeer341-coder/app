@@ -239,7 +239,7 @@ export function OnboardingPageClient() {
         }
     } else { // The user completing onboarding is an individual student
         if (wasInvitedByAgency) {
-            interviewQuota = 1;
+            interviewQuota = 3;
         } else {
             interviewQuota = 3;
         }
