@@ -698,7 +698,6 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     if (stage === 'question_reading') {
         return (
             <div className="w-full max-w-md flex flex-col items-center justify-center h-full py-8 text-center">
-                <h3 className="font-headline text-2xl font-bold mb-8">Time to Read</h3>
                 <CircularTimer
                     duration={currentQuestion.read_time_seconds || 15}
                     remaining={countdown}
@@ -710,10 +709,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     if (stage === 'question_recording') {
         return (
              <div className="w-full max-w-md flex flex-col justify-center h-full py-8 text-left">
-                <p className="text-3xl font-semibold mb-8">{currentQuestion.text}</p>
-                <div className="mt-auto text-center text-muted-foreground">
-                    REC: {String(countdown).padStart(2, '0')}s
-                </div>
+                <p className="text-3xl font-semibold">{currentQuestion.text}</p>
             </div>
         );
     }
@@ -723,7 +719,6 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
             <div className="w-full max-w-md flex flex-col justify-center h-full py-8 text-left">
                 <div className="w-full space-y-4">
                     <p className="text-2xl font-semibold mb-8">{currentQuestion.text}</p>
-                    <p className="text-muted-foreground">Review your recorded answer on the right.</p>
                     <Button size="lg" onClick={processAndAdvance} disabled={isTranscribing} className="w-full">
                         {isTranscribing && <Loader2 className="mr-2 animate-spin" />}
                         {!isTranscribing && (isFinalQuestion ? <Send className="mr-2"/> : <ArrowRight className="mr-2" />)}
@@ -945,5 +940,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     </div>
   );
 }
+
+    
 
     
