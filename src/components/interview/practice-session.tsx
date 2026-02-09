@@ -184,47 +184,54 @@ const InterviewAgenda = ({
 
                 return (
                     <li
-                    key={index}
-                    className={cn('p-3 rounded-lg transition-colors', {
-                        'bg-primary/10': isCurrent,
-                    })}
-                    >
-                    <div className="flex items-center gap-4 text-sm">
-                        <div className="flex-shrink-0">
-                        {status === 'completed' && (
-                            <CheckCircle className="h-5 w-5 text-green-500" />
-                        )}
-                        {status === 'current' && (
-                            <Play className="h-5 w-5 text-primary" />
-                        )}
-                        {status === 'upcoming' && (
-                            <Circle className="h-5 w-5 text-muted-foreground/50" />
-                        )}
-                        </div>
-                        <span
-                        className={cn('font-medium', {
-                            'text-primary': isCurrent,
-                            'text-muted-foreground line-through': status === 'completed',
+                        key={index}
+                        className={cn('p-3 rounded-lg transition-colors', {
+                            'bg-primary/10': isCurrent,
                         })}
                         >
-                        Question {String(index + 1).padStart(2, '0')}
-                        </span>
-                    </div>
-                    {showTimer && (
-                        <div className="pl-9 mt-4 flex flex-col items-center text-center">
-                        <h3 className="font-semibold text-muted-foreground mb-4">
-                            {stage === 'question_reading' ? 'Time to Read' : 'Answering...'}
-                        </h3>
-                        <CircularTimer
-                            duration={
-                            stage === 'question_reading'
-                                ? currentQuestion.read_time_seconds || 15
-                                : currentQuestion.answer_time_seconds || 60
-                            }
-                            remaining={countdown}
-                        />
+                        <div className="flex items-start gap-4">
+                            <div className="flex-shrink-0 pt-1">
+                                {status === 'completed' && (
+                                    <CheckCircle className="h-5 w-5 text-green-500" />
+                                )}
+                                {status === 'current' && (
+                                    <Play className="h-5 w-5 text-primary" />
+                                )}
+                                {status === 'upcoming' && (
+                                    <Circle className="h-5 w-5 text-muted-foreground/50" />
+                                )}
+                            </div>
+                            <div className="flex-1">
+                                <p className={cn('font-medium', {
+                                        'text-primary': isCurrent,
+                                        'text-muted-foreground line-through': status === 'completed',
+                                    })}>
+                                    Question {String(index + 1).padStart(2, '0')}
+                                </p>
+                                <p className={cn('text-xs', {
+                                        'text-primary/80': isCurrent,
+                                        'text-muted-foreground': status !== 'current',
+                                        'line-through': status === 'completed',
+                                    })}>
+                                    {question.categoryName} &bull; {question.answer_time_seconds || 60}s answer
+                                </p>
+                            </div>
                         </div>
-                    )}
+                        {showTimer && (
+                            <div className="pl-9 mt-4 flex flex-col items-center text-center">
+                            <h3 className="font-semibold text-muted-foreground mb-4">
+                                {stage === 'question_reading' ? 'Time to Read' : 'Answering...'}
+                            </h3>
+                            <CircularTimer
+                                duration={
+                                stage === 'question_reading'
+                                    ? currentQuestion.read_time_seconds || 15
+                                    : currentQuestion.answer_time_seconds || 60
+                                }
+                                remaining={countdown}
+                            />
+                            </div>
+                        )}
                     </li>
                 );
                 })}
