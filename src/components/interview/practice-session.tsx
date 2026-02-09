@@ -555,18 +555,6 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage, currentQuestionIndex]);
 
-  const handleRerecord = () => {
-    if (videoRecordings[currentQuestionIndex]) {
-        URL.revokeObjectURL(videoRecordings[currentQuestionIndex]!);
-    }
-    setVideoRecordings(prev => ({...prev, [currentQuestionIndex]: null}));
-    setCurrentAudioBlob(null);
-    setCurrentSnapshots([]);
-    recordedChunksRef.current = [];
-    setStage('question_ready');
-    getCameraPermission();
-  };
-  
   const processAndAdvance = async () => {
     if (!currentAudioBlob) return;
     
@@ -705,6 +693,8 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
   }
 
   const renderLeftPaneContent = () => {
+    const isFinalQuestion = currentQuestionIndex === questions.length - 1;
+
     if (stage === 'question_reading') {
         return (
             <div className="w-full max-w-md flex flex-col items-center justify-center h-full py-8 text-center">
@@ -719,16 +709,32 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     
     if (stage === 'question_recording') {
         return (
-            <div className="w-full max-w-md flex flex-col justify-center h-full py-8 text-left">
-                 <div className="w-full space-y-4">
-                    <p className="text-2xl font-semibold">{currentQuestion.text}</p>
+             <div className="w-full max-w-md flex flex-col justify-center h-full py-8 text-left">
+                <p className="text-3xl font-semibold mb-8">{currentQuestion.text}</p>
+                <div className="mt-auto text-center text-muted-foreground">
+                    REC: {String(countdown).padStart(2, '0')}s
                 </div>
             </div>
         );
     }
+    
+    if (stage === 'question_review') {
+        return (
+            <div className="w-full max-w-md flex flex-col justify-center h-full py-8 text-left">
+                <div className="w-full space-y-4">
+                    <p className="text-2xl font-semibold mb-8">{currentQuestion.text}</p>
+                    <p className="text-muted-foreground">Review your recorded answer on the right.</p>
+                    <Button size="lg" onClick={processAndAdvance} disabled={isTranscribing} className="w-full">
+                        {isTranscribing && <Loader2 className="mr-2 animate-spin" />}
+                        {!isTranscribing && (isFinalQuestion ? <Send className="mr-2"/> : <ArrowRight className="mr-2" />)}
+                        {isFinalQuestion ? 'Finish & Submit' : 'Next Question'}
+                    </Button>
+                </div>
+            </div>
+        )
+    }
 
-    // For 'introduction', 'question_ready', and 'question_review' stages, show the agenda.
-    if (['introduction', 'question_ready', 'question_review', 'submitting'].includes(stage)) {
+    if (['introduction', 'question_ready', 'submitting'].includes(stage)) {
         return (
             <InterviewAgenda
                 questions={questions}
@@ -744,8 +750,6 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     const showPreview = stage === 'introduction';
     const showReview = stage === 'question_review' && videoRecordings[currentQuestionIndex];
     const showLive = !showPreview && !showReview;
-
-    const isFinalQuestion = currentQuestionIndex === questions.length - 1;
 
     return (
         <div className="relative aspect-video w-full max-w-3xl rounded-lg overflow-hidden border-2 border-white/20 shadow-2xl bg-black">
@@ -783,23 +787,6 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
                         </div>
                     </div>
                 </>
-            )}
-
-            {stage === 'question_review' && videoRecordings[currentQuestionIndex] && (
-                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-6 bg-black/70 text-white">
-                    <h3 className="text-2xl font-bold">Review Your Answer</h3>
-                    <p className="text-muted-foreground text-white/80">You can re-record or proceed.</p>
-                    <div className="flex flex-col sm:flex-row justify-center gap-4 mt-4">
-                        <Button size="lg" variant="outline" onClick={handleRerecord} disabled={isTranscribing}>
-                            <RefreshCw className="mr-2" /> Re-record
-                        </Button>
-                        <Button size="lg" onClick={processAndAdvance} disabled={isTranscribing}>
-                            {isTranscribing && <Loader2 className="mr-2 animate-spin" />}
-                            {!isTranscribing && (isFinalQuestion ? <Send className="mr-2"/> : <ArrowRight className="mr-2" />)}
-                            {isFinalQuestion ? 'Finish & Submit' : 'Next Question'}
-                        </Button>
-                    </div>
-                </div>
             )}
 
             {hasCameraPermission === false && (
@@ -958,3 +945,5 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     </div>
   );
 }
+
+    
