@@ -155,15 +155,9 @@ const CircularTimer = ({ duration, remaining }: { duration: number; remaining: n
 const InterviewAgenda = ({
   questions,
   currentQuestionIndex,
-  stage,
-  countdown,
-  currentQuestion,
 }: {
   questions: InterviewQuestion[];
   currentQuestionIndex: number;
-  stage: Stage;
-  countdown: number;
-  currentQuestion: InterviewQuestion;
 }) => {
   return (
     <div className="w-full max-w-md flex flex-col justify-center h-full py-8">
@@ -178,9 +172,6 @@ const InterviewAgenda = ({
                     ? 'current'
                     : 'upcoming';
                 const isCurrent = status === 'current';
-                const showTimer =
-                    isCurrent &&
-                    (stage === 'question_reading' || stage === 'question_recording');
 
                 return (
                     <li
@@ -217,21 +208,6 @@ const InterviewAgenda = ({
                                 </p>
                             </div>
                         </div>
-                        {showTimer && (
-                            <div className="pl-9 mt-4 flex flex-col items-center text-center">
-                            <h3 className="font-semibold text-muted-foreground mb-4">
-                                {stage === 'question_reading' ? 'Time to Read' : 'Answering...'}
-                            </h3>
-                            <CircularTimer
-                                duration={
-                                stage === 'question_reading'
-                                    ? currentQuestion.read_time_seconds || 15
-                                    : currentQuestion.answer_time_seconds || 60
-                                }
-                                remaining={countdown}
-                            />
-                            </div>
-                        )}
                     </li>
                 );
                 })}
@@ -577,7 +553,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     }
     return () => clearInterval(timerId);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage, currentQuestionIndex, hasCameraPermission]);
+  }, [stage, currentQuestionIndex]);
 
   const handleRerecord = () => {
     if (videoRecordings[currentQuestionIndex]) {
@@ -911,16 +887,44 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
         )
     }
 
-    // For all question stages, show the agenda.
+    if (stage === 'question_reading') {
+        return (
+            <div className="w-full max-w-md flex flex-col items-center justify-center h-full py-8 text-center">
+                <h3 className="font-headline text-2xl font-bold mb-8">Time to Read</h3>
+                <CircularTimer
+                    duration={currentQuestion.read_time_seconds || 15}
+                    remaining={countdown}
+                />
+            </div>
+        );
+    }
+    
+    if (stage === 'question_recording') {
+        return (
+            <div className="w-full max-w-md flex flex-col items-center justify-center h-full py-8 text-center">
+                 <div className="w-full space-y-4 mb-8">
+                    <h3 className="font-headline text-2xl font-bold">Answering...</h3>
+                    <Card className="w-full text-left">
+                        <CardContent className="p-4">
+                            <p className="text-md">{currentQuestion.text}</p>
+                        </CardContent>
+                    </Card>
+                </div>
+                <CircularTimer
+                    duration={currentQuestion.answer_time_seconds || 60}
+                    remaining={countdown}
+                />
+            </div>
+        );
+    }
+
+    // For 'question_ready' and 'question_review' stages, show the agenda.
     return (
         <InterviewAgenda
             questions={questions}
             currentQuestionIndex={currentQuestionIndex}
-            stage={stage}
-            countdown={countdown}
-            currentQuestion={currentQuestion}
         />
-    )
+    );
   }
 
   return (
@@ -942,3 +946,5 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     </div>
   );
 }
+
+    
