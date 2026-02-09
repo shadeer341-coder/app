@@ -703,26 +703,67 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     const showReview = stage === 'question_review' && videoRecordings[currentQuestionIndex];
     const showLive = !showPreview && !showReview;
 
+    const isFinalQuestion = currentQuestionIndex === questions.length - 1;
+
     return (
-        <div className="relative aspect-video w-full max-w-3xl rounded-lg overflow-hidden border-2 border-white/20 shadow-2xl">
+        <div className="relative aspect-video w-full max-w-3xl rounded-lg overflow-hidden border-2 border-white/20 shadow-2xl bg-black">
             {showPreview && <video ref={previewVideoRef} className="w-full h-full object-cover" autoPlay muted playsInline />}
             {showReview && <video ref={reviewVideoRef} src={videoRecordings[currentQuestionIndex]!} className="w-full h-full object-cover" controls autoPlay playsInline />}
             {showLive && <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />}
+            
+            {stage === 'question_ready' && (
+                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 text-center p-6 bg-black/70 text-white">
+                    <p className="text-lg text-white/80">Video Response &bull; {currentQuestion.answer_time_seconds || 60} seconds</p>
+                    <h3 className="text-3xl font-bold font-headline">You will have {currentQuestion.read_time_seconds || 15} seconds to prepare your answer.</h3>
+                    <Button size="lg" onClick={() => setStage('question_reading')}>
+                        Start
+                    </Button>
+                </div>
+            )}
 
-             {stage === 'question_reading' && (
-                <div className="absolute inset-0 flex flex-col justify-center bg-black/70 text-white p-8">
-                    <div className="flex-grow flex items-center justify-center">
-                        <p className="text-3xl font-bold text-center font-headline">{currentQuestion.text}</p>
+            {stage === 'question_reading' && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-8 bg-black/80 text-white text-center">
+                    <p className="text-3xl font-bold font-headline mb-4 flex-1 flex items-center">{currentQuestion.text}</p>
+                    <div className="flex flex-col items-center gap-2">
+                        <h3 className="text-xl font-semibold">Time to Read</h3>
+                        <CircularTimer duration={currentQuestion.read_time_seconds || 15} remaining={countdown} />
                     </div>
                 </div>
             )}
             
             {stage === 'question_recording' && (
-                <div className="absolute top-4 right-4 flex items-center gap-2 bg-black/50 text-white px-3 py-1.5 rounded-full text-sm font-mono">
-                    <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></div>
-                    <span>REC</span>
-                    <span className="w-px h-4 bg-white/30"></span>
-                    <span>{countdown}s</span>
+                <>
+                    <div className="absolute top-4 right-4 flex items-center gap-2 bg-black/50 text-white px-3 py-1.5 rounded-full text-sm font-mono">
+                        <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></div>
+                        <span>REC</span>
+                        <span className="w-px h-4 bg-white/30"></span>
+                        <span>{countdown}s</span>
+                    </div>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-8 p-6 text-center bg-black/20 pointer-events-none">
+                        <CircularTimer duration={currentQuestion.answer_time_seconds || 60} remaining={countdown} />
+                        <div className="absolute bottom-8 pointer-events-auto">
+                            <Button onClick={stopRecording} variant="outline" size="lg">
+                                <StopCircle className="mr-2" /> Stop & Review
+                            </Button>
+                        </div>
+                    </div>
+                </>
+            )}
+
+            {stage === 'question_review' && videoRecordings[currentQuestionIndex] && (
+                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-6 bg-black/70 text-white">
+                    <h3 className="text-2xl font-bold">Review Your Answer</h3>
+                    <p className="text-muted-foreground text-white/80">You can re-record or proceed.</p>
+                    <div className="flex flex-col sm:flex-row justify-center gap-4 mt-4">
+                        <Button size="lg" variant="outline" onClick={handleRerecord} disabled={isTranscribing}>
+                            <RefreshCw className="mr-2" /> Re-record
+                        </Button>
+                        <Button size="lg" onClick={processAndAdvance} disabled={isTranscribing}>
+                            {isTranscribing && <Loader2 className="mr-2 animate-spin" />}
+                            {!isTranscribing && (isFinalQuestion ? <Send className="mr-2"/> : <ArrowRight className="mr-2" />)}
+                            {isFinalQuestion ? 'Finish & Submit' : 'Next Question'}
+                        </Button>
+                    </div>
                 </div>
             )}
 
@@ -847,60 +888,10 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
         )
     }
 
-    // Default layout for question stages
-    const isFinalQuestion = currentQuestionIndex === questions.length - 1;
-
+    // For all question stages, just show the agenda.
     return (
-         <div className="w-full max-w-lg flex flex-col justify-between h-full py-8">
+         <div className="w-full max-w-lg flex flex-col justify-center h-full py-8">
             <InterviewAgenda questions={questions} currentQuestionIndex={currentQuestionIndex} />
-            
-            <Card className="flex-grow flex flex-col justify-center">
-                {stage === 'question_ready' && (
-                     <div className="flex flex-col items-center gap-6 text-center p-6">
-                        <div className="bg-primary/10 p-4 rounded-full">
-                            <Play className="w-12 h-12 text-primary" />
-                        </div>
-                        <h3 className="text-2xl font-bold">Ready for Question {currentQuestionIndex + 1}?</h3>
-                        <p className="text-muted-foreground">You will have {currentQuestion.read_time_seconds || 15} seconds to read.</p>
-                        <Button size="lg" onClick={() => setStage('question_reading')}>
-                            <Play className="mr-2" /> Start Question
-                        </Button>
-                    </div>
-                )}
-                {stage === 'question_reading' && (
-                    <div className="flex flex-col items-center gap-4 p-6">
-                        <h3 className="text-xl font-semibold">Time to Read</h3>
-                        <CircularTimer duration={currentQuestion.read_time_seconds || 15} remaining={countdown} />
-                    </div>
-                )}
-                {stage === 'question_recording' && (
-                    <div className="flex flex-col items-center gap-4 p-6 text-center">
-                        <h3 className="text-xl font-semibold">Answering...</h3>
-                        <CircularTimer duration={currentQuestion.answer_time_seconds || 60} remaining={countdown} />
-                         <Button onClick={stopRecording} variant="outline" size="lg">
-                            <StopCircle className="mr-2" /> Next
-                        </Button>
-                    </div>
-                )}
-                {stage === 'question_review' && (
-                    <div className="p-6">
-                        <CardHeader className="p-0 mb-4">
-                            <CardTitle>Review Your Answer</CardTitle>
-                            <CardDescription>You can re-record or proceed.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="p-0 flex flex-col sm:flex-row justify-center gap-4">
-                            <Button size="lg" variant="outline" onClick={handleRerecord} disabled={isTranscribing}>
-                                <RefreshCw className="mr-2" /> Re-record
-                            </Button>
-                            <Button size="lg" onClick={processAndAdvance} disabled={isTranscribing}>
-                                {isTranscribing && <Loader2 className="mr-2 animate-spin" />}
-                                {!isTranscribing && (isFinalQuestion ? <Send className="mr-2"/> : <ArrowRight className="mr-2" />)}
-                                {isFinalQuestion ? 'Finish & Submit' : 'Next Question'}
-                            </Button>
-                        </CardContent>
-                    </div>
-                )}
-            </Card>
         </div>
     )
   }
