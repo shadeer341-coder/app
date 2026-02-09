@@ -152,64 +152,84 @@ const CircularTimer = ({ duration, remaining }: { duration: number; remaining: n
     );
 };
 
-const InterviewAgenda = ({ questions, currentQuestionIndex }: { questions: InterviewQuestion[], currentQuestionIndex: number }) => {
-    const agendaItems = React.useMemo(() => {
-        const items: { name: string, status: 'completed' | 'current' | 'upcoming' }[] = [];
-        const categoryIndices: { [key: string]: { min: number, max: number } } = {};
+const InterviewAgenda = ({
+  questions,
+  currentQuestionIndex,
+  stage,
+  countdown,
+  currentQuestion,
+}: {
+  questions: InterviewQuestion[];
+  currentQuestionIndex: number;
+  stage: Stage;
+  countdown: number;
+  currentQuestion: InterviewQuestion;
+}) => {
+  return (
+    <ScrollArea className="h-full -mx-4">
+        <ul className="space-y-2 px-4">
+            {questions.map((question, index) => {
+            const status: 'completed' | 'current' | 'upcoming' =
+                index < currentQuestionIndex
+                ? 'completed'
+                : index === currentQuestionIndex
+                ? 'current'
+                : 'upcoming';
+            const isCurrent = status === 'current';
+            const showTimer =
+                isCurrent &&
+                (stage === 'question_reading' || stage === 'question_recording');
 
-        questions.forEach((q, index) => {
-            if (!categoryIndices[q.categoryName]) {
-                categoryIndices[q.categoryName] = { min: index, max: index };
-            } else {
-                categoryIndices[q.categoryName].max = index;
-            }
-        });
-        
-        // Get unique categories in their original order
-        const uniqueCategoryNames = questions.map(q => q.categoryName).filter((v, i, a) => a.indexOf(v) === i);
-
-
-        uniqueCategoryNames.forEach(categoryName => {
-            const { min, max } = categoryIndices[categoryName];
-            let status: 'completed' | 'current' | 'upcoming' = 'upcoming';
-            if (currentQuestionIndex > max) {
-                status = 'completed';
-            } else if (currentQuestionIndex >= min && currentQuestionIndex <= max) {
-                status = 'current';
-            }
-            items.push({ name: categoryName, status });
-        });
-
-        return items;
-
-    }, [questions, currentQuestionIndex]);
-
-    return (
-        <Card className="mb-4 w-full">
-            <CardHeader>
-                <CardTitle>Interview Agenda</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <ScrollArea className="h-40">
-                    <ul className="space-y-4 pr-4">
-                        {agendaItems.map((item, index) => (
-                            <li key={index} className="flex items-center gap-4 text-sm">
-                                <div className="flex-shrink-0">
-                                    {item.status === 'completed' && <CheckCircle className="h-5 w-5 text-green-500" />}
-                                    {item.status === 'current' && <Loader2 className="h-5 w-5 text-primary animate-spin" />}
-                                    {item.status === 'upcoming' && <Circle className="h-5 w-5 text-muted-foreground/50" />}
-                                </div>
-                                <span className={cn('truncate', { 'font-bold text-primary': item.status === 'current', 'text-muted-foreground line-through': item.status === 'completed' })}>
-                                    {item.name}
-                                </span>
-                            </li>
-                        ))}
-                    </ul>
-                </ScrollArea>
-            </CardContent>
-        </Card>
-    );
-}
+            return (
+                <li
+                key={index}
+                className={cn('p-3 rounded-lg transition-colors', {
+                    'bg-primary/10': isCurrent,
+                })}
+                >
+                <div className="flex items-center gap-4 text-sm">
+                    <div className="flex-shrink-0">
+                    {status === 'completed' && (
+                        <CheckCircle className="h-5 w-5 text-green-500" />
+                    )}
+                    {status === 'current' && (
+                        <Loader2 className="h-5 w-5 text-primary animate-spin" />
+                    )}
+                    {status === 'upcoming' && (
+                        <Circle className="h-5 w-5 text-muted-foreground/50" />
+                    )}
+                    </div>
+                    <span
+                    className={cn('font-medium', {
+                        'text-primary': isCurrent,
+                        'text-muted-foreground line-through': status === 'completed',
+                    })}
+                    >
+                    Question {String(index + 1).padStart(2, '0')}
+                    </span>
+                </div>
+                {showTimer && (
+                    <div className="pl-9 mt-4 flex flex-col items-center text-center">
+                    <h3 className="font-semibold text-muted-foreground mb-4">
+                        {stage === 'question_reading' ? 'Time to Read' : 'Answering...'}
+                    </h3>
+                    <CircularTimer
+                        duration={
+                        stage === 'question_reading'
+                            ? currentQuestion.read_time_seconds || 15
+                            : currentQuestion.answer_time_seconds || 60
+                        }
+                        remaining={countdown}
+                    />
+                    </div>
+                )}
+                </li>
+            );
+            })}
+        </ul>
+    </ScrollArea>
+  );
+};
 
 
 async function transcribeAudio(audioBlob: Blob): Promise<string> {
@@ -724,10 +744,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
             {stage === 'question_reading' && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-8 bg-black/80 text-white text-center">
                     <p className="text-3xl font-bold font-headline mb-4 flex-1 flex items-center">{currentQuestion.text}</p>
-                    <div className="flex flex-col items-center gap-2">
-                        <h3 className="text-xl font-semibold">Time to Read</h3>
-                        <CircularTimer duration={currentQuestion.read_time_seconds || 15} remaining={countdown} />
-                    </div>
+                    <p className="text-xl font-semibold text-white/80">Prepare your answer.</p>
                 </div>
             )}
             
@@ -739,8 +756,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
                         <span className="w-px h-4 bg-white/30"></span>
                         <span>{countdown}s</span>
                     </div>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-8 p-6 text-center bg-black/20 pointer-events-none">
-                        <CircularTimer duration={currentQuestion.answer_time_seconds || 60} remaining={countdown} />
+                    <div className="absolute inset-0 flex flex-col items-center justify-end gap-8 p-6 text-center bg-black/20 pointer-events-none">
                         <div className="absolute bottom-8 pointer-events-auto">
                             <Button onClick={stopRecording} variant="outline" size="lg">
                                 <StopCircle className="mr-2" /> Stop & Review
@@ -888,10 +904,17 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
         )
     }
 
-    // For all question stages, just show the agenda.
+    // For all question stages, show the agenda.
     return (
-         <div className="w-full max-w-lg flex flex-col justify-center h-full py-8">
-            <InterviewAgenda questions={questions} currentQuestionIndex={currentQuestionIndex} />
+        <div className="w-full max-w-md flex flex-col justify-center h-full py-8">
+            <h2 className="font-headline text-2xl font-bold mb-4 px-3">Interview Agenda</h2>
+            <InterviewAgenda
+                questions={questions}
+                currentQuestionIndex={currentQuestionIndex}
+                stage={stage}
+                countdown={countdown}
+                currentQuestion={currentQuestion}
+            />
         </div>
     )
   }
