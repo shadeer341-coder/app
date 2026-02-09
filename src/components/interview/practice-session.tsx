@@ -719,13 +719,9 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     
     if (stage === 'question_recording') {
         return (
-            <div className="w-full max-w-md flex flex-col justify-center h-full py-8 text-left relative">
+            <div className="w-full max-w-md flex flex-col justify-center h-full py-8 text-left">
                  <div className="w-full space-y-4">
                     <p className="text-2xl font-semibold">{currentQuestion.text}</p>
-                </div>
-                <div className="absolute bottom-8 left-0 flex items-center gap-2 text-lg font-mono text-red-500">
-                    <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse"></div>
-                    <span>REC: {String(countdown).padStart(2, '0')}s</span>
                 </div>
             </div>
         );
@@ -777,7 +773,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
                 <>
                     <div className="absolute top-4 right-4 flex items-center gap-2 bg-black/50 text-white px-3 py-1.5 rounded-full text-sm font-mono">
                         <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></div>
-                        <span>REC</span>
+                        <span>REC: {String(countdown).padStart(2, '0')}s</span>
                     </div>
                     <div className="absolute inset-0 flex flex-col items-center justify-end gap-8 p-6 text-center bg-black/20 pointer-events-none">
                         <div className="absolute bottom-8 pointer-events-auto">
