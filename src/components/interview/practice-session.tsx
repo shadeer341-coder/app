@@ -193,13 +193,13 @@ const InterviewAgenda = ({
                                 )}
                             </div>
                             <div className="flex-1">
-                                <p className={cn('font-medium', {
+                                <p className={cn('font-medium text-lg', {
                                         'text-primary': isCurrent,
                                         'text-muted-foreground line-through': status === 'completed',
                                     })}>
                                     Question {String(index + 1).padStart(2, '0')}
                                 </p>
-                                <p className={cn('text-xs', {
+                                <p className={cn('text-sm', {
                                         'text-primary/80': isCurrent,
                                         'text-muted-foreground': status !== 'current',
                                         'line-through': status === 'completed',
@@ -458,6 +458,25 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
       checkInternetSpeed();
     }
   }, [stage, internetCheckStatus, checkInternetSpeed]);
+
+  // Prevent accidental tab closure during interview
+  useEffect(() => {
+    const isInterviewInProgress = !['introduction', 'finished'].includes(stage);
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      // Most browsers show a generic message and ignore this custom one for security reasons.
+      event.returnValue = 'Are you sure you want to leave? Your interview progress will be lost.';
+    };
+
+    if (isInterviewInProgress) {
+      window.addEventListener('beforeunload', handleBeforeUnload);
+    }
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [stage]);
 
 
   const captureSnapshot = useCallback((): string => {
@@ -914,6 +933,16 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
             </div>
         )
     }
+
+    // Question reading and recording stages have dynamic left panes
+    if (stage === 'question_reading' || stage === 'question_recording' || stage === 'question_review') {
+        return (
+            <div className="w-full md:w-[40%] flex flex-col items-center justify-center p-4 sm:p-8 bg-secondary">
+                {renderLeftPaneContent()}
+            </div>
+        )
+    }
+
 
     return (
         <div className="w-full md:w-[40%] flex flex-col items-center justify-center p-4 sm:p-8 bg-secondary">
