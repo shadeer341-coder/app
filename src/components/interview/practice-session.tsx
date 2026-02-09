@@ -708,8 +708,8 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     
     if (stage === 'question_recording') {
         return (
-             <div className="w-full max-w-md flex flex-col justify-center items-center h-full py-8 text-left">
-                <p className="text-3xl font-semibold">{currentQuestion.text}</p>
+             <div className="w-full h-full flex flex-col justify-center items-center text-left p-8">
+                <p className="text-3xl font-semibold flex-1 flex items-center">{currentQuestion.text}</p>
             </div>
         );
     }
@@ -891,7 +891,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
   const renderMainContent = () => {
     if (stage === 'introduction') {
         return (
-            <div className="w-full md:w-[35%] flex flex-col items-center justify-center p-4 sm:p-8 bg-secondary">
+            <div className="w-full md:w-[40%] flex flex-col items-center justify-center p-4 sm:p-8 bg-secondary">
                 {renderIntroduction()}
             </div>
         )
@@ -899,7 +899,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
 
     if (stage === 'submitting') {
       return (
-            <div className="w-full md:w-[35%] flex flex-col items-center justify-center p-4 sm:p-8 bg-secondary">
+            <div className="w-full md:w-[40%] flex flex-col items-center justify-center p-4 sm:p-8 bg-secondary">
                 <Card className="w-full max-w-md text-center">
                     <CardHeader className="items-center">
                         <PartyPopper className="w-16 h-16 text-primary" />
@@ -916,7 +916,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     }
 
     return (
-        <div className="w-full md:w-[35%] flex flex-col items-center justify-center p-4 sm:p-8 bg-secondary">
+        <div className="w-full md:w-[40%] flex flex-col items-center justify-center p-4 sm:p-8 bg-secondary">
             {renderLeftPaneContent()}
         </div>
     )
@@ -930,7 +930,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
 
       {/* Right Pane */}
       <div 
-        className="flex-1 relative bg-cover bg-center min-h-96 md:min-h-screen" 
+        className="w-full md:w-[60%] relative bg-cover bg-center min-h-96 md:min-h-screen" 
         style={{ backgroundImage: 'url(/cas-cam.webp)' }}
       >
         <div className="absolute inset-0 bg-black/50 flex items-center justify-center p-8">
@@ -940,5 +940,3 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     </div>
   );
 }
-
-    
