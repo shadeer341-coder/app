@@ -13,5 +13,5 @@ export default function PracticeLayout({
 }) {
   // This layout provides a fullscreen experience for the interview,
   // removing the standard dashboard sidebar and header.
-  return <div className="min-h-screen w-full bg-secondary">{children}</div>;
+  return <div className="min-h-screen w-full bg-background">{children}</div>;
 }

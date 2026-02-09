@@ -1,14 +1,13 @@
 
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Question, User } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Video, StopCircle, RefreshCw, Send, AlertTriangle, ArrowRight, PartyPopper, Camera, CheckCircle, Wifi, Mic, Play } from 'lucide-react';
+import { Loader2, Video, StopCircle, RefreshCw, Send, AlertTriangle, ArrowRight, PartyPopper, Camera, CheckCircle, Wifi, Mic, Play, Circle } from 'lucide-react';
 import { startInterview, submitInterview } from '@/app/actions/interview';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { cn } from '@/lib/utils';
@@ -19,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ScrollArea } from '../ui/scroll-area';
 
 
 type InterviewQuestion = Pick<Question, 'id' | 'text' | 'category_id' | 'audio_url' | 'tags' | 'read_time_seconds' | 'answer_time_seconds'> & { categoryName: string };
@@ -152,6 +152,65 @@ const CircularTimer = ({ duration, remaining }: { duration: number; remaining: n
     );
 };
 
+const InterviewAgenda = ({ questions, currentQuestionIndex }: { questions: InterviewQuestion[], currentQuestionIndex: number }) => {
+    const agendaItems = React.useMemo(() => {
+        const items: { name: string, status: 'completed' | 'current' | 'upcoming' }[] = [];
+        const categoryIndices: { [key: string]: { min: number, max: number } } = {};
+
+        questions.forEach((q, index) => {
+            if (!categoryIndices[q.categoryName]) {
+                categoryIndices[q.categoryName] = { min: index, max: index };
+            } else {
+                categoryIndices[q.categoryName].max = index;
+            }
+        });
+        
+        // Get unique categories in their original order
+        const uniqueCategoryNames = questions.map(q => q.categoryName).filter((v, i, a) => a.indexOf(v) === i);
+
+
+        uniqueCategoryNames.forEach(categoryName => {
+            const { min, max } = categoryIndices[categoryName];
+            let status: 'completed' | 'current' | 'upcoming' = 'upcoming';
+            if (currentQuestionIndex > max) {
+                status = 'completed';
+            } else if (currentQuestionIndex >= min && currentQuestionIndex <= max) {
+                status = 'current';
+            }
+            items.push({ name: categoryName, status });
+        });
+
+        return items;
+
+    }, [questions, currentQuestionIndex]);
+
+    return (
+        <Card className="mb-4 w-full">
+            <CardHeader>
+                <CardTitle>Interview Agenda</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <ScrollArea className="h-40">
+                    <ul className="space-y-4 pr-4">
+                        {agendaItems.map((item, index) => (
+                            <li key={index} className="flex items-center gap-4 text-sm">
+                                <div className="flex-shrink-0">
+                                    {item.status === 'completed' && <CheckCircle className="h-5 w-5 text-green-500" />}
+                                    {item.status === 'current' && <Loader2 className="h-5 w-5 text-primary animate-spin" />}
+                                    {item.status === 'upcoming' && <Circle className="h-5 w-5 text-muted-foreground/50" />}
+                                </div>
+                                <span className={cn('truncate', { 'font-bold text-primary': item.status === 'current', 'text-muted-foreground line-through': item.status === 'completed' })}>
+                                    {item.name}
+                                </span>
+                            </li>
+                        ))}
+                    </ul>
+                </ScrollArea>
+            </CardContent>
+        </Card>
+    );
+}
+
 
 async function transcribeAudio(audioBlob: Blob): Promise<string> {
     const formData = new FormData();
@@ -199,6 +258,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const previewVideoRef = useRef<HTMLVideoElement>(null);
+  const reviewVideoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
@@ -291,106 +351,100 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
   // Combined effect for introduction stage device setup and preview
   useEffect(() => {
     if (stage !== 'introduction') {
-      // If we leave the intro stage, ensure any preview stream is stopped.
       if (previewStream) {
         previewStream.getTracks().forEach((track) => track.stop());
         setPreviewStream(null);
+        if (previewVideoRef.current) {
+          previewVideoRef.current.srcObject = null;
+        }
       }
       return;
     }
-
+  
     let isCancelled = false;
-    let currentStream: MediaStream | null = null;
-
+  
     const setupAndPreview = async () => {
-      // 1. Enumerate devices to check for camera/mic and populate selectors
+      let tempStreamForPerms: MediaStream | null = null;
       try {
-        // A temporary stream to get permissions and device labels
-        const tempStream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: true,
-        });
-
+        tempStreamForPerms = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+        
         const devices = await navigator.mediaDevices.enumerateDevices();
-        if (isCancelled) {
-          tempStream.getTracks().forEach((track) => track.stop());
-          return;
-        }
-
+        if (isCancelled) return;
+  
         const audio = devices.filter((d) => d.kind === 'audioinput');
         const video = devices.filter((d) => d.kind === 'videoinput');
+        
         setAudioDevices(audio);
         setVideoDevices(video);
-
-        const hasMic = audio.length > 0;
-        const hasCam = video.length > 0;
-
-        if (hasMic) {
-          if (!selectedAudioDeviceId) setSelectedAudioDeviceId(audio[0].deviceId);
-          setMicCheck('success');
-        } else {
-          setMicCheck('error');
-        }
-
-        if (hasCam) {
-          if (!selectedVideoDeviceId) setSelectedVideoDeviceId(video[0].deviceId);
-          setCameraCheck('success');
-        } else {
-          setCameraCheck('error');
-        }
-
-        tempStream.getTracks().forEach((track) => track.stop());
-
-        // 2. If we have devices, create the preview stream
-        if (hasMic && hasCam) {
-          const audioConstraint = selectedAudioDeviceId
-            ? { deviceId: { exact: selectedAudioDeviceId } }
-            : true;
-          const videoConstraint = selectedVideoDeviceId
-            ? { deviceId: { exact: selectedVideoDeviceId } }
-            : true;
-
-          currentStream = await navigator.mediaDevices.getUserMedia({
-            video: videoConstraint,
-            audio: audioConstraint,
-          });
-
-          if (isCancelled) {
-            currentStream.getTracks().forEach((track) => track.stop());
-            return;
-          }
-
-          setPreviewStream(currentStream);
-          if (previewVideoRef.current) {
-            previewVideoRef.current.srcObject = currentStream;
-          }
-          setHasCameraPermission(true);
-        } else {
-          setHasCameraPermission(false);
-        }
+  
+        setMicCheck(audio.length > 0 ? 'success' : 'error');
+        setCameraCheck(video.length > 0 ? 'success' : 'error');
+  
+        if (!selectedAudioDeviceId && audio.length > 0) setSelectedAudioDeviceId(audio[0].deviceId);
+        if (!selectedVideoDeviceId && video.length > 0) setSelectedVideoDeviceId(video[0].deviceId);
+  
       } catch (error) {
         if (isCancelled) return;
-        console.error('Permission or device setup failed:', error);
+        console.error('Permission check failed:', error);
         setHasCameraPermission(false);
         setCameraCheck('error');
         setMicCheck('error');
+      } finally {
+        tempStreamForPerms?.getTracks().forEach(track => track.stop());
       }
     };
-
+  
     setupAndPreview();
+  
+    return () => { isCancelled = true; };
+  }, [stage]);
 
-    // Cleanup function for this effect
+
+  useEffect(() => {
+    let isCancelled = false;
+    let currentStream: MediaStream | null = null;
+  
+    const startPreviewStream = async () => {
+      if (stage !== 'introduction' || !selectedAudioDeviceId || !selectedVideoDeviceId) {
+        return;
+      }
+  
+      try {
+        currentStream = await navigator.mediaDevices.getUserMedia({
+          video: { deviceId: { exact: selectedVideoDeviceId } },
+          audio: { deviceId: { exact: selectedAudioDeviceId } }
+        });
+        if (isCancelled) {
+            currentStream.getTracks().forEach(track => track.stop());
+            return;
+        };
+        setPreviewStream(currentStream);
+        if (previewVideoRef.current) {
+          previewVideoRef.current.srcObject = currentStream;
+        }
+        setHasCameraPermission(true);
+      } catch (error) {
+        if (isCancelled) return;
+        console.error('Failed to start preview stream:', error);
+        setHasCameraPermission(false);
+        setCameraCheck('error');
+      }
+    }
+  
+    startPreviewStream();
+  
     return () => {
       isCancelled = true;
       if (currentStream) {
-        currentStream.getTracks().forEach((track) => track.stop());
+        currentStream.getTracks().forEach(track => track.stop());
       }
+      setPreviewStream(null);
       if (previewVideoRef.current) {
         previewVideoRef.current.srcObject = null;
       }
-    };
-    // The dependencies that should trigger a full device/stream refresh
+    }
   }, [stage, selectedAudioDeviceId, selectedVideoDeviceId]);
+
 
   // Separate small effect for the internet check
   useEffect(() => {
@@ -644,293 +698,229 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     )
   }
 
-  const progressValue = (currentQuestionIndex / questions.length) * 100;
-  const isLastQuestion = currentQuestionIndex === questions.length - 1;
+  const renderVideo = () => {
+    const showPreview = stage === 'introduction';
+    const showReview = stage === 'question_review' && videoRecordings[currentQuestionIndex];
+    const showLive = !showPreview && !showReview;
 
-  if (stage === 'submitting') {
     return (
-        <div className="flex items-center justify-center min-h-screen">
-            <Card className="max-w-xl">
-                <CardHeader className="items-center text-center">
+        <div className="relative aspect-video w-full max-w-3xl rounded-lg overflow-hidden border-2 border-white/20 shadow-2xl">
+            {showPreview && <video ref={previewVideoRef} className="w-full h-full object-cover" autoPlay muted playsInline />}
+            {showReview && <video ref={reviewVideoRef} src={videoRecordings[currentQuestionIndex]!} className="w-full h-full object-cover" controls autoPlay playsInline />}
+            {showLive && <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />}
+
+             {stage === 'question_reading' && (
+                <div className="absolute inset-0 flex flex-col justify-center bg-black/70 text-white p-8">
+                    <div className="flex-grow flex items-center justify-center">
+                        <p className="text-3xl font-bold text-center font-headline">{currentQuestion.text}</p>
+                    </div>
+                </div>
+            )}
+            
+            {stage === 'question_recording' && (
+                <div className="absolute top-4 right-4 flex items-center gap-2 bg-black/50 text-white px-3 py-1.5 rounded-full text-sm font-mono">
+                    <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></div>
+                    <span>REC</span>
+                    <span className="w-px h-4 bg-white/30"></span>
+                    <span>{countdown}s</span>
+                </div>
+            )}
+
+            {hasCameraPermission === false && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 text-white p-4 text-center">
+                    <AlertTriangle className="w-12 h-12 mb-4" />
+                    <h3 className="text-xl font-bold">Camera Access Required</h3>
+                    <p>Please allow camera and microphone access to record.</p>
+                </div>
+            )}
+        </div>
+    )
+  }
+
+  const renderLeftPaneContent = () => {
+    if (stage === 'submitting') {
+        return (
+            <Card className="w-full max-w-md text-center">
+                <CardHeader className="items-center">
                     <PartyPopper className="w-16 h-16 text-primary" />
-                    <CardTitle className="mt-4">Finishing up...</CardTitle>
+                    <CardTitle className="mt-4 text-2xl">Finishing up...</CardTitle>
                     <CardDescription>Your interview is being submitted for AI analysis.</CardDescription>
                 </CardHeader>
-                <CardContent className="text-center flex flex-col items-center justify-center gap-4">
+                <CardContent className="flex flex-col items-center justify-center gap-4">
                     <Loader2 className="w-12 h-12 animate-spin" />
                     <p>Please wait, this may take a moment.</p>
                 </CardContent>
+            </Card>
+        )
+    }
+
+     if (stage === 'introduction') {
+        return (
+            <Card className="w-full max-w-2xl">
+                <CardHeader className="text-center">
+                    <CardTitle className="font-headline text-3xl md:text-4xl">Your Interview is Ready</CardTitle>
+                    <CardDescription>First, let's check your setup. You'll be asked {questions.length} questions.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <ul className="space-y-3">
+                        <li className="p-3 rounded-lg bg-background space-y-3">
+                            <div className="flex items-center justify-between flex-wrap">
+                                <div className="flex items-center gap-3">
+                                    <Mic className="w-5 h-5 text-muted-foreground" />
+                                    <span className="font-medium">Microphone</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    {micCheck === 'pending' && <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />}
+                                    {micCheck === 'success' && <CheckCircle className="w-5 h-5 text-green-500" />}
+                                    {micCheck === 'error' && <AlertTriangle className="w-5 h-5 text-destructive" />}
+                                </div>
+                            </div>
+                            {micCheck === 'success' && (
+                                <div className='space-y-3'>
+                                    <div className="pt-2">
+                                        <MicrophoneVisualizer stream={previewStream} />
+                                    </div>
+                                    <Select value={selectedAudioDeviceId} onValueChange={setSelectedAudioDeviceId} disabled={audioDevices.length <= 1}>
+                                        <SelectTrigger><SelectValue placeholder="Select microphone" /></SelectTrigger>
+                                        <SelectContent>
+                                            {audioDevices.map(device => <SelectItem key={device.deviceId} value={device.deviceId}>{device.label}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
+                        </li>
+                        <li className="flex items-center justify-between p-3 rounded-lg bg-background">
+                            <div className="flex items-center gap-3">
+                                <Camera className="w-5 h-5 text-muted-foreground" />
+                                <span className="font-medium">Camera</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {cameraCheck === 'pending' && <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />}
+                                {cameraCheck === 'success' && <CheckCircle className="w-5 h-5 text-green-500" />}
+                                {cameraCheck === 'error' && <AlertTriangle className="w-5 h-5 text-destructive" />}
+                            </div>
+                        </li>
+                         {cameraCheck === 'success' && (
+                            <li className="p-3 rounded-lg bg-background">
+                                <Select value={selectedVideoDeviceId} onValueChange={setSelectedVideoDeviceId} disabled={videoDevices.length <= 1}>
+                                    <SelectTrigger><SelectValue placeholder="Select camera" /></SelectTrigger>
+                                    <SelectContent>
+                                        {videoDevices.map(device => <SelectItem key={device.deviceId} value={device.deviceId}>{device.label}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </li>
+                         )}
+                        <li className="flex items-center justify-between p-3 rounded-lg bg-background">
+                            <div className="flex items-center gap-3">
+                                <Wifi className="w-5 h-5 text-muted-foreground" />
+                                <span className="font-medium">Internet Connection</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {(internetCheckStatus === 'pending' || internetCheckStatus === 'running') && <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />}
+                                {internetCheckStatus === 'success' && (
+                                    <>
+                                        {internetSpeed !== null && <span className="text-sm font-bold text-green-500">{internetSpeed} Mbps</span>}
+                                        {downloadDuration !== null && <span className="text-xs text-muted-foreground">({downloadDuration}ms)</span>}
+                                        <CheckCircle className="w-5 h-5 text-green-500" />
+                                    </>
+                                )}
+                                {internetCheckStatus === 'error' && <AlertTriangle className="w-5 h-5 text-destructive" />}
+                                
+                                {(internetCheckStatus === 'success' || internetCheckStatus === 'error') && (
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={checkInternetSpeed}>
+                                        <RefreshCw className="w-4 h-4"/><span className="sr-only">Retry</span>
+                                    </Button>
+                                )}
+                            </div>
+                        </li>
+                    </ul>
+                </CardContent>
+                <CardFooter className="flex-col items-center gap-4">
+                    <Button size="lg" onClick={handleStartInterview} disabled={cameraCheck !== 'success' || micCheck !== 'success' || internetCheckStatus !== 'success'}>
+                        Start Interview
+                    </Button>
+                    {(cameraCheck !== 'success' || micCheck !== 'success' || internetCheckStatus !== 'success') && (
+                        <p className="text-xs text-muted-foreground">Please resolve the issues above to begin.</p>
+                    )}
+                </CardFooter>
+            </Card>
+        )
+    }
+
+    // Default layout for question stages
+    const isFinalQuestion = currentQuestionIndex === questions.length - 1;
+
+    return (
+         <div className="w-full max-w-lg flex flex-col justify-between h-full py-8">
+            <InterviewAgenda questions={questions} currentQuestionIndex={currentQuestionIndex} />
+            
+            <Card className="flex-grow flex flex-col justify-center">
+                {stage === 'question_ready' && (
+                     <div className="flex flex-col items-center gap-6 text-center p-6">
+                        <div className="bg-primary/10 p-4 rounded-full">
+                            <Play className="w-12 h-12 text-primary" />
+                        </div>
+                        <h3 className="text-2xl font-bold">Ready for Question {currentQuestionIndex + 1}?</h3>
+                        <p className="text-muted-foreground">You will have {currentQuestion.read_time_seconds || 15} seconds to read.</p>
+                        <Button size="lg" onClick={() => setStage('question_reading')}>
+                            <Play className="mr-2" /> Start Question
+                        </Button>
+                    </div>
+                )}
+                {stage === 'question_reading' && (
+                    <div className="flex flex-col items-center gap-4 p-6">
+                        <h3 className="text-xl font-semibold">Time to Read</h3>
+                        <CircularTimer duration={currentQuestion.read_time_seconds || 15} remaining={countdown} />
+                    </div>
+                )}
+                {stage === 'question_recording' && (
+                    <div className="flex flex-col items-center gap-4 p-6 text-center">
+                        <h3 className="text-xl font-semibold">Answering...</h3>
+                        <CircularTimer duration={currentQuestion.answer_time_seconds || 60} remaining={countdown} />
+                         <Button onClick={stopRecording} variant="outline" size="lg">
+                            <StopCircle className="mr-2" /> Next
+                        </Button>
+                    </div>
+                )}
+                {stage === 'question_review' && (
+                    <div className="p-6">
+                        <CardHeader className="p-0 mb-4">
+                            <CardTitle>Review Your Answer</CardTitle>
+                            <CardDescription>You can re-record or proceed.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="p-0 flex flex-col sm:flex-row justify-center gap-4">
+                            <Button size="lg" variant="outline" onClick={handleRerecord} disabled={isTranscribing}>
+                                <RefreshCw className="mr-2" /> Re-record
+                            </Button>
+                            <Button size="lg" onClick={processAndAdvance} disabled={isTranscribing}>
+                                {isTranscribing && <Loader2 className="mr-2 animate-spin" />}
+                                {!isTranscribing && (isFinalQuestion ? <Send className="mr-2"/> : <ArrowRight className="mr-2" />)}
+                                {isFinalQuestion ? 'Finish & Submit' : 'Next Question'}
+                            </Button>
+                        </CardContent>
+                    </div>
+                )}
             </Card>
         </div>
     )
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen w-full">
-        <Card className="w-full max-w-7xl h-full max-h-[calc(100vh-2rem)] flex flex-col">
-            {stage === 'introduction' && (
-                <>
-                    <CardHeader className="text-center">
-                        <CardTitle className="font-headline text-3xl md:text-4xl">Your Interview is Ready</CardTitle>
-                        <CardDescription>First, let's check your setup. You'll be asked {questions.length} questions.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 items-start overflow-y-auto p-6">
-                        {/* Left Column */}
-                        <div className="space-y-4">
-                            <ul className="space-y-3">
-                                <li className="p-3 rounded-lg bg-background space-y-3">
-                                    <div className="flex items-center justify-between flex-wrap">
-                                        <div className="flex items-center gap-3">
-                                            <Mic className="w-5 h-5 text-muted-foreground" />
-                                            <span className="font-medium">Microphone</span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            {micCheck === 'pending' && <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />}
-                                            {micCheck === 'success' && <CheckCircle className="w-5 h-5 text-green-500" />}
-                                            {micCheck === 'error' && <AlertTriangle className="w-5 h-5 text-destructive" />}
-                                        </div>
-                                    </div>
-                                    {micCheck === 'success' && (
-                                        <div className='space-y-3'>
-                                            <div className="pt-2">
-                                                <MicrophoneVisualizer stream={previewStream} />
-                                            </div>
-                                            <Select value={selectedAudioDeviceId} onValueChange={setSelectedAudioDeviceId} disabled={audioDevices.length <= 1}>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Select microphone" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {audioDevices.map(device => (
-                                                        <SelectItem key={device.deviceId} value={device.deviceId}>{device.label}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                    )}
-                                </li>
-                                <li className="flex items-center justify-between p-3 rounded-lg bg-background">
-                                    <div className="flex items-center gap-3">
-                                        <Wifi className="w-5 h-5 text-muted-foreground" />
-                                        <span className="font-medium">Internet Connection</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        {(internetCheckStatus === 'pending' || internetCheckStatus === 'running') && <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />}
-                                        {internetCheckStatus === 'success' && (
-                                            <>
-                                                {internetSpeed !== null && <span className="text-sm font-bold text-green-500">{internetSpeed} Mbps</span>}
-                                                {downloadDuration !== null && <span className="text-xs text-muted-foreground">({downloadDuration}ms)</span>}
-                                                <CheckCircle className="w-5 h-5 text-green-500" />
-                                            </>
-                                        )}
-                                        {internetCheckStatus === 'error' && <AlertTriangle className="w-5 h-5 text-destructive" />}
-                                        
-                                        {(internetCheckStatus === 'success' || internetCheckStatus === 'error') && (
-                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={checkInternetSpeed}>
-                                                <RefreshCw className="w-4 h-4"/>
-                                                <span className="sr-only">Retry</span>
-                                            </Button>
-                                        )}
-                                    </div>
-                                </li>
-                            </ul>
-                            {cameraCheck === 'error' && (
-                                <Alert variant="destructive">
-                                    <AlertTriangle className="h-4 w-4" />
-                                    <AlertTitle>Camera Permission Denied</AlertTitle>
-                                    <AlertDescription>
-                                        Please allow camera access in your browser settings to proceed.
-                                    </AlertDescription>
-                                </Alert>
-                            )}
-                            {micCheck === 'error' && (
-                                <Alert variant="destructive">
-                                    <AlertTriangle className="h-4 w-4" />
-                                    <AlertTitle>Microphone Permission Denied</AlertTitle>
-                                    <AlertDescription>
-                                        Please allow microphone access in your browser settings to proceed.
-                                    </AlertDescription>
-                                </Alert>
-                            )}
-                            {internetCheckStatus === 'error' && (
-                                <Alert variant="destructive">
-                                    <AlertTriangle className="h-4 w-4" />
-                                    <AlertTitle>Connection Unstable</AlertTitle>
-                                    <AlertDescription>
-                                        We could not verify your internet speed. A stable connection is recommended.
-                                    </AlertDescription>
-                                </Alert>
-                            )}
-                        </div>
-                        {/* Right Column */}
-                         <div className="space-y-4">
-                            <div className="p-3 rounded-lg bg-background space-y-3">
-                                <div className="flex items-center justify-between flex-wrap">
-                                    <div className="flex items-center gap-3">
-                                        <Camera className="w-5 h-5 text-muted-foreground" />
-                                        <span className="font-medium">Camera</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        {cameraCheck === 'pending' && <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />}
-                                        {cameraCheck === 'success' && <CheckCircle className="w-5 h-5 text-green-500" />}
-                                        {cameraCheck === 'error' && <AlertTriangle className="w-5 h-5 text-destructive" />}
-                                    </div>
-                                </div>
-                                 {cameraCheck === 'success' && (
-                                    <div className='space-y-3'>
-                                        <div className="relative w-full aspect-video rounded-md border bg-slate-900 overflow-hidden">
-                                            <video ref={previewVideoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
-                                        </div>
-                                        <Select value={selectedVideoDeviceId} onValueChange={setSelectedVideoDeviceId} disabled={videoDevices.length <= 1}>
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Select camera" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {videoDevices.map(device => (
-                                                    <SelectItem key={device.deviceId} value={device.deviceId}>{device.label}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </CardContent>
-                    <CardFooter className="flex-col items-center gap-4 pt-6 border-t">
-                        <Button 
-                            size="lg" 
-                            onClick={handleStartInterview}
-                            disabled={cameraCheck !== 'success' || micCheck !== 'success' || internetCheckStatus !== 'success'}
-                        >
-                            Start Interview
-                        </Button>
-                        {(cameraCheck !== 'success' || micCheck !== 'success' || internetCheckStatus !== 'success') && (
-                            <p className="text-xs text-muted-foreground">Please resolve the issues above to begin.</p>
-                        )}
-                    </CardFooter>
-                </>
-            )}
-        
-        {(stage === 'question_ready' || stage === 'question_reading' || stage === 'question_recording') && (
-            <CardContent className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-8 items-center pt-6">
-                {/* Left column */}
-                <div className="space-y-6 flex flex-col h-full justify-between">
-                    <div className="space-y-2">
-                        <CardTitle>Question {currentQuestionIndex + 1} of {questions.length}</CardTitle>
-                        <CardDescription>Category: <strong>{currentQuestion?.categoryName}</strong></CardDescription>
-                        <Progress value={progressValue} className="mt-2" />
-                    </div>
-                    <div className={cn("text-center p-6 border rounded-lg bg-secondary flex-grow flex flex-col items-center justify-center")}>
-                         {stage === 'question_reading' && (
-                            <div className="flex flex-col items-center gap-4">
-                                <h3 className="text-xl font-semibold">Time to Read</h3>
-                                <CircularTimer
-                                    duration={currentQuestion.read_time_seconds || 15}
-                                    remaining={countdown}
-                                />
-                            </div>
-                        )}
-                        {stage === 'question_recording' && (
-                           <div className="flex flex-col items-center justify-center h-full text-center">
-                                <p className="text-2xl font-bold font-headline">{currentQuestion?.text}</p>
-                           </div>
-                        )}
-                        {(stage === 'question_ready') && (
-                             <div className="flex flex-col items-center gap-6 text-center">
-                                <div className="bg-primary/10 p-4 rounded-full">
-                                    <Play className="w-12 h-12 text-primary" />
-                                </div>
-                                <h3 className="text-2xl font-bold">Ready for the next question?</h3>
-                                <p className="text-muted-foreground">
-                                    You will have {currentQuestion.read_time_seconds || 15} seconds to read the question.
-                                </p>
-                                <Button size="lg" onClick={() => setStage('question_reading')}>
-                                    <Play className="mr-2" />
-                                    Start Question
-                                </Button>
-                            </div>
-                        )}
-                    </div>
-                     <div/>
-                </div>
+    <div className="flex min-h-screen w-full bg-background font-sans">
+      {/* Left Pane */}
+      <div className="w-full md:w-1/2 flex flex-col items-center justify-center p-4 sm:p-8 bg-secondary">
+        {renderLeftPaneContent()}
+      </div>
 
-                {/* Right column */}
-                <div className="space-y-4 h-full flex flex-col justify-center">
-                    <div className="relative aspect-video w-full rounded-md border bg-slate-900 overflow-hidden">
-                        <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
-                        {hasCameraPermission === false && (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 text-white p-4 text-center">
-                                <AlertTriangle className="w-12 h-12 mb-4" />
-                                <h3 className="text-xl font-bold">Camera Access Required</h3>
-                                <p>Please allow camera and microphone access to record.</p>
-                            </div>
-                        )}
-                        
-                        {stage === 'question_ready' && (
-                             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 text-white p-4 text-center">
-                                <h3 className="text-2xl font-bold">Get Ready</h3>
-                                <p className="mt-2 text-lg">You will have <strong>{currentQuestion.read_time_seconds || 15} seconds</strong> to read the question.</p>
-                                <p className="text-lg">You will have <strong>{currentQuestion.answer_time_seconds || 60} seconds</strong> to answer.</p>
-                            </div>
-                        )}
-
-                        {stage === 'question_reading' && (
-                            <div className="absolute inset-0 flex flex-col justify-center bg-black/70 text-white p-4">
-                                <div className="flex-grow flex items-center justify-center">
-                                    <p className="text-2xl font-bold text-center font-headline">{currentQuestion.text}</p>
-                                </div>
-                            </div>
-                        )}
-                        
-                        {stage === 'question_recording' && (
-                            <div className="absolute top-4 right-4 flex items-center gap-2 bg-black/50 text-white px-3 py-1.5 rounded-full text-sm font-mono">
-                                <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></div>
-                                <span>REC</span>
-                                <span className="w-px h-4 bg-white/30"></span>
-                                <span>{countdown}s</span>
-                            </div>
-                        )}
-                    </div>
-                     {stage === 'question_recording' && (
-                        <div className="flex justify-center">
-                            <Button onClick={stopRecording} variant="outline">
-                                <StopCircle className="mr-2" />
-                                Next
-                            </Button>
-                        </div>
-                    )}
-                </div>
-            </CardContent>
-        )}
-        
-        {stage === 'question_review' && videoRecordings[currentQuestionIndex] && (
-            <CardContent className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-8 items-center pt-6">
-                {/* Left column */}
-                <div className="space-y-6 flex flex-col justify-center">
-                    <div className="space-y-2">
-                        <CardTitle>Review Your Answer for Question {currentQuestionIndex + 1}</CardTitle>
-                        <CardDescription>You can re-record or proceed. The preview includes audio.</CardDescription>
-                        <Progress value={((currentQuestionIndex + 1) / questions.length) * 100} className="mt-2" />
-                    </div>
-                    <div className="flex justify-start gap-4">
-                        <Button size="lg" variant="outline" onClick={handleRerecord} disabled={isTranscribing}>
-                            <RefreshCw className="mr-2" /> Re-record
-                        </Button>
-                        <Button size="lg" onClick={processAndAdvance} disabled={isTranscribing}>
-                            {isTranscribing && <Loader2 className="mr-2 animate-spin" />}
-                            {!isTranscribing && (isLastQuestion ? <Send className="mr-2"/> : <ArrowRight className="mr-2" />)}
-                            {isLastQuestion ? 'Finish & Submit' : 'Next Question'}
-                        </Button>
-                    </div>
-                </div>
-                {/* Right column */}
-                <div className="space-y-4">
-                    <div className="aspect-video w-full rounded-md border bg-black overflow-hidden">
-                        <video src={videoRecordings[currentQuestionIndex]!} className="w-full h-full" playsInline controls autoPlay />
-                    </div>
-                </div>
-            </CardContent>
-        )}
-        </Card>
+      {/* Right Pane */}
+      <div 
+        className="hidden md:flex w-1/2 relative bg-cover bg-center" 
+        style={{ backgroundImage: 'url(/cas-cam.webp)' }}
+      >
+        <div className="absolute inset-0 bg-black/50 flex items-center justify-center p-8">
+            {renderVideo()}
+        </div>
+      </div>
     </div>
   );
 }
