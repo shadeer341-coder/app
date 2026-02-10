@@ -1,54 +1,30 @@
 
 import Link from "next/link";
-import { ArrowRight, Bot, Building, HardHat, PlusCircle, Video, Repeat } from "lucide-react";
-import { redirect } from 'next/navigation';
-
+import { ArrowRight, Bot, Building, HardHat, PlusCircle, Video, Repeat, Users, FileText, BarChart } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 export const dynamic = 'force-dynamic';
 
-export default async function DashboardPage() {
-  const user = await getCurrentUser();
-  const supabase = createSupabaseServerClient();
+const IndividualDashboard = async ({ user }: { user: any }) => {
+    const supabase = createSupabaseServerClient();
+    const { data: userSessions, error: sessionsError } = await supabase
+      .from('interview_sessions')
+      .select('id, overall_score, status, created_at, user_id, interview_attempts!inner(questions(text, question_categories(name)))')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
 
-  if (!user) {
-    redirect('/');
-  }
+    if(sessionsError){
+      console.error("Error fetching user sessions: ", sessionsError);
+    }
 
-  // Redirect agency users to their specific dashboard
-  if (user.role === 'agency') {
-    redirect('/dashboard/agency');
-  }
+    const completedSessions = userSessions?.filter(s => s.status === 'completed') || [];
+    const averageScore = completedSessions.reduce((sum, s) => sum + (s.overall_score || 0), 0) / (completedSessions.length || 1);
 
-  // Fetch data required for individual/admin roles
-  const { data: userSessions, error: sessionsError } = await supabase
-    .from('interview_sessions')
-    .select('id, overall_score, status, created_at, user_id, interview_attempts!inner(questions(text, question_categories(name)))')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false });
-
-  if(sessionsError){
-    console.error("Error fetching user sessions: ", sessionsError);
-  }
-
-  const completedSessions = userSessions?.filter(s => s.status === 'completed') || [];
-  const averageScore = completedSessions.reduce((sum, s) => sum + (s.overall_score || 0), 0) / (completedSessions.length || 1);
-
-
-  const renderUserDashboard = () => {
     return (
       <>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -131,9 +107,79 @@ export default async function DashboardPage() {
         </Card>
       </>
     );
-  };
+};
 
-  const renderAdminDashboard = () => (
+const AgencyDashboard = async ({ user }: { user: any }) => {
+    const supabase = createSupabaseServerClient();
+    const { count: memberCount } = await supabase
+        .from('profiles')
+        .select('id', { count: 'exact' })
+        .eq('agency_id', user.agencyId!);
+
+    return (
+        <>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total Members</CardTitle>
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{memberCount || 0}</div>
+                        <p className="text-xs text-muted-foreground">Number of students in your agency.</p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Interviews This Month</CardTitle>
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">45</div>
+                        <p className="text-xs text-muted-foreground">Total sessions completed by members.</p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Average Score</CardTitle>
+                        <BarChart className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">82%</div>
+                        <p className="text-xs text-muted-foreground">Average score across all members.</p>
+                    </CardContent>
+                </Card>
+                 <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Attempts Remaining</CardTitle>
+                      <Repeat className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">
+                        {user.interview_quota ?? 0}
+                      </div>
+                      <p className="text-xs text-muted-foreground">Your agency's interview quota.</p>
+                    </CardContent>
+                  </Card>
+            </div>
+            <Card className="mt-8">
+                <CardHeader>
+                    <CardTitle>Recent Activity</CardTitle>
+                    <CardDescription>
+                        Latest interview sessions from your members.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <div className="flex items-center justify-center h-40 rounded-lg bg-muted/50">
+                        <p className="text-sm text-muted-foreground">Recent activity feed coming soon...</p>
+                    </div>
+                </CardContent>
+            </Card>
+        </>
+    );
+};
+
+const AdminDashboard = () => (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2"><HardHat /> Admin Control Panel</CardTitle>
@@ -146,12 +192,22 @@ export default async function DashboardPage() {
         <Button asChild size="lg" variant="outline"><Link href="/dashboard/admin/analytics">System Analytics</Link></Button>
       </CardContent>
     </Card>
-  );
+);
 
-  const roleDashboards = {
-    individual: renderUserDashboard(),
-    admin: renderAdminDashboard(),
-  };
+export default async function DashboardPage() {
+  const user = await getCurrentUser();
+  if (!user) {
+    return null; // Should be redirected by layout
+  }
+
+  let content;
+  if (user.role === 'admin') {
+    content = <AdminDashboard />;
+  } else if (user.role === 'agency') {
+    content = <AgencyDashboard user={user} />;
+  } else {
+    content = <IndividualDashboard user={user} />;
+  }
 
   return (
     <div className="space-y-6">
@@ -165,7 +221,7 @@ export default async function DashboardPage() {
           </p>
         </div>
         {user.role !== 'admin' && (
-            <Button asChild size="lg" disabled={user.role !== 'admin' && (user.interview_quota ?? 0) <= 0}>
+            <Button asChild size="lg" disabled={(user.interview_quota ?? 0) <= 0}>
             <Link href="/dashboard/practice">
                 <PlusCircle className="mr-2 h-5 w-5" />
                 Start New Interview
@@ -173,8 +229,7 @@ export default async function DashboardPage() {
             </Button>
         )}
       </div>
-
-      {roleDashboards[user.role as keyof typeof roleDashboards] || renderUserDashboard()}
+      {content}
     </div>
   );
 }

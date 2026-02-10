@@ -3,46 +3,27 @@ import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Zap, Sparkles, Gem } from "lucide-react";
-import { RechargeButton } from "@/components/user/recharge-button";
+import { RechargeButton as IndividualRechargeButton } from "@/components/user/recharge-button";
+import { RechargeButton as AgencyRechargeButton } from "@/components/agency/recharge-button";
 
 export const dynamic = 'force-dynamic';
 
-export default async function RechargePage() {
+const IndividualRechargePage = async () => {
     const user = await getCurrentUser();
-    // This page is for any user with the 'individual' role.
     if (!user || user.role !== 'individual') {
         redirect('/dashboard');
     }
 
     const rechargePacks = [
-        {
-            name: "Small Pack",
-            attempts: 10,
-            price: "$10",
-            icon: Zap
-        },
-        {
-            name: "Medium Pack",
-            attempts: 25,
-            price: "$22",
-            description: "Save 12%",
-            icon: Sparkles
-        },
-        {
-            name: "Large Pack",
-            attempts: 50,
-            price: "$40",
-            description: "Save 20%",
-            icon: Gem
-        }
+        { name: "Small Pack", attempts: 10, price: "$10", icon: Zap },
+        { name: "Medium Pack", attempts: 25, price: "$22", description: "Save 12%", icon: Sparkles },
+        { name: "Large Pack", attempts: 50, price: "$40", description: "Save 20%", icon: Gem }
     ];
 
     return (
         <div className="space-y-6">
             <div>
-                <h1 className="font-headline text-3xl font-bold tracking-tight">
-                    Recharge Quota
-                </h1>
+                <h1 className="font-headline text-3xl font-bold tracking-tight">Recharge Quota</h1>
                 <p className="text-muted-foreground">
                     You currently have <strong>{user.interview_quota ?? 0}</strong> attempts remaining. Purchase more below.
                 </p>
@@ -50,9 +31,7 @@ export default async function RechargePage() {
             <Card>
                 <CardHeader>
                     <CardTitle>Purchase Interview Attempts</CardTitle>
-                    <CardDescription>
-                        Select a package to add more interview attempts to your account.
-                    </CardDescription>
+                    <CardDescription>Select a package to add more interview attempts to your account.</CardDescription>
                 </CardHeader>
                 <CardContent className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {rechargePacks.map(pack => {
@@ -60,9 +39,7 @@ export default async function RechargePage() {
                         return (
                             <Card key={pack.name} className="flex flex-col">
                                 <CardHeader className="items-center text-center">
-                                    <div className="p-4 bg-primary/10 rounded-full mb-2">
-                                        <Icon className="w-8 h-8 text-primary" />
-                                    </div>
+                                    <div className="p-4 bg-primary/10 rounded-full mb-2"><Icon className="w-8 h-8 text-primary" /></div>
                                     <CardTitle>{pack.name}</CardTitle>
                                     <p className="text-4xl font-bold">{pack.attempts}</p>
                                     <CardDescription>Interview Attempts</CardDescription>
@@ -72,7 +49,7 @@ export default async function RechargePage() {
                                     {pack.description && <p className="text-sm text-green-600 font-medium">{pack.description}</p>}
                                 </CardContent>
                                 <CardFooter>
-                                    <RechargeButton attempts={pack.attempts} price={pack.price} />
+                                    <IndividualRechargeButton attempts={pack.attempts} price={pack.price} />
                                 </CardFooter>
                             </Card>
                         )
@@ -81,4 +58,69 @@ export default async function RechargePage() {
             </Card>
         </div>
     );
+};
+
+const AgencyRechargePage = async () => {
+    const user = await getCurrentUser();
+    if (!user || user.role !== 'agency') {
+        redirect('/dashboard');
+    }
+
+    const rechargePacks = [
+        { name: "Small Pack", attempts: 10, price: "$10", icon: Zap },
+        { name: "Medium Pack", attempts: 25, price: "$22", description: "Save 12%", icon: Sparkles },
+        { name: "Large Pack", attempts: 50, price: "$40", description: "Save 20%", icon: Gem }
+    ];
+
+    return (
+        <div className="space-y-6">
+            <div>
+                <h1 className="font-headline text-3xl font-bold tracking-tight">Recharge Quota</h1>
+                <p className="text-muted-foreground">
+                    You currently have <strong>{user.interview_quota ?? 0}</strong> attempts remaining. Purchase more below.
+                </p>
+            </div>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Purchase Interview Attempts</CardTitle>
+                    <CardDescription>Select a package to add more interview attempts to your agency's quota.</CardDescription>
+                </CardHeader>
+                <CardContent className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {rechargePacks.map(pack => {
+                        const Icon = pack.icon;
+                        return (
+                            <Card key={pack.name} className="flex flex-col">
+                                <CardHeader className="items-center text-center">
+                                    <div className="p-4 bg-primary/10 rounded-full mb-2"><Icon className="w-8 h-8 text-primary" /></div>
+                                    <CardTitle>{pack.name}</CardTitle>
+                                    <p className="text-4xl font-bold">{pack.attempts}</p>
+                                    <CardDescription>Interview Attempts</CardDescription>
+                                </CardHeader>
+                                <CardContent className="flex-1 text-center">
+                                    <p className="text-3xl font-bold">{pack.price}</p>
+                                    {pack.description && <p className="text-sm text-green-600 font-medium">{pack.description}</p>}
+                                </CardContent>
+                                <CardFooter>
+                                    <AgencyRechargeButton attempts={pack.attempts} price={pack.price} />
+                                </CardFooter>
+                            </Card>
+                        )
+                    })}
+                </CardContent>
+            </Card>
+        </div>
+    );
+};
+
+export default async function RechargePage() {
+    const user = await getCurrentUser();
+    if (!user) {
+        redirect('/');
+    }
+
+    if (user.role === 'agency') {
+        return <AgencyRechargePage />;
+    }
+    
+    return <IndividualRechargePage />;
 }

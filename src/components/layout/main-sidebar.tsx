@@ -36,12 +36,12 @@ const userLinks = [
 ];
 
 const agencyLinks = [
-    { href: "/dashboard/agency", label: "Dashboard", icon: Building },
-    { href: "/dashboard/agency/students", label: "Manage Students", icon: Users },
-    { href: "/dashboard/agency/interviews", label: "Recent Interviews", icon: FileText },
-    { href: "/dashboard/agency/usage", label: "Usage", icon: AreaChart },
-    { href: "/dashboard/agency/plan", label: "Plan", icon: CreditCard },
-    { href: "/dashboard/agency/recharge", label: "Recharge", icon: ShoppingCart },
+    { href: "/dashboard", label: "Dashboard", icon: Building },
+    { href: "/dashboard/students", label: "Manage Students", icon: Users },
+    { href: "/dashboard/interviews", label: "Recent Interviews", icon: FileText },
+    { href: "/dashboard/usage", label: "Usage", icon: AreaChart },
+    { href: "/dashboard/plan", label: "Plan", icon: CreditCard },
+    { href: "/dashboard/recharge", label: "Recharge", icon: ShoppingCart },
 ];
 
 const adminLinks = [
@@ -65,7 +65,6 @@ export function MainSidebar({ user }: { user: User }) {
     links = adminLinks;
   } else if (user.role === 'agency') {
     links = agencyLinks;
-    dashboardPath = '/dashboard/agency';
   } else {
     links = [...userLinks];
     // Any user with the 'individual' role can recharge their own account.
@@ -85,7 +84,7 @@ export function MainSidebar({ user }: { user: User }) {
       <SidebarContent>
         <SidebarMenu>
           {links.map((link) => {
-             const isDashboardLink = link.href === '/dashboard' || link.href === '/dashboard/agency';
+             const isDashboardLink = link.href === '/dashboard';
              const isActive = (isDashboardLink && pathname === link.href) || (!isDashboardLink && pathname.startsWith(link.href));
 
             return (

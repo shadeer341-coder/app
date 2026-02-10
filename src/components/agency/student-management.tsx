@@ -161,7 +161,7 @@ export function StudentManagement({ students }: { students: User[] }) {
                                 </TableCell>
                                 <TableCell className="text-right">
                                     <Button asChild variant="outline" size="sm">
-                                        <Link href={`/dashboard/agency/students/${student.id}`}>
+                                        <Link href={`/dashboard/students/${student.id}`}>
                                             View <ArrowRight className="ml-2 h-4 w-4" />
                                         </Link>
                                     </Button>

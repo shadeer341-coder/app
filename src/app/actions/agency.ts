@@ -102,7 +102,7 @@ export async function createStudentByAgency(formData: FormData) {
   }
 
 
-  revalidatePath('/dashboard/agency/students');
+  revalidatePath('/dashboard/students');
   return { success: true, message: `Student account for ${full_name} has been created.` };
 }
 
@@ -132,7 +132,7 @@ export async function rechargeAgencyQuota(attemptsToAdd: number) {
     return { success: false, message: "Could not update your quota. Please contact support." };
   }
 
-  revalidatePath('/dashboard/agency/recharge');
+  revalidatePath('/dashboard/recharge');
   revalidatePath('/dashboard');
   
   return { success: true, message: `${attemptsToAdd} attempts added successfully.` };
@@ -191,8 +191,8 @@ export async function addQuotaToStudent(studentId: string, attemptsToAdd: number
             
         if (studentUpdateError) throw studentUpdateError;
 
-        revalidatePath(`/dashboard/agency/students/${studentId}`);
-        revalidatePath('/dashboard/agency/students');
+        revalidatePath(`/dashboard/students/${studentId}`);
+        revalidatePath('/dashboard/students');
         revalidatePath('/dashboard');
 
         return { success: true, message: `${attemptsToAdd} attempts added to student successfully.` };
