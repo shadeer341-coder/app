@@ -28,7 +28,12 @@ export default async function DashboardPage() {
     redirect('/');
   }
 
-  // Fetch data required for all roles
+  // Redirect agency users to their specific dashboard
+  if (user.role === 'agency') {
+    redirect('/dashboard/agency');
+  }
+
+  // Fetch data required for individual/admin roles
   const { data: userSessions, error: sessionsError } = await supabase
     .from('interview_sessions')
     .select('id, overall_score, status, created_at, user_id, interview_attempts!inner(questions(text, question_categories(name)))')
@@ -128,24 +133,6 @@ export default async function DashboardPage() {
     );
   };
 
-  const renderAgencyAdminDashboard = () => {
-    // This would require more complex queries, for now, it's a placeholder.
-    // The logic from mock-data will be adapted here.
-    return (
-      <div className="space-y-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Agency Dashboard</CardTitle>
-            <CardDescription>Member overview and recent activity.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p>Agency admin dashboard functionality will be implemented here.</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  };
-
   const renderAdminDashboard = () => (
     <Card>
       <CardHeader>
@@ -163,7 +150,6 @@ export default async function DashboardPage() {
 
   const roleDashboards = {
     individual: renderUserDashboard(),
-    agency: renderAgencyAdminDashboard(),
     admin: renderAdminDashboard(),
   };
 
