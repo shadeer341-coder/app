@@ -69,7 +69,7 @@ export default async function AgencyStudentsPage() {
           id: authUser.id,
           name: authUser.user_metadata?.full_name || 'Pending User',
           email: authUser.email || 'no-email@example.com',
-          role: 'user',
+          role: 'individual',
           status: 'pending',
           onboardingCompleted: false,
           avatarUrl: `https://picsum.photos/seed/${authUser.id}/100/100`,

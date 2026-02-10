@@ -46,9 +46,9 @@ export async function updateProfile(formData: z.infer<typeof profileSchema>) {
 
 export async function rechargeUserQuota(attemptsToAdd: number) {
   const user = await getCurrentUser();
-  // Any user with the 'user' role can use this. Agencies and admins cannot.
-  if (!user || user.role !== 'user') {
-    return { success: false, message: "Permission denied. This action is for users only." };
+  // Any user with the 'individual' role can use this. Agencies and admins cannot.
+  if (!user || user.role !== 'individual') {
+    return { success: false, message: "Permission denied. This action is for individuals only." };
   }
   
   if (typeof attemptsToAdd !== 'number' || attemptsToAdd <= 0) {

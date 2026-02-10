@@ -68,8 +68,8 @@ export function MainSidebar({ user }: { user: User }) {
     dashboardPath = '/dashboard/agency';
   } else {
     links = [...userLinks];
-    // Any user with the 'user' role can recharge their own account.
-    if (user.role === 'user') {
+    // Any user with the 'individual' role can recharge their own account.
+    if (user.role === 'individual') {
         links.push({ href: "/dashboard/recharge", label: "Recharge", icon: ShoppingCart });
     }
   }

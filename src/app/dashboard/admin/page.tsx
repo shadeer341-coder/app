@@ -44,7 +44,7 @@ export default async function AdminPage() {
 
         allUsers = authUsers.map(authUser => {
             const profile = profilesMap.get(authUser.id);
-            const role = profile?.role === 'super_admin' ? 'admin' : (profile?.role || 'user');
+            const role = profile?.role === 'super_admin' ? 'admin' : (profile?.role || 'individual');
 
             if (profile) {
                 return {
@@ -63,7 +63,7 @@ export default async function AdminPage() {
                     id: authUser.id,
                     name: authUser.user_metadata?.full_name || 'Pending User',
                     email: authUser.email || 'no-email@example.com',
-                    role: 'user',
+                    role: 'individual',
                     level: 'UG',
                     onboardingCompleted: false,
                     avatarUrl: `https://picsum.photos/seed/${authUser.id}/100/100`,

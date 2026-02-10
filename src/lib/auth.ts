@@ -29,7 +29,7 @@ export async function getCurrentUser(): Promise<User | null> {
           email: user.email || 'no-email@example.com',
           name: user.user_metadata?.full_name || 'New User',
           avatarUrl: user.user_metadata?.avatar_url || `https://picsum.photos/seed/${user.id}/100/100`,
-          role: 'user', // Default role
+          role: 'individual', // Default role
           level: 'UG', // Default level
           onboardingCompleted: false,
           interview_quota: 0,
@@ -44,7 +44,7 @@ export async function getCurrentUser(): Promise<User | null> {
       email: user.email || 'no-email@example.com',
       name: profile.full_name || 'Unknown User',
       avatarUrl: profile.avatar_url || `https://picsum.photos/seed/${user.id}/100/100`,
-      role: role || 'user',
+      role: role || 'individual',
       level: profile.level || 'UG',
       agencyId: profile.agency_id,
       onboardingCompleted: profile.onboarding_completed || false,

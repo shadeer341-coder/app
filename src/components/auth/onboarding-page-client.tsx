@@ -197,7 +197,7 @@ export function OnboardingPageClient() {
       return;
     }
   
-    let userRole = 'user'; // Default role
+    let userRole = 'individual'; // Default role
     const groupId = user.user_metadata?.group_id;
   
     if (groupId) {

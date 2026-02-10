@@ -1,5 +1,4 @@
 
-
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth";
 import { notFound, redirect } from "next/navigation";
@@ -69,7 +68,7 @@ export default async function StudentDetailPage({ params }: { params: { id: stri
         avatarUrl: studentProfile?.avatar_url || `https://picsum.photos/seed/${studentAuthUser.id}/100/100`,
         interview_quota: studentProfile?.interview_quota,
         onboardingCompleted: !isPending,
-        role: 'user',
+        role: 'individual',
         level: 'UG',
         ...(studentProfile || {})
     }
