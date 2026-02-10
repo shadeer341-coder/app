@@ -10,7 +10,6 @@ export const dynamic = 'force-dynamic';
 export default async function RechargePage() {
     const user = await getCurrentUser();
     // This page is for any user with the 'individual' role.
-    // Agencies and Admins are redirected.
     if (!user || user.role !== 'individual') {
         redirect('/dashboard');
     }
@@ -73,7 +72,7 @@ export default async function RechargePage() {
                                     {pack.description && <p className="text-sm text-green-600 font-medium">{pack.description}</p>}
                                 </CardContent>
                                 <CardFooter>
-                                    <RechargeButton attempts={pack.attempts} />
+                                    <RechargeButton attempts={pack.attempts} price={pack.price} />
                                 </CardFooter>
                             </Card>
                         )

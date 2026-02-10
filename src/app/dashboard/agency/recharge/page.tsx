@@ -71,7 +71,7 @@ export default async function AgencyRechargePage() {
                                     {pack.description && <p className="text-sm text-green-600 font-medium">{pack.description}</p>}
                                 </CardContent>
                                 <CardFooter>
-                                    <RechargeButton attempts={pack.attempts} />
+                                    <RechargeButton attempts={pack.attempts} price={pack.price} />
                                 </CardFooter>
                             </Card>
                         )
