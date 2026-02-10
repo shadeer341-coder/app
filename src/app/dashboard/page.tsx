@@ -1,12 +1,16 @@
 
 import Link from "next/link";
-import { ArrowRight, Bot, Building, HardHat, PlusCircle, Video, Repeat, Users, FileText, BarChart } from "lucide-react";
+import { ArrowRight, Bot, Building, HardHat, PlusCircle, Video, Repeat, Users, FileText, BarChart, Hourglass, Loader2, CheckCircle, ServerCrash } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import type { InterviewSessionStatus } from "@/lib/types";
+import { cn } from "@/lib/utils";
+import { format } from 'date-fns';
 
 export const dynamic = 'force-dynamic';
 
@@ -109,12 +113,53 @@ const IndividualDashboard = async ({ user }: { user: any }) => {
     );
 };
 
+const statusConfig: Record<InterviewSessionStatus, { label: string, icon: React.ComponentType<any>, color: string }> = {
+    pending: { label: 'Pending', icon: Hourglass, color: 'text-amber-500' },
+    processing: { label: 'Processing', icon: Loader2, color: 'text-blue-500 animate-spin' },
+    completed: { label: 'Completed', icon: CheckCircle, color: 'text-green-500' },
+    failed: { label: 'Failed', icon: ServerCrash, color: 'text-red-500' }
+};
+
 const AgencyDashboard = async ({ user }: { user: any }) => {
     const supabase = createSupabaseServerClient();
     const { count: memberCount } = await supabase
         .from('profiles')
         .select('id', { count: 'exact' })
         .eq('agency_id', user.agencyId!);
+    
+    const { data: students, error: studentsError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('agency_id', user.agencyId!);
+    
+    const studentIds = students?.map(s => s.id) || [];
+    let recentSessions: any[] = [];
+
+    if (studentIds.length > 0) {
+        const { data: sessionsData, error: sessionsError } = await supabase
+            .from('interview_sessions')
+            .select(`
+                id,
+                created_at,
+                overall_score,
+                status,
+                user_id,
+                profiles (
+                    full_name,
+                    avatar_url
+                )
+            `)
+            .in('user_id', studentIds)
+            .order('created_at', { ascending: false })
+            .limit(5);
+        
+        if (sessionsError) {
+            console.error("Error fetching recent member interviews:", sessionsError);
+        } else {
+            recentSessions = sessionsData || [];
+        }
+    }
+
 
     return (
         <>
@@ -170,10 +215,75 @@ const AgencyDashboard = async ({ user }: { user: any }) => {
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div className="flex items-center justify-center h-40 rounded-lg bg-muted/50">
-                        <p className="text-sm text-muted-foreground">Recent activity feed coming soon...</p>
-                    </div>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Student</TableHead>
+                                <TableHead>Date</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead>Score</TableHead>
+                                <TableHead className="text-right">Action</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {recentSessions.length > 0 ? recentSessions.map(session => {
+                                const statusInfo = statusConfig[session.status as InterviewSessionStatus] || statusConfig.pending;
+                                const Icon = statusInfo.icon;
+                                const studentProfile = session.profiles;
+
+                                return (
+                                    <TableRow key={session.id}>
+                                        <TableCell>
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="h-9 w-9">
+                                                    <AvatarImage src={studentProfile?.avatar_url || `https://picsum.photos/seed/${session.user_id}/100/100`} alt={studentProfile?.full_name} />
+                                                    <AvatarFallback>{studentProfile?.full_name?.charAt(0) || 'U'}</AvatarFallback>
+                                                </Avatar>
+                                                <div className="font-medium">{studentProfile?.full_name || 'Unnamed Student'}</div>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            {format(new Date(session.created_at), "PPP")}
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex items-center gap-2">
+                                                <Icon className={cn("h-4 w-4", statusInfo.color)} />
+                                                <span>{statusInfo.label}</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            {session.status === 'completed' ? (
+                                                <Badge variant={session.overall_score > 75 ? 'default' : 'secondary'}>
+                                                    {session.overall_score}%
+                                                </Badge>
+                                            ) : (
+                                                <span className="text-muted-foreground">--</span>
+                                            )}
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <Button asChild variant="outline" size="sm">
+                                                <Link href={`/dashboard/students/${session.user_id}`}>
+                                                    View Student <ArrowRight className="ml-2 h-4 w-4" />
+                                                </Link>
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            }) : (
+                                <TableRow>
+                                    <TableCell colSpan={5} className="h-24 text-center">
+                                        No recent activity from your members.
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
                 </CardContent>
+                 <CardFooter>
+                    <Button asChild variant="outline" className="ml-auto">
+                        <Link href="/dashboard/interviews">View All Interviews <ArrowRight className="ml-2 h-4 w-4" /></Link>
+                    </Button>
+                </CardFooter>
             </Card>
         </>
     );
