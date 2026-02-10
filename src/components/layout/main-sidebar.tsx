@@ -68,8 +68,8 @@ export function MainSidebar({ user }: { user: User }) {
     dashboardPath = '/dashboard/agency';
   } else {
     links = [...userLinks];
-    // A true "individual" user is role 'user' and has no agencyId
-    if (user.role === 'user' && !user.agencyId) {
+    // Any user with the 'user' role can recharge their own account.
+    if (user.role === 'user') {
         links.push({ href: "/dashboard/recharge", label: "Recharge", icon: ShoppingCart });
     }
   }

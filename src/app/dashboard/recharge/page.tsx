@@ -9,9 +9,9 @@ export const dynamic = 'force-dynamic';
 
 export default async function RechargePage() {
     const user = await getCurrentUser();
-    // This page is for individual users not associated with an agency.
-    // Agencies, their students, and Admins are also redirected.
-    if (!user || user.role !== 'user' || user.agencyId) {
+    // This page is for any user with the 'user' role.
+    // Agencies and Admins are redirected.
+    if (!user || user.role !== 'user') {
         redirect('/dashboard');
     }
 
