@@ -9,9 +9,9 @@ export const dynamic = 'force-dynamic';
 
 export default async function RechargePage() {
     const user = await getCurrentUser();
-    // This page is for any user with the 'user' role.
+    // This page is for any user with the 'individual' role.
     // Agencies and Admins are redirected.
-    if (!user || user.role !== 'user') {
+    if (!user || user.role !== 'individual') {
         redirect('/dashboard');
     }
 
