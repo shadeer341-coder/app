@@ -204,7 +204,7 @@ const InterviewAgenda = ({
                                         'text-muted-foreground': status !== 'current',
                                         'line-through': status === 'completed',
                                     })}>
-                                    {question.categoryName} &bull; {question.answer_time_seconds || 60}s answer
+                                    {question.categoryName} • {question.answer_time_seconds || 60}s answer
                                 </p>
                             </div>
                         </div>
@@ -923,7 +923,6 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
                     <CardHeader className="items-center">
                         <PartyPopper className="w-16 h-16 text-primary" />
                         <CardTitle className="mt-4 text-2xl">Finishing up...</CardTitle>
-                        <CardDescription>Your interview is being submitted for AI analysis.</CardDescription>
                     </CardHeader>
                     <CardContent className="flex flex-col items-center justify-center gap-4">
                         <Loader2 className="w-12 h-12 animate-spin" />
@@ -969,3 +968,5 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     </div>
   );
 }
+
+    
