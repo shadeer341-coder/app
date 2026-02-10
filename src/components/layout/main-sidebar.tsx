@@ -33,6 +33,7 @@ const userLinks = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
   { href: "/dashboard/interviews", label: "My Interviews", icon: FileText },
   { href: "/dashboard/progress", label: "My Progress", icon: BarChart },
+  { href: "/dashboard/recharge", label: "Recharge", icon: ShoppingCart },
 ];
 
 const agencyLinks = [

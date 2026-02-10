@@ -42,3 +42,36 @@ export async function updateProfile(formData: z.infer<typeof profileSchema>) {
 
   return { success: true, message: "Profile updated successfully." };
 }
+
+
+export async function rechargeUserQuota(attemptsToAdd: number) {
+  const user = await getCurrentUser();
+  // Only individual users can use this. Agencies have their own recharge.
+  if (!user || user.role !== 'user') {
+    return { success: false, message: "Permission denied. This action is for individual users." };
+  }
+  
+  if (typeof attemptsToAdd !== 'number' || attemptsToAdd <= 0) {
+      return { success: false, message: "Invalid number of attempts provided." };
+  }
+
+  const supabase = createSupabaseServerActionClient();
+  
+  const currentQuota = user.interview_quota || 0;
+  const newQuota = currentQuota + attemptsToAdd;
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ interview_quota: newQuota })
+    .eq('id', user.id);
+  
+  if (error) {
+    console.error(`Failed to recharge quota for user ${user.id}. Error: ${error.message}`);
+    return { success: false, message: "Could not update your quota. Please contact support." };
+  }
+
+  revalidatePath('/dashboard/recharge');
+  revalidatePath('/dashboard');
+  
+  return { success: true, message: `${attemptsToAdd} attempts added successfully.` };
+}
