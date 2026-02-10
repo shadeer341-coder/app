@@ -33,7 +33,6 @@ const userLinks = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
   { href: "/dashboard/interviews", label: "My Interviews", icon: FileText },
   { href: "/dashboard/progress", label: "My Progress", icon: BarChart },
-  { href: "/dashboard/recharge", label: "Recharge", icon: ShoppingCart },
 ];
 
 const agencyLinks = [
@@ -68,7 +67,11 @@ export function MainSidebar({ user }: { user: User }) {
     links = agencyLinks;
     dashboardPath = '/dashboard/agency';
   } else {
-    links = userLinks;
+    links = [...userLinks];
+    // A true "individual" user is role 'user' and has no agencyId
+    if (user.role === 'user' && !user.agencyId) {
+        links.push({ href: "/dashboard/recharge", label: "Recharge", icon: ShoppingCart });
+    }
   }
 
   return (

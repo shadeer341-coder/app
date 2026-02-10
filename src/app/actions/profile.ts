@@ -46,8 +46,8 @@ export async function updateProfile(formData: z.infer<typeof profileSchema>) {
 
 export async function rechargeUserQuota(attemptsToAdd: number) {
   const user = await getCurrentUser();
-  // Only individual users can use this. Agencies have their own recharge.
-  if (!user || user.role !== 'user') {
+  // Only individual users (not tied to an agency) can use this. Agencies have their own recharge.
+  if (!user || user.role !== 'user' || user.agencyId) {
     return { success: false, message: "Permission denied. This action is for individual users." };
   }
   
