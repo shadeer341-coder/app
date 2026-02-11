@@ -2,98 +2,71 @@
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { CheckCircle } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { RechargeButton as AgencyRechargeButton } from "@/components/agency/recharge-button";
+import { AgencyRechargeButton } from "@/components/agency/recharge-button";
+import { Zap, Gem, Crown } from "lucide-react";
 
-export default async function AgencyPlanPage() {
+export default async function AgencyRechargePage() {
     const user = await getCurrentUser();
     if (!user || user.role !== 'agency') {
         redirect('/dashboard');
     }
     
-    const plans = [
+    const bundles = [
         {
-            name: "Starter",
-            description: "For up to 10 students.",
-            features: ["Up to 10 students", "Basic analytics"],
-            price: "$49/mo",
-            rechargeAttempts: 10,
-            rechargePrice: "$10",
+            name: "Starter Bundle",
+            attempts: 10,
+            price: "240",
+            icon: Zap
         },
         {
-            name: "Standard",
-            description: "For up to 25 students.",
-            features: ["Up to 25 students", "Advanced analytics", "Custom branding"],
-            price: "$99/mo",
-            rechargeAttempts: 25,
-            rechargePrice: "$22",
+            name: "Standard Bundle",
+            attempts: 25,
+            price: "575",
+            icon: Gem,
         },
         {
-            name: "Advanced",
-            description: "For up to 50 students.",
-            features: ["Up to 50 students", "Full analytics suite", "Custom branding", "Priority support"],
-            price: "$199/mo",
-            rechargeAttempts: 50,
-            rechargePrice: "$40",
+            name: "Advanced Bundle",
+            attempts: 50,
+            price: "1100",
+            icon: Crown,
         }
     ];
-
-    const currentPlanName = user.agency_tier || 'Starter';
 
     return (
         <div className="space-y-6">
             <div>
                 <h1 className="font-headline text-3xl font-bold tracking-tight">
-                    Manage Your Plan
+                    Recharge Quota
                 </h1>
                 <p className="text-muted-foreground">
-                   You are currently on the <strong>{currentPlanName}</strong> plan. You can upgrade your plan or repurchase your current plan's quota bundle.
+                   You currently have <strong>{user.interview_quota ?? 0}</strong> attempts. Purchase a bundle to add more to your agency's balance.
                 </p>
             </div>
             <Card>
                 <CardHeader>
-                    <CardTitle>Available Plans</CardTitle>
+                    <CardTitle>Purchase Attempt Bundles</CardTitle>
                      <CardDescription>
-                        Choose the plan that best fits your agency's needs.
+                        Select any bundle to add attempts to your agency's quota.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {plans.map(plan => {
-                        const isCurrentPlan = plan.name.toLowerCase() === currentPlanName.toLowerCase();
+                    {bundles.map(bundle => {
                         return (
-                            <Card key={plan.name} className={cn("flex flex-col", isCurrentPlan ? "border-primary ring-2 ring-primary" : "")}>
-                                <CardHeader>
-                                    <CardTitle>{plan.name}</CardTitle>
-                                    <p className="text-3xl font-bold">{plan.price}</p>
-                                    <CardDescription>{plan.description}</CardDescription>
+                            <Card key={bundle.name} className="flex flex-col">
+                                <CardHeader className="items-center text-center">
+                                    <div className="p-4 bg-primary/10 rounded-full mb-2"><bundle.icon className="w-8 h-8 text-primary" /></div>
+                                    <CardTitle>{bundle.name}</CardTitle>
+                                    <p className="text-4xl font-bold">{bundle.attempts}</p>
+                                    <CardDescription>Interview Attempts</CardDescription>
                                 </CardHeader>
-                                <CardContent className="space-y-4 flex-1">
-                                    <ul className="space-y-2">
-                                        {plan.features.map(feature => (
-                                            <li key={feature} className="flex items-start gap-2 text-sm">
-                                                <CheckCircle className="h-4 w-4 text-green-500 mt-1 shrink-0" />
-                                                <span>{feature}</span>
-                                            </li>
-                                        ))}
-                                    </ul>
+                                <CardContent className="flex-1 text-center">
+                                    <p className="text-3xl font-bold">${bundle.price}</p>
                                 </CardContent>
-                                <CardFooter className="flex-col gap-2">
-                                    {isCurrentPlan ? (
-                                        <>
-                                            <Button disabled className="w-full">Current Plan</Button>
-                                            <p className="text-xs text-muted-foreground pt-2">Repurchase your quota bundle below.</p>
-                                            <div className="w-full pt-2 border-t">
-                                                 <AgencyRechargeButton 
-                                                    attempts={plan.rechargeAttempts} 
-                                                    price={plan.rechargePrice} 
-                                                />
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <Button variant="outline" className="w-full">Upgrade</Button>
-                                    )}
+                                <CardFooter>
+                                     <AgencyRechargeButton 
+                                        attempts={bundle.attempts} 
+                                        price={bundle.price} 
+                                    />
                                 </CardFooter>
                             </Card>
                         )

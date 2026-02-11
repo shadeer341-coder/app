@@ -40,7 +40,7 @@ const agencyLinks = [
     { href: "/dashboard/students", label: "Manage Students", icon: Users },
     { href: "/dashboard/interviews", label: "Recent Interviews", icon: FileText },
     { href: "/dashboard/usage", label: "Usage", icon: AreaChart },
-    { href: "/dashboard/plan", label: "Plan", icon: CreditCard },
+    { href: "/dashboard/plan", label: "Recharge", icon: CreditCard },
 ];
 
 const adminLinks = [
