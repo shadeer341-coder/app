@@ -2,14 +2,16 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 import { rechargeAgencyQuota } from "@/app/actions/agency";
 import { PayPalButtons, PayPalScriptProvider } from "@paypal/react-paypal-js";
 import type { OnApproveData, CreateOrderData } from "@paypal/paypal-js";
 import { Loader2 } from "lucide-react";
 
-export function RechargeButton({ attempts, price }: { attempts: number, price: string }) {
+export function AgencyRechargeButton({ attempts, price }: { attempts: number, price: string }) {
     const { toast } = useToast();
+    const router = useRouter();
     const [isProcessing, setIsProcessing] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -52,6 +54,7 @@ export function RechargeButton({ attempts, price }: { attempts: number, price: s
                     title: "Recharge Successful!",
                     description: `${attempts} attempts have been added to your agency account.`,
                 });
+                router.refresh();
             } else {
                 throw new Error(result.message);
             }
