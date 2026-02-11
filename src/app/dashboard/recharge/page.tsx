@@ -2,7 +2,7 @@
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Zap, Gem, Crown } from "lucide-react";
+import { Zap } from "lucide-react";
 import { RechargeButton } from "@/components/user/recharge-button";
 import { AgencyRechargeCard } from "@/components/agency/agency-recharge-card";
 
@@ -15,7 +15,7 @@ export default async function RechargePage() {
     }
 
     if (user.role === 'individual') {
-        const pack = { name: "Basic Pack", attempts: 3, price: "$25", icon: Zap };
+        const pack = { name: "Basic Pack", attempts: 3, price: "25", icon: Zap };
         return (
             <div className="space-y-6">
                 <div>
@@ -38,7 +38,7 @@ export default async function RechargePage() {
                                 <CardDescription>Interview Attempts</CardDescription>
                             </CardHeader>
                             <CardContent className="flex-1 text-center">
-                                <p className="text-3xl font-bold">{pack.price}</p>
+                                <p className="text-3xl font-bold">${pack.price}</p>
                             </CardContent>
                             <CardFooter>
                                 <RechargeButton attempts={pack.attempts} price={pack.price} />
@@ -56,21 +56,21 @@ export default async function RechargePage() {
                 name: "Starter Bundle",
                 attempts: 10,
                 price: "240",
-                icon: Zap,
+                icon: "Zap",
                 studentLimit: "Up to 10 students",
             },
             {
                 name: "Standard Bundle",
                 attempts: 25,
                 price: "575",
-                icon: Gem,
+                icon: "Gem",
                 studentLimit: "Up to 25 students",
             },
             {
                 name: "Advanced Bundle",
                 attempts: 50,
                 price: "1100",
-                icon: Crown,
+                icon: "Crown",
                 studentLimit: "Up to 50 students",
             }
         ];

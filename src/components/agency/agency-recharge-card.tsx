@@ -1,22 +1,29 @@
+
 "use client";
 
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { AgencyRechargeButton } from './recharge-button';
-import { Users } from 'lucide-react';
+import { Users, Zap, Gem, Crown } from 'lucide-react';
 
 type Bundle = {
     name: string;
     attempts: number;
     price: string;
-    icon: React.ElementType;
+    icon: string;
     studentLimit: string;
+};
+
+const iconMap: { [key: string]: React.ElementType } = {
+    Zap,
+    Gem,
+    Crown,
 };
 
 export function AgencyRechargeCard({ bundle }: { bundle: Bundle }) {
     const [showPayment, setShowPayment] = useState(false);
-    const Icon = bundle.icon;
+    const Icon = iconMap[bundle.icon];
 
     return (
         <Card key={bundle.name} className="flex flex-col">
