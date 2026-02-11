@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from "@/components/ui/button";
 import { CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { RechargeButton as AgencyRechargeButton } from "@/components/agency/recharge-button";
 
 export default async function AgencyPlanPage() {
     const user = await getCurrentUser();
@@ -17,19 +18,25 @@ export default async function AgencyPlanPage() {
             name: "Starter",
             description: "For up to 10 students.",
             features: ["Up to 10 students", "Basic analytics"],
-            price: "$49/mo"
+            price: "$49/mo",
+            rechargeAttempts: 10,
+            rechargePrice: "$10",
         },
         {
             name: "Standard",
             description: "For up to 25 students.",
             features: ["Up to 25 students", "Advanced analytics", "Custom branding"],
-            price: "$99/mo"
+            price: "$99/mo",
+            rechargeAttempts: 25,
+            rechargePrice: "$22",
         },
         {
             name: "Advanced",
             description: "For up to 50 students.",
             features: ["Up to 50 students", "Full analytics suite", "Custom branding", "Priority support"],
-            price: "$199/mo"
+            price: "$199/mo",
+            rechargeAttempts: 50,
+            rechargePrice: "$40",
         }
     ];
 
@@ -42,7 +49,7 @@ export default async function AgencyPlanPage() {
                     Manage Your Plan
                 </h1>
                 <p className="text-muted-foreground">
-                   You are currently on the <strong>{currentPlanName}</strong> plan. Manage or upgrade your plan below.
+                   You are currently on the <strong>{currentPlanName}</strong> plan. You can upgrade your plan or repurchase your current plan's quota bundle.
                 </p>
             </div>
             <Card>
@@ -72,9 +79,18 @@ export default async function AgencyPlanPage() {
                                         ))}
                                     </ul>
                                 </CardContent>
-                                <CardFooter>
+                                <CardFooter className="flex-col gap-2">
                                     {isCurrentPlan ? (
-                                        <Button disabled className="w-full">Current Plan</Button>
+                                        <>
+                                            <Button disabled className="w-full">Current Plan</Button>
+                                            <p className="text-xs text-muted-foreground pt-2">Repurchase your quota bundle below.</p>
+                                            <div className="w-full pt-2 border-t">
+                                                 <AgencyRechargeButton 
+                                                    attempts={plan.rechargeAttempts} 
+                                                    price={plan.rechargePrice} 
+                                                />
+                                            </div>
+                                        </>
                                     ) : (
                                         <Button variant="outline" className="w-full">Upgrade</Button>
                                     )}
