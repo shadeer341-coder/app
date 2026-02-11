@@ -13,7 +13,7 @@ export default async function RechargePage() {
         redirect('/dashboard');
     }
 
-    const pack = { name: "Basic Pack", attempts: 3, price: "$5", icon: Zap };
+    const pack = { name: "Basic Pack", attempts: 3, price: "$25", icon: Zap };
 
     return (
         <div className="space-y-6">
