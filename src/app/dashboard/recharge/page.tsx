@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Zap, Gem, Crown } from "lucide-react";
 import { RechargeButton } from "@/components/user/recharge-button";
-import { AgencyRechargeButton } from "@/components/agency/recharge-button";
+import { AgencyRechargeCard } from "@/components/agency/agency-recharge-card";
 
 export const dynamic = 'force-dynamic';
 
@@ -56,19 +56,22 @@ export default async function RechargePage() {
                 name: "Starter Bundle",
                 attempts: 10,
                 price: "240",
-                icon: Zap
+                icon: Zap,
+                studentLimit: "Up to 10 students",
             },
             {
                 name: "Standard Bundle",
                 attempts: 25,
                 price: "575",
                 icon: Gem,
+                studentLimit: "Up to 25 students",
             },
             {
                 name: "Advanced Bundle",
                 attempts: 50,
                 price: "1100",
                 icon: Crown,
+                studentLimit: "Up to 50 students",
             }
         ];
 
@@ -90,27 +93,9 @@ export default async function RechargePage() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {bundles.map(bundle => {
-                            return (
-                                <Card key={bundle.name} className="flex flex-col">
-                                    <CardHeader className="items-center text-center">
-                                        <div className="p-4 bg-primary/10 rounded-full mb-2"><bundle.icon className="w-8 h-8 text-primary" /></div>
-                                        <CardTitle>{bundle.name}</CardTitle>
-                                        <p className="text-4xl font-bold">{bundle.attempts}</p>
-                                        <CardDescription>Interview Attempts</CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="flex-1 text-center">
-                                        <p className="text-3xl font-bold">${bundle.price}</p>
-                                    </CardContent>
-                                    <CardFooter>
-                                         <AgencyRechargeButton 
-                                            attempts={bundle.attempts} 
-                                            price={bundle.price} 
-                                        />
-                                    </CardFooter>
-                                </Card>
-                            )
-                        })}
+                        {bundles.map(bundle => (
+                             <AgencyRechargeCard key={bundle.name} bundle={bundle} />
+                        ))}
                     </CardContent>
                 </Card>
             </div>
