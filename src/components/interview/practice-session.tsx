@@ -630,7 +630,6 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
       setIsSubmitting(true);
       toast({
           title: "Submitting Interview...",
-          description: "Your answers are being analyzed. This may take a moment.",
       });
 
       try {
@@ -789,7 +788,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
             
             {stage === 'question_recording' && (
                 <>
-                    <div className="absolute top-4 right-4 flex items-center gap-2 bg-black/50 text-white px-3 py-1.5 rounded-full text-sm font-mono">
+                    <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/50 text-white px-3 py-1.5 rounded-full text-sm font-mono">
                         <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></div>
                         <span>REC: {String(countdown).padStart(2, '0')}s</span>
                     </div>
