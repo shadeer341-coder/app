@@ -132,7 +132,7 @@ export async function rechargeAgencyQuota(attemptsToAdd: number) {
     return { success: false, message: "Could not update your quota. Please contact support." };
   }
 
-  revalidatePath('/dashboard/recharge');
+  revalidatePath('/dashboard/plan');
   revalidatePath('/dashboard');
   
   return { success: true, message: `${attemptsToAdd} attempts added successfully.` };
