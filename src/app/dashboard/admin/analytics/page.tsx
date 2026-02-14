@@ -79,41 +79,46 @@ export default async function AnalyticsPage() {
                  const profilesMap = new Map(profiles.map(p => [p.id, p]));
 
                  // 3. Populate daily data map
-                 recentAuthUsers.forEach(authUser => {
+                 for (const authUser of recentAuthUsers) {
                     const day = format(startOfDay(new Date(authUser.created_at)), 'yyyy-MM-dd');
                     const dayCounts = dailyData.get(day);
-                    if (!dayCounts) return;
+                    if (!dayCounts) continue;
 
                     const profile = profilesMap.get(authUser.id);
-                    const meta = authUser.raw_user_meta_data as any;
-
+                    const meta = (authUser.raw_user_meta_data as any) || {};
+                    
+                    let userType: 'Individual' | 'Invited' | 'Starter' | 'Standard' | 'Advanced' | null = null;
+                    
                     if (profile) { // User has a profile (onboarding completed)
                         if (profile.role === 'agency') {
-                            if (profile.agency_tier === 'Starter') dayCounts.Starter++;
-                            else if (profile.agency_tier === 'Standard') dayCounts.Standard++;
-                            else if (profile.agency_tier === 'Advanced') dayCounts.Advanced++;
+                            if (profile.agency_tier === 'Standard') userType = 'Standard';
+                            else if (profile.agency_tier === 'Advanced') userType = 'Advanced';
+                            else userType = 'Starter';
                         } else if (profile.role !== 'admin' && profile.role !== 'super_admin') {
+                            // An 'individual' with an agency_id is an 'Invited' student
                             if (profile.agency_id) {
-                                dayCounts.Invited++;
+                                userType = 'Invited';
                             } else {
-                                dayCounts.Individual++;
+                                userType = 'Individual';
                             }
                         }
-                    } else if (meta) { // User does not have a profile yet, rely on metadata
-                        if (String(meta.group_id) === '2') { // Is an agency
-                            const plan = (meta.plan || 'Agency - Starter').split(' - ')[1];
-                            if (plan === 'Standard') dayCounts.Standard++;
-                            else if (plan === 'Advanced') dayCounts.Advanced++;
-                            else dayCounts.Starter++;
-                        } else { // Is an individual or invited student
-                            if (meta.agency_id) {
-                                dayCounts.Invited++;
-                            } else {
-                                dayCounts.Individual++;
-                            }
+                    } else { // No profile yet, use metadata
+                        if (String(meta.group_id) === '2') { // Is an Agency
+                            const plan = (meta.plan || '').split(' - ')[1];
+                            if (plan === 'Standard') userType = 'Standard';
+                            else if (plan === 'Advanced') userType = 'Advanced';
+                            else userType = 'Starter';
+                        } else if (meta.agency_id) { // Is an invited student
+                            userType = 'Invited';
+                        } else { // Is a regular individual signup
+                            userType = 'Individual';
                         }
                     }
-                 });
+
+                    if (userType && dayCounts[userType] !== undefined) {
+                        dayCounts[userType]++;
+                    }
+                 }
             }
         }
     }
