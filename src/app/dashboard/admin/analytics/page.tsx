@@ -15,13 +15,13 @@ export default async function AnalyticsPage() {
     const { count: individualCount, error: individualError } = await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true })
-        .eq('role', 'individual')
+        .not('role', 'in', '("agency", "admin", "super_admin")')
         .is('agency_id', null);
 
     const { count: invitedCount, error: invitedError } = await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true })
-        .eq('role', 'individual')
+        .not('role', 'in', '("agency", "admin", "super_admin")')
         .not('agency_id', 'is', null);
 
     const { count: starterCount, error: starterError } = await supabase
@@ -66,14 +66,16 @@ export default async function AnalyticsPage() {
         const day = format(startOfDay(new Date(profile.created_at)), 'yyyy-MM-dd');
         const dayCounts = dailyData.get(day);
         if (dayCounts) {
-            if (profile.role === 'individual' && !profile.agency_id) {
-                dayCounts.Individual++;
-            } else if (profile.role === 'individual' && profile.agency_id) {
-                dayCounts.Invited++;
-            } else if (profile.role === 'agency') {
+            if (profile.role === 'agency') {
                 if (profile.agency_tier === 'Starter') dayCounts.Starter++;
                 else if (profile.agency_tier === 'Standard') dayCounts.Standard++;
                 else if (profile.agency_tier === 'Advanced') dayCounts.Advanced++;
+            } else if (profile.role !== 'admin' && profile.role !== 'super_admin') {
+                if (profile.agency_id) {
+                    dayCounts.Invited++;
+                } else {
+                    dayCounts.Individual++;
+                }
             }
         }
     });
