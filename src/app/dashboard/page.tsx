@@ -4,7 +4,7 @@ import { ArrowRight, Bot, Building, HardHat, PlusCircle, Video, Repeat, Users, F
 import { getCurrentUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseServerClient, createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -121,7 +121,7 @@ const statusConfig: Record<InterviewSessionStatus, { label: string, icon: React.
 };
 
 const AgencyDashboard = async ({ user }: { user: any }) => {
-    const supabase = createSupabaseServerClient();
+    const supabase = createSupabaseServiceRoleClient();
     const { count: memberCount } = await supabase
         .from('profiles')
         .select('id', { count: 'exact' })
