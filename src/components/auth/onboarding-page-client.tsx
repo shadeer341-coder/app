@@ -200,21 +200,10 @@ export function OnboardingPageClient() {
     let userRole = 'individual'; // Default role
     const groupId = user.user_metadata?.group_id;
   
-    if (groupId) {
-        const parsedGroupId = parseInt(String(groupId), 10);
-        if (!isNaN(parsedGroupId)) {
-            const { data: userTypeData, error: userTypeError } = await supabase
-                .from('user_type')
-                .select('group_name')
-                .eq('group_id', parsedGroupId);
-
-            if (userTypeError) {
-                console.error('Error fetching user type:', userTypeError);
-            } else if (userTypeData && userTypeData.length > 0) {
-                userRole = userTypeData[0].group_name;
-            }
-        }
+    if (String(groupId) === '2') {
+      userRole = 'agency';
     }
+    // If groupId is 3 (student invited by agency) or undefined (individual signup), role remains 'individual'
 
     let interviewQuota = 0;
     let agencyTierFromMeta: string | null = null;
