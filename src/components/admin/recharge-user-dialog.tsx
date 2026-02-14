@@ -83,9 +83,9 @@ export function RechargeUserDialog({ user }: RechargeUserDialogProps) {
                         
                         <FormField control={form.control} name="confirmation" render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Type "confirm" to apply changes</FormLabel>
+                                <FormLabel>Confirmation</FormLabel>
                                 <FormControl>
-                                    <Input placeholder='confirm' {...field} />
+                                    <Input placeholder='Type "confirm" to apply changes' {...field} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
