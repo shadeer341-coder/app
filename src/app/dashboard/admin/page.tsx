@@ -1,11 +1,9 @@
 
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { User } from "@/lib/types";
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { UserFilters } from "@/components/admin/user-filters";
-import { UsersTable } from "@/components/admin/users-table";
+import { AdminDashboardClient } from "@/components/admin/admin-dashboard-client";
 
 export const dynamic = 'force-dynamic';
 
@@ -42,8 +40,18 @@ export default async function AdminPage({ searchParams }: { searchParams?: { [ke
 
         allUsers = authUsers.map(authUser => {
             const profile = profilesMap.get(authUser.id);
-            const dbRole = profile?.role; 
-            const role = dbRole === 'super_admin' ? 'admin' : (dbRole || 'individual');
+            const dbRole = profile?.role;
+            
+            let finalRole: string;
+            if (dbRole === 'super_admin') {
+                finalRole = 'admin';
+            } else if (dbRole === 'agency') {
+                finalRole = 'agency';
+            } else if (dbRole === 'individual' && profile?.agency_id) {
+                finalRole = 'student';
+            } else {
+                finalRole = 'individual';
+            }
 
             if (profile) {
                 return {
@@ -51,7 +59,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: { [ke
                     email: authUser.email || 'no-email@example.com',
                     name: profile.full_name || authUser.user_metadata?.full_name || 'Unnamed User',
                     avatarUrl: profile.avatar_url || `https://picsum.photos/seed/${authUser.id}/100/100`,
-                    role: role,
+                    role: finalRole,
                     level: profile.level,
                     agencyId: profile.agency_id,
                     interview_quota: profile.interview_quota,
@@ -69,11 +77,12 @@ export default async function AdminPage({ searchParams }: { searchParams?: { [ke
                     mobile_number: profile.mobile_number,
                 } as User;
             } else {
+                const finalRole = authUser.user_metadata?.agency_id ? 'student' : 'individual';
                 return {
                     id: authUser.id,
                     name: authUser.user_metadata?.full_name || 'Pending User',
                     email: authUser.email || 'no-email@example.com',
-                    role: 'individual',
+                    role: finalRole,
                     level: 'UG',
                     onboardingCompleted: false,
                     avatarUrl: `https://picsum.photos/seed/${authUser.id}/100/100`,
@@ -87,13 +96,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: { [ke
     const userTypeFilter = searchParams?.userType || 'all';
     let filteredUsers = allUsers;
     if (userTypeFilter !== 'all') {
-        filteredUsers = allUsers.filter(user => {
-            if (userTypeFilter === 'admin') return user.role === 'admin';
-            if (userTypeFilter === 'agency') return user.role === 'agency';
-            if (userTypeFilter === 'student') return user.role === 'individual' && !!user.agencyId;
-            if (userTypeFilter === 'individual') return user.role === 'individual' && !user.agencyId;
-            return true;
-        });
+        filteredUsers = allUsers.filter(user => user.role === userTypeFilter);
     }
 
 
@@ -116,10 +119,10 @@ export default async function AdminPage({ searchParams }: { searchParams?: { [ke
         }
 
         if (key === 'role') {
-            const roleA = a.role === 'individual' ? (a.agencyId ? 'student' : 'individual') : a.role;
-            const roleB = b.role === 'individual' ? (b.agencyId ? 'student' : 'individual') : b.role;
-            if (roleA < roleB) return order === 'asc' ? -1 : 1;
-            if (roleA > roleB) return order === 'asc' ? 1 : -1;
+            const roleA = a.role;
+            const roleB = b.role;
+            if (roleA! < roleB!) return order === 'asc' ? -1 : 1;
+            if (roleA! > roleB!) return order === 'asc' ? 1 : -1;
             return 0;
         }
 
@@ -132,31 +135,11 @@ export default async function AdminPage({ searchParams }: { searchParams?: { [ke
     });
   
   return (
-    <div className="space-y-6">
-       <div>
-          <h1 className="font-headline text-3xl font-bold tracking-tight">
-            Admin Panel
-          </h1>
-          <p className="text-muted-foreground">
-            System-wide user management.
-          </p>
-        </div>
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <CardTitle>User Management</CardTitle>
-              <CardDescription>
-                View and manage all users in the system.
-              </CardDescription>
-            </div>
-            <UserFilters />
-          </div>
-        </CardHeader>
-        <CardContent>
-          <UsersTable users={filteredUsers} sortBy={sortBy} order={order} userTypeFilter={userTypeFilter} />
-        </CardContent>
-      </Card>
-    </div>
+    <AdminDashboardClient
+        users={filteredUsers}
+        sortBy={sortBy}
+        order={order}
+        userTypeFilter={userTypeFilter}
+    />
   );
 }
