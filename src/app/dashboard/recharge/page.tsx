@@ -54,21 +54,21 @@ export default async function RechargePage() {
         const bundles = [
             {
                 name: "Starter Bundle",
-                attempts: 10,
+                attempts: 30,
                 price: "240",
                 icon: "Zap",
                 studentLimit: "Up to 10 students",
             },
             {
                 name: "Standard Bundle",
-                attempts: 25,
+                attempts: 75,
                 price: "575",
                 icon: "Gem",
                 studentLimit: "Up to 25 students",
             },
             {
                 name: "Advanced Bundle",
-                attempts: 50,
+                attempts: 150,
                 price: "1100",
                 icon: "Crown",
                 studentLimit: "Up to 50 students",
