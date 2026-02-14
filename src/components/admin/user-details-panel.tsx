@@ -12,27 +12,11 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import type { User } from '@/lib/types';
-import { Mail, Repeat, User as UserIcon, Cake, Globe, University, Briefcase, GraduationCap, Building, Smartphone, Search } from 'lucide-react';
+import { Mail, Repeat, User as UserIcon, Cake, Globe, University, Briefcase, GraduationCap, Building, Smartphone, X } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '../ui/button';
 
-export function UserDetailsPanel({ user }: { user: User | null }) {
-
-  if (!user) {
-    return (
-        <Card className="sticky top-24">
-             <CardHeader>
-                <CardTitle>User Details</CardTitle>
-                <CardDescription>Select a user from the list to see their details.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <div className="flex flex-col items-center justify-center text-center p-8 h-80 rounded-lg bg-muted/50">
-                    <Search className="h-16 w-16 text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">No user selected</p>
-                </div>
-            </CardContent>
-        </Card>
-    );
-  }
+export function UserDetailsPanel({ user, onClose }: { user: User; onClose: () => void }) {
 
   const getRoleDisplay = (user: User) => {
     if (user.role === 'admin') return { label: 'Admin', variant: 'destructive' as const };
@@ -46,15 +30,21 @@ export function UserDetailsPanel({ user }: { user: User | null }) {
   return (
     <Card className="sticky top-24">
         <CardHeader className="text-left pb-4">
-            <div className="flex items-center gap-4">
-                <Avatar className="h-16 w-16 border">
-                    <AvatarImage src={user.avatarUrl} alt={user.name} />
-                    <AvatarFallback className="text-xl">{user.name?.charAt(0) ?? 'U'}</AvatarFallback>
-                </Avatar>
-                <div>
-                    <CardTitle className="text-2xl">{user.name}</CardTitle>
-                    <CardDescription className="flex items-center gap-2 pt-1"><Mail className="h-4 w-4" />{user.email}</CardDescription>
+            <div className="flex justify-between items-start">
+                <div className="flex items-center gap-4">
+                    <Avatar className="h-16 w-16 border">
+                        <AvatarImage src={user.avatarUrl} alt={user.name} />
+                        <AvatarFallback className="text-xl">{user.name?.charAt(0) ?? 'U'}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                        <CardTitle className="text-2xl">{user.name}</CardTitle>
+                        <CardDescription className="flex items-center gap-2 pt-1"><Mail className="h-4 w-4" />{user.email}</CardDescription>
+                    </div>
                 </div>
+                 <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 flex-shrink-0">
+                    <X className="h-5 w-5" />
+                    <span className="sr-only">Close</span>
+                </Button>
             </div>
         </CardHeader>
         <CardContent>

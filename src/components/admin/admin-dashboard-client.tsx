@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -7,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { UserFilters } from "@/components/admin/user-filters";
 import { UsersTable } from "@/components/admin/users-table";
 import { UserDetailsPanel } from '@/components/admin/user-details-panel';
+import { cn } from '@/lib/utils';
 
 export function AdminDashboardClient({
     users,
@@ -32,7 +32,7 @@ export function AdminDashboardClient({
                 </p>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
-                <div className="lg:col-span-3">
+                <div className={cn("transition-all duration-300", selectedUser ? "lg:col-span-3" : "lg:col-span-5")}>
                     <Card>
                         <CardHeader>
                         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -57,9 +57,11 @@ export function AdminDashboardClient({
                         </CardContent>
                     </Card>
                 </div>
-                <div className="lg:col-span-2">
-                    <UserDetailsPanel user={selectedUser} />
-                </div>
+                {selectedUser && (
+                    <div className="lg:col-span-2">
+                        <UserDetailsPanel user={selectedUser} onClose={() => setSelectedUser(null)} />
+                    </div>
+                )}
             </div>
         </div>
     );
