@@ -3,13 +3,43 @@ import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, UserCheck, Building } from "lucide-react";
 import { AnalyticsChart } from "@/components/admin/analytics-chart";
-import { subDays, format, eachDayOfInterval, startOfDay } from 'date-fns';
+import { AnalyticsControls } from "@/components/admin/analytics-controls";
+import { subDays, startOfDay, format, eachDayOfInterval, subMonths, subYears, parseISO } from 'date-fns';
 
 export const dynamic = 'force-dynamic';
 
-export default async function AnalyticsPage() {
+const getDateRange = (range?: string, from?: string, to?: string) => {
+    const toDate = to ? parseISO(to) : new Date();
+    let fromDate;
+
+    if (range === 'custom' && from) {
+        fromDate = parseISO(from);
+    } else {
+        switch (range) {
+            case '3m':
+                fromDate = subMonths(new Date(), 3);
+                break;
+            case '6m':
+                fromDate = subMonths(new Date(), 6);
+                break;
+            case '12m':
+                fromDate = subYears(new Date(), 1);
+                break;
+            case '30d':
+            default:
+                fromDate = subDays(new Date(), 29);
+                break;
+        }
+    }
+    return { startDate: startOfDay(fromDate), endDate: startOfDay(toDate) };
+}
+
+
+export default async function AnalyticsPage({ searchParams }: { searchParams: { [key: string]: string | undefined } }) {
 
     const supabase = createSupabaseServiceRoleClient();
+
+    const { startDate, endDate } = getDateRange(searchParams.range, searchParams.from, searchParams.to);
 
     // --- STATS CARDS (TOTALS) ---
     const { count: individualCount, error: individualError } = await supabase
@@ -43,18 +73,13 @@ export default async function AnalyticsPage() {
         .eq('agency_tier', 'Advanced');
 
     // --- TIME-SERIES DATA FOR CHART ---
-    const endDate = new Date();
-    const startDate = subDays(endDate, 29);
-    
-    // Initialize a map with all days in the last 30 days
     const interval = eachDayOfInterval({ start: startDate, end: endDate });
     const dailyData = new Map<string, { Individual: number, Invited: number, Starter: number, Standard: number, Advanced: number }>();
     interval.forEach(day => {
         dailyData.set(format(day, 'yyyy-MM-dd'), { Individual: 0, Invited: 0, Starter: 0, Standard: 0, Advanced: 0 });
     });
 
-    // 1. Fetch all users from auth and filter them by date
-    const { data: authData, error: authUsersError } = await supabase.auth.admin.listUsers({ perPage: 1000 }); // Assuming max 1000 users for now
+    const { data: authData, error: authUsersError } = await supabase.auth.admin.listUsers({ perPage: 1000 }); 
 
     if (authUsersError) {
         console.error("Error fetching auth users:", authUsersError.message);
@@ -68,7 +93,6 @@ export default async function AnalyticsPage() {
     if (recentAuthUsers.length > 0) {
         const userIds = recentAuthUsers.map(u => u.id);
 
-        // 2. Fetch profiles for these users to determine roles
         const { data: profiles, error: profilesError } = await supabase
             .from('profiles')
             .select('id, role, agency_id, agency_tier')
@@ -79,7 +103,6 @@ export default async function AnalyticsPage() {
         } else {
              const profilesMap = new Map(profiles.map(p => [p.id, p]));
 
-             // 3. Populate daily data map
              for (const authUser of recentAuthUsers) {
                 const day = format(startOfDay(new Date(authUser.created_at)), 'yyyy-MM-dd');
                 const dayCounts = dailyData.get(day);
@@ -96,7 +119,6 @@ export default async function AnalyticsPage() {
                         else if (profile.agency_tier === 'Advanced') userType = 'Advanced';
                         else userType = 'Starter';
                     } else if (profile.role !== 'admin' && profile.role !== 'super_admin') {
-                        // An 'individual' with an agency_id is an 'Invited' student
                         if (profile.agency_id) {
                             userType = 'Invited';
                         } else {
@@ -123,9 +145,8 @@ export default async function AnalyticsPage() {
         }
     }
 
-    // Convert map to array for the chart
     const chartData = Array.from(dailyData.entries()).map(([date, counts]) => ({
-        date: format(new Date(date), 'MMM d'), // Format for display
+        date: format(new Date(date), 'MMM d'),
         ...counts,
     }));
 
@@ -199,7 +220,17 @@ export default async function AnalyticsPage() {
         </Card>
       </div>
 
-      <AnalyticsChart data={chartData} />
+       <Card>
+          <CardHeader>
+            <CardTitle>New Users Trend</CardTitle>
+          </CardHeader>
+          <AnalyticsControls />
+          <CardContent className="pt-6">
+             <div className="h-96 w-full">
+               <AnalyticsChart data={chartData} />
+             </div>
+          </CardContent>
+      </Card>
     </div>
   );
 }

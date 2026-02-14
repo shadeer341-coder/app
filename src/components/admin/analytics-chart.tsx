@@ -3,7 +3,6 @@
 
 import { Line, LineChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { ChartTooltipContent, ChartContainer, ChartConfig } from "@/components/ui/chart"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type AnalyticsChartProps = {
   data: {
@@ -27,52 +26,43 @@ const chartConfig = {
 
 export function AnalyticsChart({ data }: AnalyticsChartProps) {
   return (
-    <Card>
-        <CardHeader>
-          <CardTitle>New Users Over Last 30 Days</CardTitle>
-        </CardHeader>
-        <CardContent>
-            <div className="h-96 w-full">
-                <ChartContainer config={chartConfig} className="w-full h-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                            <XAxis
-                                dataKey="date"
-                                tickLine={false}
-                                axisLine={false}
-                                tickMargin={8}
-                                stroke="hsl(var(--muted-foreground))"
-                                fontSize={12}
-                            />
-                            <YAxis
-                                stroke="hsl(var(--muted-foreground))"
-                                fontSize={12}
-                                tickLine={false}
-                                axisLine={false}
-                                allowDecimals={false}
-                                tickMargin={8}
-                                domain={[0, 'dataMax + 5']}
-                            />
-                            <Tooltip
-                                cursor={{
-                                    stroke: "hsl(var(--muted))",
-                                    strokeWidth: 2,
-                                    strokeDasharray: "3 3",
-                                }}
-                                content={<ChartTooltipContent indicator="dot" />}
-                            />
-                            <Legend />
-                            <Line dataKey="Individual" stroke="var(--color-Individual)" strokeWidth={2} dot={false} />
-                            <Line dataKey="Invited" stroke="var(--color-Invited)" strokeWidth={2} dot={false} />
-                            <Line dataKey="Starter" stroke="var(--color-Starter)" strokeWidth={2} dot={false} />
-                            <Line dataKey="Standard" stroke="var(--color-Standard)" strokeWidth={2} dot={false} />
-                            <Line dataKey="Advanced" stroke="var(--color-Advanced)" strokeWidth={2} dot={false} />
-                        </LineChart>
-                    </ResponsiveContainer>
-                </ChartContainer>
-            </div>
-        </CardContent>
-    </Card>
+    <ChartContainer config={chartConfig} className="w-full h-full">
+        <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={data} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                <XAxis
+                    dataKey="date"
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                    stroke="hsl(var(--muted-foreground))"
+                    fontSize={12}
+                />
+                <YAxis
+                    stroke="hsl(var(--muted-foreground))"
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                    allowDecimals={false}
+                    tickMargin={8}
+                    domain={[0, 'dataMax + 5']}
+                />
+                <Tooltip
+                    cursor={{
+                        stroke: "hsl(var(--muted))",
+                        strokeWidth: 2,
+                        strokeDasharray: "3 3",
+                    }}
+                    content={<ChartTooltipContent indicator="dot" />}
+                />
+                <Legend />
+                <Line dataKey="Individual" stroke="var(--color-Individual)" strokeWidth={2} dot={false} />
+                <Line dataKey="Invited" stroke="var(--color-Invited)" strokeWidth={2} dot={false} />
+                <Line dataKey="Starter" stroke="var(--color-Starter)" strokeWidth={2} dot={false} />
+                <Line dataKey="Standard" stroke="var(--color-Standard)" strokeWidth={2} dot={false} />
+                <Line dataKey="Advanced" stroke="var(--color-Advanced)" strokeWidth={2} dot={false} />
+            </LineChart>
+        </ResponsiveContainer>
+    </ChartContainer>
   );
 }
