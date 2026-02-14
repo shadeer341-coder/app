@@ -11,11 +11,12 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import type { User } from '@/lib/types';
-import { Mail, Repeat, User as UserIcon, Cake, Globe, University, Briefcase, GraduationCap, Building, Smartphone, X } from 'lucide-react';
+import { Mail, Repeat, User as UserIcon, Cake, Globe, University, Briefcase, GraduationCap, Building, Smartphone, X, Users } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '../ui/button';
+import { Table, TableBody, TableCell, TableHeader, TableRow, TableHead } from '@/components/ui/table';
 
-export function UserDetailsPanel({ user, onClose }: { user: User; onClose: () => void }) {
+export function UserDetailsPanel({ user, allUsers, onClose }: { user: User; allUsers: User[]; onClose: () => void }) {
 
   const getRoleDisplay = (user: User) => {
     if (user.role === 'admin') return { label: 'Admin', variant: 'destructive' as const };
@@ -25,6 +26,10 @@ export function UserDetailsPanel({ user, onClose }: { user: User; onClose: () =>
   }
 
   const roleDisplay = getRoleDisplay(user);
+
+  const agencyStudents = user.role === 'agency' 
+    ? allUsers.filter(u => u.agencyId === user.id && u.role === 'student') 
+    : [];
 
   return (
     <Card className="sticky top-24">
@@ -127,6 +132,44 @@ export function UserDetailsPanel({ user, onClose }: { user: User; onClose: () =>
                                 <span className="text-muted-foreground flex items-center gap-2"><Smartphone className="h-4 w-4" />Mobile</span>
                                 <span className="font-medium text-right">{user.mobile_number || 'N/A'}</span>
                             </div>
+                             <div className="flex justify-between items-center">
+                                <span className="text-muted-foreground flex items-center gap-2"><Users className="h-4 w-4" />Total Students</span>
+                                <span className="font-medium text-right">{agencyStudents.length}</span>
+                            </div>
+                        </div>
+                        <Separator />
+                        <div className="space-y-2">
+                            <h4 className="font-medium text-base">Registered Students</h4>
+                            {agencyStudents.length > 0 ? (
+                                <div className="border rounded-md">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Name</TableHead>
+                                                <TableHead>Email</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {agencyStudents.map(student => (
+                                                <TableRow key={student.id}>
+                                                    <TableCell>
+                                                        <div className="flex items-center gap-2">
+                                                            <Avatar className="h-6 w-6">
+                                                                <AvatarImage src={student.avatarUrl} alt={student.name} />
+                                                                <AvatarFallback>{student.name?.charAt(0) ?? 'S'}</AvatarFallback>
+                                                            </Avatar>
+                                                            <span className="font-medium text-xs">{student.name}</span>
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-muted-foreground text-xs">{student.email}</TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </div>
+                            ) : (
+                                <p className="text-muted-foreground text-sm italic text-center py-4">No students registered under this agency.</p>
+                            )}
                         </div>
                         </>
                     )}

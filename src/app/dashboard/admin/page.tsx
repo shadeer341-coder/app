@@ -1,4 +1,5 @@
 
+
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import type { User } from "@/lib/types";
 import { getCurrentUser } from "@/lib/auth";
@@ -137,6 +138,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: { [ke
   return (
     <AdminDashboardClient
         users={filteredUsers}
+        allUsers={allUsers}
         sortBy={sortBy}
         order={order}
         userTypeFilter={userTypeFilter}

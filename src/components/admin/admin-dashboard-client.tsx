@@ -10,11 +10,13 @@ import { cn } from '@/lib/utils';
 
 export function AdminDashboardClient({
     users,
+    allUsers,
     sortBy,
     order,
     userTypeFilter
 }: {
     users: User[],
+    allUsers: User[],
     sortBy: string,
     order: string,
     userTypeFilter: string
@@ -59,7 +61,7 @@ export function AdminDashboardClient({
                 </div>
                 {selectedUser && (
                     <div className="lg:col-span-2">
-                        <UserDetailsPanel user={selectedUser} onClose={() => setSelectedUser(null)} />
+                        <UserDetailsPanel user={selectedUser} allUsers={allUsers} onClose={() => setSelectedUser(null)} />
                     </div>
                 )}
             </div>
