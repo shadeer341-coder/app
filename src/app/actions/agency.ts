@@ -139,7 +139,8 @@ export async function rechargeAgencyQuota(attemptsToAdd: number, amountSpent: nu
       user_id: agencyUser.id,
       amount_spent: amountSpent,
       attempts: attemptsToAdd,
-      purpose: 'Agency Purchase',
+      purpose: 'Purchase',
+      given_to: null,
     });
   
   if (purchaseLogError) {
