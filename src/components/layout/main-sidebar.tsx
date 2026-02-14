@@ -1,5 +1,3 @@
-
-
 "use client"
 
 import Link from "next/link";
@@ -75,9 +73,9 @@ export function MainSidebar({ user }: { user: User }) {
   return (
     <Sidebar>
       <SidebarHeader>
-        <Link href={dashboardPath} className="flex items-center gap-2 font-headline text-xl font-bold">
-            <Image src="/precasprep-logo.webp" alt="Precasprep Logo" width={32} height={32} />
-            <span className="group-data-[collapsible=icon]:hidden">precasprep</span>
+        <Link href={dashboardPath} className="flex items-center justify-center h-10 px-2">
+            <Image src="/precasprep-logo.webp" alt="Precasprep Logo" width={120} height={24} style={{ objectFit: 'contain' }} className="group-data-[collapsible=icon]:hidden" />
+            <Image src="/precasprep-logo.webp" alt="Precasprep Logo" width={28} height={28} style={{ objectFit: 'contain' }} className="hidden group-data-[collapsible=icon]:block" />
         </Link>
       </SidebarHeader>
       <SidebarContent>

@@ -1,5 +1,3 @@
-
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -297,9 +295,8 @@ export function OnboardingPageClient() {
                     </Button>
                 ) : <div className="w-10 h-10"></div>}
                 
-                <Link href="/" className="flex items-center justify-center gap-2 font-headline text-2xl font-bold">
-                    <Image src="/precasprep-logo.webp" alt="Precasprep Logo" width={32} height={32} />
-                    <span className="text-2xl hidden sm:inline">precasprep</span>
+                <Link href="/" className="flex items-center justify-center">
+                  <Image src="/precasprep-logo.webp" alt="Precasprep Logo" width={180} height={40} style={{ objectFit: 'contain' }} />
                 </Link>
 
                 <div className="w-10 h-10"></div>
