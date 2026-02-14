@@ -1,4 +1,5 @@
 
+
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -8,10 +9,12 @@ import type { User } from "@/lib/types";
 import { RechargeUserDialog } from "@/components/admin/recharge-user-dialog";
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import Link from 'next/link';
+import { ArrowUp, ArrowDown } from "lucide-react";
 
 export const dynamic = 'force-dynamic';
 
-export default async function AdminPage() {
+export default async function AdminPage({ searchParams }: { searchParams?: { [key: string]: string | undefined } }) {
     const adminUser = await getCurrentUser();
     if (!adminUser || adminUser.role !== 'admin') {
         redirect('/dashboard');
@@ -67,10 +70,39 @@ export default async function AdminPage() {
                     level: 'UG',
                     onboardingCompleted: false,
                     avatarUrl: `https://picsum.photos/seed/${authUser.id}/100/100`,
+                    interview_quota: undefined,
                 } as User;
             }
         });
     }
+
+    const sortBy = searchParams?.sortBy || 'name';
+    const order = searchParams?.order || 'asc';
+
+    allUsers.sort((a, b) => {
+        const key = sortBy as keyof User;
+        
+        const valA = a[key];
+        const valB = b[key];
+
+        if (key === 'interview_quota') {
+            const numA = a.onboardingCompleted ? (valA as number ?? 0) : -1;
+            const numB = b.onboardingCompleted ? (valB as number ?? 0) : -1;
+            return order === 'asc' ? numA - numB : numB - numA;
+        }
+
+        const strA = String(valA ?? '').toLowerCase();
+        const strB = String(valB ?? '').toLowerCase();
+
+        if (strA < strB) return order === 'asc' ? -1 : 1;
+        if (strA > strB) return order === 'asc' ? 1 : -1;
+        return 0;
+    });
+
+    const getSortLink = (key: string) => {
+        const newOrder = sortBy === key && order === 'asc' ? 'desc' : 'asc';
+        return `/dashboard/admin?sortBy=${key}&order=${newOrder}`;
+    };
   
   return (
     <div className="space-y-6">
@@ -93,11 +125,31 @@ export default async function AdminPage() {
           <Table>
             <TableHeader>
                 <TableRow>
-                    <TableHead>User</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Role</TableHead>
+                    <TableHead>
+                         <Link href={getSortLink('name')} className="flex items-center gap-1 hover:underline">
+                            User
+                            {sortBy === 'name' && (order === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />)}
+                        </Link>
+                    </TableHead>
+                    <TableHead>
+                        <Link href={getSortLink('email')} className="flex items-center gap-1 hover:underline">
+                            Email
+                            {sortBy === 'email' && (order === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />)}
+                        </Link>
+                    </TableHead>
+                    <TableHead>
+                         <Link href={getSortLink('role')} className="flex items-center gap-1 hover:underline">
+                            Role
+                            {sortBy === 'role' && (order === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />)}
+                        </Link>
+                    </TableHead>
                     <TableHead>Agency ID</TableHead>
-                    <TableHead>Quota</TableHead>
+                    <TableHead>
+                        <Link href={getSortLink('interview_quota')} className="flex items-center gap-1 hover:underline">
+                            Quota
+                            {sortBy === 'interview_quota' && (order === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />)}
+                        </Link>
+                    </TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
             </TableHeader>
