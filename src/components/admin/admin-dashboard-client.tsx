@@ -27,10 +27,10 @@ export function AdminDashboardClient({
         <div className="space-y-6">
             <div>
                 <h1 className="font-headline text-3xl font-bold tracking-tight">
-                    Admin Panel
+                    User Management
                 </h1>
                 <p className="text-muted-foreground">
-                    System-wide user management.
+                    View and manage all users in the system.
                 </p>
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
