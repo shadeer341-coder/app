@@ -96,8 +96,17 @@ export default async function AdminPage({ searchParams }: { searchParams?: { [ke
 
     const userTypeFilter = searchParams?.userType || 'all';
     let filteredUsers = allUsers;
+    
     if (userTypeFilter !== 'all') {
-        filteredUsers = allUsers.filter(user => user.role === userTypeFilter);
+        filteredUsers = filteredUsers.filter(user => user.role === userTypeFilter);
+    }
+
+    const searchQuery = searchParams?.q || '';
+    if (searchQuery) {
+        filteredUsers = filteredUsers.filter(user =>
+            user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            user.email.toLowerCase().includes(searchQuery.toLowerCase())
+        );
     }
 
 
