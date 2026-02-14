@@ -6,7 +6,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PaginationControls } from "@/components/ui/pagination";
-import { Building, Users, UserCheck } from "lucide-react";
 
 export const dynamic = 'force-dynamic';
 
@@ -18,14 +17,7 @@ export default async function ManageAgenciesPage({ searchParams }: { searchParam
     const supabase = createSupabaseServiceRoleClient();
     const currentPage = Number(searchParams?.page || 1);
 
-    // --- Analytics Queries ---
-    const { count: starterCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'agency').eq('agency_tier', 'Starter');
-    const { count: standardCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'agency').eq('agency_tier', 'Standard');
-    const { count: advancedCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'agency').eq('agency_tier', 'Advanced');
-    
     const { count: totalAgencies } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'agency');
-    
-    const { count: totalStudentsInAgencies } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).not('agency_id', 'is', null).neq('role', 'agency');
 
     // --- Paginated Agencies Query ---
     const from = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -72,49 +64,6 @@ export default async function ManageAgenciesPage({ searchParams }: { searchParam
                 <p className="text-muted-foreground">
                     An overview of all registered agencies in the system.
                 </p>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Agencies</CardTitle>
-                        <Building className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{totalAgencies || 0}</div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Total Students</CardTitle>
-                        <Users className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{totalStudentsInAgencies || 0}</div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Tier Breakdown</CardTitle>
-                        <UserCheck className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex justify-around items-center h-full">
-                           <div className="text-center">
-                                <div className="text-lg font-bold">{starterCount || 0}</div>
-                                <p className="text-xs text-muted-foreground">Starter</p>
-                            </div>
-                            <div className="text-center">
-                                <div className="text-lg font-bold">{standardCount || 0}</div>
-                                <p className="text-xs text-muted-foreground">Standard</p>
-                            </div>
-                            <div className="text-center">
-                                <div className="text-lg font-bold">{advancedCount || 0}</div>
-                                <p className="text-xs text-muted-foreground">Advanced</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
             </div>
 
             <Card>
