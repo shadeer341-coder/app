@@ -48,7 +48,6 @@ export async function rechargeUserQuotaByAdmin(userId: string, attemptsToAdd: nu
       amount_spent: 0,
       attempts: attemptsToAdd,
       purpose: 'Admin Recharge',
-      given_to: userId,
     });
 
   if (purchaseLogError) {

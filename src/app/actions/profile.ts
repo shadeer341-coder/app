@@ -78,7 +78,6 @@ export async function rechargeUserQuota(attemptsToAdd: number, amountSpent: numb
       amount_spent: amountSpent,
       attempts: attemptsToAdd,
       purpose: 'Individual Purchase',
-      given_to: user.id,
     });
 
   if (purchaseLogError) {
