@@ -48,7 +48,8 @@ export default async function AdminPage({ searchParams }: { searchParams?: { [ke
 
         allUsers = authUsers.map(authUser => {
             const profile = profilesMap.get(authUser.id);
-            const role = profile?.role === 'super_admin' ? 'admin' : (profile?.role || 'individual');
+            const dbRole = profile?.role; 
+            const role = dbRole === 'super_admin' ? 'admin' : (dbRole || 'individual');
 
             if (profile) {
                 return {
@@ -95,6 +96,9 @@ export default async function AdminPage({ searchParams }: { searchParams?: { [ke
     const order = searchParams?.order || 'asc';
 
     filteredUsers.sort((a, b) => {
+        if (a.role === 'admin' && b.role !== 'admin') return -1;
+        if (a.role !== 'admin' && b.role === 'admin') return 1;
+
         const key = sortBy as keyof User;
         
         const valA = a[key];
@@ -178,7 +182,6 @@ export default async function AdminPage({ searchParams }: { searchParams?: { [ke
                             {sortBy === 'role' && (order === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />)}
                         </Link>
                     </TableHead>
-                    <TableHead>Agency ID</TableHead>
                     <TableHead>
                         <Link href={getSortLink('interview_quota')} className="flex items-center gap-1 hover:underline">
                             Quota
@@ -206,7 +209,6 @@ export default async function AdminPage({ searchParams }: { searchParams?: { [ke
                             <TableCell>
                                 <Badge variant={roleDisplay.variant}>{roleDisplay.label}</Badge>
                             </TableCell>
-                            <TableCell>{user.agencyId || 'N/A'}</TableCell>
                             <TableCell>{user.onboardingCompleted ? (user.interview_quota ?? 0) : 'Pending'}</TableCell>
                             <TableCell className="text-right">
                                 {user.onboardingCompleted && user.role !== 'admin' && <RechargeUserDialog user={user} />}
@@ -216,7 +218,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: { [ke
                 })}
                  {filteredUsers.length === 0 && (
                     <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center">
+                        <TableCell colSpan={5} className="h-24 text-center">
                             No users found.
                         </TableCell>
                     </TableRow>
