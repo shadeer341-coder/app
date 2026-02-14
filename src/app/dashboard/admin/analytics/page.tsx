@@ -110,7 +110,7 @@ export default async function AnalyticsPage() {
                             else userType = 'Starter';
                         } else if (meta.agency_id) { // Is an invited student
                             userType = 'Invited';
-                        } else { // Is a regular individual signup
+                        } else if (String(meta.group_id) !== '1') { // Not an admin
                             userType = 'Individual';
                         }
                     }
