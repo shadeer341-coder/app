@@ -3,6 +3,7 @@
 "use client"
 
 import Link from "next/link";
+import Image from 'next/image';
 import { usePathname } from "next/navigation";
 import {
   Home,
@@ -27,7 +28,6 @@ import {
   SidebarMenuButton,
   SidebarFooter,
 } from "@/components/ui/sidebar";
-import { Logo } from "@/components/icons";
 import type { User } from "@/lib/types";
 
 const userLinks = [
@@ -76,7 +76,7 @@ export function MainSidebar({ user }: { user: User }) {
     <Sidebar>
       <SidebarHeader>
         <Link href={dashboardPath} className="flex items-center gap-2 font-headline text-xl font-bold">
-            <Logo className="h-8 w-8 text-primary" />
+            <Image src="/precasprep-logo.webp" alt="Precasprep Logo" width={32} height={32} />
             <span className="group-data-[collapsible=icon]:hidden">precasprep</span>
         </Link>
       </SidebarHeader>

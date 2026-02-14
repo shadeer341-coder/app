@@ -30,11 +30,11 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, ArrowLeft, Check, ChevronsUpDown, BookOpen, GraduationCap, ArrowUpRightFromSquare, Briefcase, Building, User, Mail, Phone, Globe } from 'lucide-react';
-import { Logo } from '@/components/icons';
 import nationalities from '@/lib/nationalities.json';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { createSupabaseClient } from '@/lib/supabase/client';
+import Image from 'next/image';
 
 
 type University = { name: string; country: string; };
@@ -298,7 +298,7 @@ export function OnboardingPageClient() {
                 ) : <div className="w-10 h-10"></div>}
                 
                 <Link href="/" className="flex items-center justify-center gap-2 font-headline text-2xl font-bold">
-                    <Logo className="h-8 w-8 text-primary" />
+                    <Image src="/precasprep-logo.webp" alt="Precasprep Logo" width={32} height={32} />
                     <span className="text-2xl hidden sm:inline">precasprep</span>
                 </Link>
 

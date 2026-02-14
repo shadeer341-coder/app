@@ -26,9 +26,9 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Logo } from '@/components/icons';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import Image from 'next/image';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address.' }),
@@ -93,7 +93,7 @@ export function LoginPageClient() {
       <Card className="mx-auto max-w-sm w-full">
         <CardHeader className="space-y-1 text-center">
           <Link href="/" className="flex items-center justify-center gap-2 font-headline text-2xl font-bold mb-4">
-            <Logo className="h-8 w-8 text-primary" />
+            <Image src="/precasprep-logo.webp" alt="Precasprep Logo" width={32} height={32} />
           </Link>
           <CardTitle className="text-2xl font-headline">Login</CardTitle>
           <CardDescription>
