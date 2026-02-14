@@ -40,6 +40,22 @@ export async function rechargeUserQuotaByAdmin(userId: string, attemptsToAdd: nu
     return { success: false, message: 'Failed to update quota.' };
   }
 
+  // Log the purchase/recharge event
+  const { error: purchaseLogError } = await supabase
+    .from('purchases')
+    .insert({
+      user_id: adminUser.id,
+      amount_spent: 0,
+      attempts: attemptsToAdd,
+      purpose: 'Admin Recharge',
+      given_to: userId,
+    });
+
+  if (purchaseLogError) {
+    console.error(`Failed to log purchase for admin recharge. User: ${userId}, Admin: ${adminUser.id}. Error: ${purchaseLogError.message}`);
+    // This is a non-critical error for the user, so we don't return an error message to them.
+  }
+
   revalidatePath('/dashboard/admin');
   
   return { success: true, message: `${attemptsToAdd} attempts added successfully to user.` };

@@ -107,7 +107,7 @@ export async function createStudentByAgency(formData: FormData) {
 }
 
 
-export async function rechargeAgencyQuota(attemptsToAdd: number) {
+export async function rechargeAgencyQuota(attemptsToAdd: number, amountSpent: number) {
   const agencyUser = await getCurrentUser();
   if (!agencyUser || agencyUser.role !== 'agency') {
     return { success: false, message: "Permission denied. You must be an agency to recharge quota." };
@@ -130,6 +130,21 @@ export async function rechargeAgencyQuota(attemptsToAdd: number) {
   if (error) {
     console.error(`CRITICAL: Failed to recharge quota for agency ${agencyUser.id}. Error: ${error.message}`);
     return { success: false, message: "Could not update your quota. Please contact support." };
+  }
+
+  // Log the purchase event
+  const { error: purchaseLogError } = await supabase
+    .from('purchases')
+    .insert({
+      user_id: agencyUser.id,
+      amount_spent: amountSpent,
+      attempts: attemptsToAdd,
+      purpose: 'Agency Purchase',
+      given_to: agencyUser.id,
+    });
+  
+  if (purchaseLogError) {
+      console.error(`Failed to log agency purchase for agency ${agencyUser.id}. Error: ${purchaseLogError.message}`);
   }
 
   revalidatePath('/dashboard/recharge');
@@ -190,6 +205,21 @@ export async function addQuotaToStudent(studentId: string, attemptsToAdd: number
             .eq('id', studentId);
             
         if (studentUpdateError) throw studentUpdateError;
+
+        // Log the transfer event
+        const { error: purchaseLogError } = await supabase
+            .from('purchases')
+            .insert({
+                user_id: agencyUser.id,
+                amount_spent: 0,
+                attempts: attemptsToAdd,
+                purpose: 'Agency to Student Transfer',
+                given_to: studentId,
+            });
+
+        if (purchaseLogError) {
+            console.error(`Failed to log quota transfer from agency ${agencyUser.id} to student ${studentId}. Error: ${purchaseLogError.message}`);
+        }
 
         revalidatePath(`/dashboard/students/${studentId}`);
         revalidatePath('/dashboard/students');

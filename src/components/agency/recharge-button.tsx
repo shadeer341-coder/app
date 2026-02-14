@@ -48,7 +48,8 @@ export function AgencyRechargeButton({ attempts, price }: { attempts: number, pr
                 throw new Error('Payment was not completed.');
             }
 
-            const result = await rechargeAgencyQuota(attempts);
+            const numericPriceValue = parseFloat(numericPrice);
+            const result = await rechargeAgencyQuota(attempts, numericPriceValue);
             if (result.success) {
                 toast({
                     title: "Recharge Successful!",

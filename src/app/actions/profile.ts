@@ -44,7 +44,7 @@ export async function updateProfile(formData: z.infer<typeof profileSchema>) {
 }
 
 
-export async function rechargeUserQuota(attemptsToAdd: number) {
+export async function rechargeUserQuota(attemptsToAdd: number, amountSpent: number) {
   const user = await getCurrentUser();
   // Any user with the 'individual' role can use this. Agencies and admins cannot.
   if (!user || user.role !== 'individual') {
@@ -68,6 +68,21 @@ export async function rechargeUserQuota(attemptsToAdd: number) {
   if (error) {
     console.error(`Failed to recharge quota for user ${user.id}. Error: ${error.message}`);
     return { success: false, message: "Could not update your quota. Please contact support." };
+  }
+
+  // Log the purchase event
+  const { error: purchaseLogError } = await supabase
+    .from('purchases')
+    .insert({
+      user_id: user.id,
+      amount_spent: amountSpent,
+      attempts: attemptsToAdd,
+      purpose: 'Individual Purchase',
+      given_to: user.id,
+    });
+
+  if (purchaseLogError) {
+    console.error(`Failed to log individual purchase for user ${user.id}. Error: ${purchaseLogError.message}`);
   }
 
   revalidatePath('/dashboard/recharge');

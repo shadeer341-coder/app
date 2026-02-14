@@ -48,7 +48,8 @@ export function RechargeButton({ attempts, price }: { attempts: number, price: s
                 throw new Error('Payment was not completed.');
             }
             
-            const result = await rechargeUserQuota(attempts);
+            const numericPriceValue = parseFloat(numericPrice);
+            const result = await rechargeUserQuota(attempts, numericPriceValue);
             if (result.success) {
                 toast({
                     title: "Recharge Successful!",
