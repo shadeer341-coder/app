@@ -53,73 +53,73 @@ export default async function AnalyticsPage() {
         dailyData.set(format(day, 'yyyy-MM-dd'), { Individual: 0, Invited: 0, Starter: 0, Standard: 0, Advanced: 0 });
     });
 
-    // 1. Fetch users from auth schema to get correct creation date
-    const { data: recentAuthUsers, error: authUsersError } = await supabase
-        .from('users')
-        .inSchema('auth')
-        .select('id, created_at, raw_user_meta_data')
-        .gte('created_at', startDate.toISOString())
-        .lte('created_at', endDate.toISOString());
-    
+    // 1. Fetch all users from auth and filter them by date
+    const { data: authData, error: authUsersError } = await supabase.auth.admin.listUsers({ perPage: 1000 }); // Assuming max 1000 users for now
+
     if (authUsersError) {
-        console.error("Error fetching recent auth users:", authUsersError.message);
-    } else if (recentAuthUsers) {
+        console.error("Error fetching auth users:", authUsersError.message);
+    }
+
+    const recentAuthUsers = authData?.users.filter(user => {
+        const createdAt = new Date(user.created_at);
+        return createdAt >= startDate && createdAt <= endDate;
+    }) || [];
+    
+    if (recentAuthUsers.length > 0) {
         const userIds = recentAuthUsers.map(u => u.id);
 
-        if (userIds.length > 0) {
-            // 2. Fetch profiles for these users to determine roles
-            const { data: profiles, error: profilesError } = await supabase
-                .from('profiles')
-                .select('id, role, agency_id, agency_tier')
-                .in('id', userIds);
-            
-            if (profilesError) {
-                console.error("Error fetching profiles for chart:", profilesError.message);
-            } else {
-                 const profilesMap = new Map(profiles.map(p => [p.id, p]));
+        // 2. Fetch profiles for these users to determine roles
+        const { data: profiles, error: profilesError } = await supabase
+            .from('profiles')
+            .select('id, role, agency_id, agency_tier')
+            .in('id', userIds);
+        
+        if (profilesError) {
+            console.error("Error fetching profiles for chart:", profilesError.message);
+        } else {
+             const profilesMap = new Map(profiles.map(p => [p.id, p]));
 
-                 // 3. Populate daily data map
-                 for (const authUser of recentAuthUsers) {
-                    const day = format(startOfDay(new Date(authUser.created_at)), 'yyyy-MM-dd');
-                    const dayCounts = dailyData.get(day);
-                    if (!dayCounts) continue;
+             // 3. Populate daily data map
+             for (const authUser of recentAuthUsers) {
+                const day = format(startOfDay(new Date(authUser.created_at)), 'yyyy-MM-dd');
+                const dayCounts = dailyData.get(day);
+                if (!dayCounts) continue;
 
-                    const profile = profilesMap.get(authUser.id);
-                    const meta = (authUser.raw_user_meta_data as any) || {};
-                    
-                    let userType: 'Individual' | 'Invited' | 'Starter' | 'Standard' | 'Advanced' | null = null;
-                    
-                    if (profile) { // User has a profile (onboarding completed)
-                        if (profile.role === 'agency') {
-                            if (profile.agency_tier === 'Standard') userType = 'Standard';
-                            else if (profile.agency_tier === 'Advanced') userType = 'Advanced';
-                            else userType = 'Starter';
-                        } else if (profile.role !== 'admin' && profile.role !== 'super_admin') {
-                            // An 'individual' with an agency_id is an 'Invited' student
-                            if (profile.agency_id) {
-                                userType = 'Invited';
-                            } else {
-                                userType = 'Individual';
-                            }
-                        }
-                    } else { // No profile yet, use metadata
-                        if (String(meta.group_id) === '2') { // Is an Agency
-                            const plan = (meta.plan || '').split(' - ')[1];
-                            if (plan === 'Standard') userType = 'Standard';
-                            else if (plan === 'Advanced') userType = 'Advanced';
-                            else userType = 'Starter';
-                        } else if (meta.agency_id) { // Is an invited student
+                const profile = profilesMap.get(authUser.id);
+                const meta = authUser.user_metadata || {};
+                
+                let userType: 'Individual' | 'Invited' | 'Starter' | 'Standard' | 'Advanced' | null = null;
+                
+                if (profile) { // User has a profile (onboarding completed)
+                    if (profile.role === 'agency') {
+                        if (profile.agency_tier === 'Standard') userType = 'Standard';
+                        else if (profile.agency_tier === 'Advanced') userType = 'Advanced';
+                        else userType = 'Starter';
+                    } else if (profile.role !== 'admin' && profile.role !== 'super_admin') {
+                        // An 'individual' with an agency_id is an 'Invited' student
+                        if (profile.agency_id) {
                             userType = 'Invited';
-                        } else if (String(meta.group_id) !== '1') { // Not an admin
+                        } else {
                             userType = 'Individual';
                         }
                     }
-
-                    if (userType && dayCounts[userType] !== undefined) {
-                        dayCounts[userType]++;
+                } else { // No profile yet, use metadata
+                    if (String(meta.group_id) === '2') { // Is an Agency
+                        const plan = (meta.plan || '').split(' - ')[1];
+                        if (plan === 'Standard') userType = 'Standard';
+                        else if (plan === 'Advanced') userType = 'Advanced';
+                        else userType = 'Starter';
+                    } else if (meta.agency_id) { // Is an invited student
+                        userType = 'Invited';
+                    } else if (String(meta.group_id) !== '1') { // Not an admin
+                        userType = 'Individual';
                     }
-                 }
-            }
+                }
+
+                if (userType && dayCounts[userType] !== undefined) {
+                    dayCounts[userType]++;
+                }
+             }
         }
     }
 
