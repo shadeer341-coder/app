@@ -2,6 +2,7 @@
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, UserCheck, Building } from "lucide-react";
+import { AnalyticsChart } from "@/components/admin/analytics-chart";
 
 export const dynamic = 'force-dynamic';
 
@@ -49,6 +50,14 @@ export default async function AnalyticsPage() {
     if (starterError) console.error("Error fetching starter agencies:", starterError);
     if (standardError) console.error("Error fetching standard agencies:", standardError);
     if (advancedError) console.error("Error fetching advanced agencies:", advancedError);
+
+    const chartData = [
+        { name: "Individual", count: individualCount || 0, fill: "hsl(var(--chart-1))" },
+        { name: "Invited", count: invitedCount || 0, fill: "hsl(var(--chart-2))" },
+        { name: "Starter", count: starterCount || 0, fill: "hsl(var(--chart-3))" },
+        { name: "Standard", count: standardCount || 0, fill: "hsl(var(--chart-4))" },
+        { name: "Advanced", count: advancedCount || 0, fill: "hsl(var(--chart-5))" }
+    ];
 
   return (
     <div className="space-y-6">
@@ -112,6 +121,8 @@ export default async function AnalyticsPage() {
             </CardContent>
         </Card>
       </div>
+
+      <AnalyticsChart data={chartData} />
     </div>
   );
 }
