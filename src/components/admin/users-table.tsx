@@ -70,7 +70,7 @@ export function UsersTable({
                             {sortBy === 'interview_quota' && (order === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />)}
                         </Link>
                     </TableHead>
-                    <TableHead className="text-center">Actions</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
@@ -97,11 +97,11 @@ export function UsersTable({
                                 <Badge variant={roleDisplay.variant}>{roleDisplay.label}</Badge>
                             </TableCell>
                             <TableCell>{user.onboardingCompleted ? (user.interview_quota ?? 0) : 'Pending'}</TableCell>
-                            <TableCell>
-                                <div className="flex items-center justify-center gap-2">
-                                    <Button variant="outline" size="sm" onClick={() => onSelectUser(user)}>
-                                        <Eye className="mr-2 h-4 w-4" />
-                                        View
+                            <TableCell className="text-right">
+                                <div className="inline-flex items-center gap-1">
+                                    <Button variant="outline" size="icon" onClick={() => onSelectUser(user)} className="h-8 w-8">
+                                        <Eye className="h-4 w-4" />
+                                        <span className="sr-only">View</span>
                                     </Button>
                                     {user.onboardingCompleted && user.role !== 'admin' && <RechargeUserDialog user={user} />}
                                 </div>

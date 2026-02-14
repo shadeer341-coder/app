@@ -53,7 +53,10 @@ export function RechargeUserDialog({ user }: RechargeUserDialogProps) {
     return (
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-                <Button variant="outline" size="sm"><Repeat className="mr-2 h-4 w-4" /> Recharge</Button>
+                <Button variant="outline" size="icon" className="h-8 w-8">
+                    <Repeat className="h-4 w-4" />
+                    <span className="sr-only">Recharge</span>
+                </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
