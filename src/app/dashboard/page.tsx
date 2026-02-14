@@ -126,7 +126,8 @@ const AgencyDashboard = async ({ user }: { user: any }) => {
     const { data: students, error: studentsError } = await supabase
         .from('profiles')
         .select('id')
-        .eq('agency_id', user.agencyId!);
+        .eq('agency_id', user.agencyId!)
+        .neq('id', user.id); // Exclude the agency owner's profile
 
     if (studentsError) {
         console.error("Error fetching agency students:", studentsError);
