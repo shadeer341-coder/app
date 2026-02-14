@@ -42,13 +42,7 @@ export function AdminDashboardClient({
     }, 300);
 
     return (
-        <div className="space-y-6">
-             <h1 className="font-headline text-3xl font-bold tracking-tight">
-                User Management
-            </h1>
-            <p className="text-muted-foreground">
-                View and manage all users in the system.
-            </p>
+        <div>
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
                 <div className={cn("transition-all duration-300", selectedUser ? "lg:col-span-3" : "lg:col-span-5")}>
                     <Card>
