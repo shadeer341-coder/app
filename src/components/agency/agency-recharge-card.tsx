@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { AgencyRechargeButton } from './recharge-button';
-import { Users, Zap, Gem, Crown } from 'lucide-react';
+import { Users, Zap, Gem, Crown, ChevronDown } from 'lucide-react';
 
 type Bundle = {
     name: string;
@@ -51,7 +51,8 @@ export function AgencyRechargeCard({ bundle }: { bundle: Bundle }) {
                     </div>
                 ) : (
                     <Button className="w-full" onClick={() => setShowPayment(true)}>
-                        Choose Plan
+                        Payment Options
+                        <ChevronDown className="ml-2 h-4 w-4" />
                     </Button>
                 )}
             </CardFooter>
