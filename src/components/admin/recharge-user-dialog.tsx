@@ -17,6 +17,9 @@ import type { User } from '@/lib/types';
 
 const rechargeSchema = z.object({
   attempts: z.coerce.number().min(1, "You must add at least 1 attempt."),
+  confirmation: z.string().refine(val => val === 'confirm', {
+    message: 'You must type "confirm" to proceed.',
+  }),
 });
 
 type RechargeFormValues = z.infer<typeof rechargeSchema>;
@@ -34,6 +37,7 @@ export function RechargeUserDialog({ user }: RechargeUserDialogProps) {
         resolver: zodResolver(rechargeSchema),
         defaultValues: {
             attempts: 10,
+            confirmation: '',
         },
     });
 
@@ -77,6 +81,16 @@ export function RechargeUserDialog({ user }: RechargeUserDialogProps) {
                             </FormItem>
                         )} />
                         
+                        <FormField control={form.control} name="confirmation" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Type "confirm" to apply changes</FormLabel>
+                                <FormControl>
+                                    <Input placeholder='confirm' {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+
                         <Button type="submit" disabled={isPending} className="w-full">
                             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Add Attempts
