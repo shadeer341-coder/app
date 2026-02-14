@@ -55,6 +55,7 @@ export function AnalyticsChart({ data }: AnalyticsChartProps) {
                                 axisLine={false}
                                 allowDecimals={false}
                                 tickMargin={8}
+                                domain={[0, 'dataMax + 5']}
                             />
                             <Tooltip
                                 cursor={{
