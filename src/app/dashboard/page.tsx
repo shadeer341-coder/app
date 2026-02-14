@@ -122,43 +122,63 @@ const statusConfig: Record<InterviewSessionStatus, { label: string, icon: React.
 
 const AgencyDashboard = async ({ user }: { user: any }) => {
     const supabase = createSupabaseServiceRoleClient();
-    const { count: memberCount } = await supabase
-        .from('profiles')
-        .select('id', { count: 'exact' })
-        .eq('agency_id', user.agencyId!);
-    
+
     const { data: students, error: studentsError } = await supabase
         .from('profiles')
         .select('id')
         .eq('agency_id', user.agencyId!);
+
+    if (studentsError) {
+        console.error("Error fetching agency students:", studentsError);
+    }
     
     const studentIds = students?.map(s => s.id) || [];
+    const memberCount = studentIds.length;
+
     let recentSessions: any[] = [];
+    let allSessions: any[] = [];
 
     if (studentIds.length > 0) {
-        const { data: sessionsData, error: sessionsError } = await supabase
-            .from('interview_sessions')
-            .select(`
-                id,
-                created_at,
-                overall_score,
-                status,
-                user_id,
-                profiles (
-                    full_name,
-                    avatar_url
-                )
-            `)
-            .in('user_id', studentIds)
-            .order('created_at', { ascending: false })
-            .limit(5);
-        
-        if (sessionsError) {
-            console.error("Error fetching recent member interviews:", sessionsError);
+        const [
+            { data: recentSessionsData, error: recentSessionsError },
+            { data: allSessionsData, error: allSessionsError }
+        ] = await Promise.all([
+            supabase
+                .from('interview_sessions')
+                .select(`id, created_at, overall_score, status, user_id, profiles (full_name, avatar_url)`)
+                .in('user_id', studentIds)
+                .order('created_at', { ascending: false })
+                .limit(5),
+            supabase
+                .from('interview_sessions')
+                .select(`created_at, overall_score, status`)
+                .in('user_id', studentIds)
+        ]);
+
+        if (recentSessionsError) {
+            console.error("Error fetching recent member interviews:", recentSessionsError);
         } else {
-            recentSessions = sessionsData || [];
+            recentSessions = recentSessionsData || [];
+        }
+
+        if (allSessionsError) {
+            console.error("Error fetching all member interviews for stats:", allSessionsError);
+        } else {
+            allSessions = allSessionsData || [];
         }
     }
+
+    const now = new Date();
+    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const interviewsThisMonth = allSessions.filter(session => {
+        const sessionDate = new Date(session.created_at);
+        return sessionDate >= firstDayOfMonth;
+    }).length;
+
+    const completedSessions = allSessions.filter(s => s.status === 'completed' && s.overall_score != null);
+    const totalScore = completedSessions.reduce((sum, s) => sum + (s.overall_score || 0), 0);
+    const averageScore = completedSessions.length > 0 ? Math.round(totalScore / completedSessions.length) : 0;
 
 
     return (
@@ -170,7 +190,7 @@ const AgencyDashboard = async ({ user }: { user: any }) => {
                         <Users className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{memberCount || 0}</div>
+                        <div className="text-2xl font-bold">{memberCount}</div>
                         <p className="text-xs text-muted-foreground">Number of students in your agency.</p>
                     </CardContent>
                 </Card>
@@ -180,7 +200,7 @@ const AgencyDashboard = async ({ user }: { user: any }) => {
                         <FileText className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">45</div>
+                        <div className="text-2xl font-bold">{interviewsThisMonth}</div>
                         <p className="text-xs text-muted-foreground">Total sessions completed by members.</p>
                     </CardContent>
                 </Card>
@@ -190,7 +210,7 @@ const AgencyDashboard = async ({ user }: { user: any }) => {
                         <BarChart className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">82%</div>
+                        <div className="text-2xl font-bold">{averageScore}%</div>
                         <p className="text-xs text-muted-foreground">Average score across all members.</p>
                     </CardContent>
                 </Card>
@@ -330,7 +350,7 @@ export default async function DashboardPage() {
             Here's what's happening with your interview prep today.
           </p>
         </div>
-        {user.role === 'individual' && (
+        {user.role !== 'agency' && (
             <Button asChild size="lg" disabled={(user.interview_quota ?? 0) <= 0}>
             <Link href="/dashboard/practice">
                 <PlusCircle className="mr-2 h-5 w-5" />
