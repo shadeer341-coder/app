@@ -45,14 +45,6 @@ export default async function AnalyticsPage() {
     // --- TIME-SERIES DATA FOR CHART ---
     const endDate = new Date();
     const startDate = subDays(endDate, 29);
-
-    const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('created_at, role, agency_id, agency_tier')
-        .gte('created_at', startDate.toISOString())
-        .lte('created_at', endDate.toISOString());
-
-    if (profilesError) console.error("Error fetching profiles for chart:", profilesError);
     
     // Initialize a map with all days in the last 30 days
     const interval = eachDayOfInterval({ start: startDate, end: endDate });
@@ -61,24 +53,70 @@ export default async function AnalyticsPage() {
         dailyData.set(format(day, 'yyyy-MM-dd'), { Individual: 0, Invited: 0, Starter: 0, Standard: 0, Advanced: 0 });
     });
 
-    // Populate the map with data from fetched profiles
-    profiles?.forEach(profile => {
-        const day = format(startOfDay(new Date(profile.created_at)), 'yyyy-MM-dd');
-        const dayCounts = dailyData.get(day);
-        if (dayCounts) {
-            if (profile.role === 'agency') {
-                if (profile.agency_tier === 'Starter') dayCounts.Starter++;
-                else if (profile.agency_tier === 'Standard') dayCounts.Standard++;
-                else if (profile.agency_tier === 'Advanced') dayCounts.Advanced++;
-            } else if (profile.role !== 'admin' && profile.role !== 'super_admin') {
-                if (profile.agency_id) {
-                    dayCounts.Invited++;
-                } else {
-                    dayCounts.Individual++;
-                }
+    // 1. Fetch users from auth schema to get correct creation date
+    const { data: recentAuthUsers, error: authUsersError } = await supabase
+        .from('users')
+        .inSchema('auth')
+        .select('id, created_at, raw_user_meta_data')
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endDate.toISOString());
+    
+    if (authUsersError) {
+        console.error("Error fetching recent auth users:", authUsersError.message);
+    } else if (recentAuthUsers) {
+        const userIds = recentAuthUsers.map(u => u.id);
+
+        if (userIds.length > 0) {
+            // 2. Fetch profiles for these users to determine roles
+            const { data: profiles, error: profilesError } = await supabase
+                .from('profiles')
+                .select('id, role, agency_id, agency_tier')
+                .in('id', userIds);
+            
+            if (profilesError) {
+                console.error("Error fetching profiles for chart:", profilesError.message);
+            } else {
+                 const profilesMap = new Map(profiles.map(p => [p.id, p]));
+
+                 // 3. Populate daily data map
+                 recentAuthUsers.forEach(authUser => {
+                    const day = format(startOfDay(new Date(authUser.created_at)), 'yyyy-MM-dd');
+                    const dayCounts = dailyData.get(day);
+                    if (!dayCounts) return;
+
+                    const profile = profilesMap.get(authUser.id);
+                    const meta = authUser.raw_user_meta_data as any;
+
+                    if (profile) { // User has a profile (onboarding completed)
+                        if (profile.role === 'agency') {
+                            if (profile.agency_tier === 'Starter') dayCounts.Starter++;
+                            else if (profile.agency_tier === 'Standard') dayCounts.Standard++;
+                            else if (profile.agency_tier === 'Advanced') dayCounts.Advanced++;
+                        } else if (profile.role !== 'admin' && profile.role !== 'super_admin') {
+                            if (profile.agency_id) {
+                                dayCounts.Invited++;
+                            } else {
+                                dayCounts.Individual++;
+                            }
+                        }
+                    } else if (meta) { // User does not have a profile yet, rely on metadata
+                        if (String(meta.group_id) === '2') { // Is an agency
+                            const plan = (meta.plan || 'Agency - Starter').split(' - ')[1];
+                            if (plan === 'Standard') dayCounts.Standard++;
+                            else if (plan === 'Advanced') dayCounts.Advanced++;
+                            else dayCounts.Starter++;
+                        } else { // Is an individual or invited student
+                            if (meta.agency_id) {
+                                dayCounts.Invited++;
+                            } else {
+                                dayCounts.Individual++;
+                            }
+                        }
+                    }
+                 });
             }
         }
-    });
+    }
 
     // Convert map to array for the chart
     const chartData = Array.from(dailyData.entries()).map(([date, counts]) => ({
