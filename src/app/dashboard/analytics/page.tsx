@@ -1,5 +1,5 @@
 
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, UserCheck, Building } from "lucide-react";
 
@@ -7,20 +7,20 @@ export const dynamic = 'force-dynamic';
 
 export default async function AnalyticsPage() {
 
-    const supabase = createSupabaseServerClient({ service: true });
+    const supabase = createSupabaseServiceRoleClient();
 
     // 1. Individual users (not associated with an agency)
     const { count: individualCount, error: individualError } = await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true })
-        .eq('role', 'user')
+        .eq('role', 'individual')
         .is('agency_id', null);
 
     // 2. Individuals invited by an agency
     const { count: invitedCount, error: invitedError } = await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true })
-        .eq('role', 'user')
+        .eq('role', 'individual')
         .not('agency_id', 'is', null);
 
     // 3. Agency - Starter
