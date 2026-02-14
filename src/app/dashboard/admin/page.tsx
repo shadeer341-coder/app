@@ -1,17 +1,11 @@
 
-
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { User } from "@/lib/types";
-import { RechargeUserDialog } from "@/components/admin/recharge-user-dialog";
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import Link from 'next/link';
-import { ArrowUp, ArrowDown } from "lucide-react";
 import { UserFilters } from "@/components/admin/user-filters";
+import { UsersTable } from "@/components/admin/users-table";
 
 export const dynamic = 'force-dynamic';
 
@@ -62,6 +56,17 @@ export default async function AdminPage({ searchParams }: { searchParams?: { [ke
                     agencyId: profile.agency_id,
                     interview_quota: profile.interview_quota,
                     onboardingCompleted: profile.onboarding_completed,
+                    gender: profile.gender,
+                    age: profile.age,
+                    nationality: profile.nationality,
+                    program: profile.program,
+                    university: profile.university,
+                    lastEducation: profile.last_education,
+                    agency_name: profile.agency_name,
+                    agency_job_title: profile.agency_job_title,
+                    agency_tier: profile.agency_tier,
+                    agency_country: profile.agency_country,
+                    mobile_number: profile.mobile_number,
                 } as User;
             } else {
                 return {
@@ -125,18 +130,6 @@ export default async function AdminPage({ searchParams }: { searchParams?: { [ke
         if (strA > strB) return order === 'asc' ? 1 : -1;
         return 0;
     });
-
-    const getSortLink = (key: string) => {
-        const newOrder = sortBy === key && order === 'asc' ? 'desc' : 'asc';
-        return `/dashboard/admin?sortBy=${key}&order=${newOrder}${userTypeFilter !== 'all' ? `&userType=${userTypeFilter}`: ''}`;
-    };
-
-    const getRoleDisplay = (user: User) => {
-        if (user.role === 'admin') return { label: 'Admin', variant: 'destructive' as const };
-        if (user.role === 'agency') return { label: 'Agency', variant: 'default' as const };
-        if (user.role === 'individual' && user.agencyId) return { label: 'Student', variant: 'secondary' as const };
-        return { label: 'Individual', variant: 'outline' as const };
-    }
   
   return (
     <div className="space-y-6">
@@ -161,70 +154,7 @@ export default async function AdminPage({ searchParams }: { searchParams?: { [ke
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-                <TableRow>
-                    <TableHead>
-                         <Link href={getSortLink('name')} className="flex items-center gap-1 hover:underline">
-                            User
-                            {sortBy === 'name' && (order === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />)}
-                        </Link>
-                    </TableHead>
-                    <TableHead>
-                        <Link href={getSortLink('email')} className="flex items-center gap-1 hover:underline">
-                            Email
-                            {sortBy === 'email' && (order === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />)}
-                        </Link>
-                    </TableHead>
-                    <TableHead>
-                         <Link href={getSortLink('role')} className="flex items-center gap-1 hover:underline">
-                            Role
-                            {sortBy === 'role' && (order === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />)}
-                        </Link>
-                    </TableHead>
-                    <TableHead>
-                        <Link href={getSortLink('interview_quota')} className="flex items-center gap-1 hover:underline">
-                            Quota
-                            {sortBy === 'interview_quota' && (order === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />)}
-                        </Link>
-                    </TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-            </TableHeader>
-            <TableBody>
-                {filteredUsers.map(user => {
-                    const roleDisplay = getRoleDisplay(user);
-                    return (
-                        <TableRow key={user.id}>
-                            <TableCell>
-                                <div className="flex items-center gap-3">
-                                    <Avatar className="h-9 w-9">
-                                        <AvatarImage src={user.avatarUrl} alt={user.name} />
-                                        <AvatarFallback>{user.name?.charAt(0) ?? 'U'}</AvatarFallback>
-                                    </Avatar>
-                                    <div className="font-medium">{user.name}</div>
-                                </div>
-                            </TableCell>
-                            <TableCell>{user.email}</TableCell>
-                            <TableCell>
-                                <Badge variant={roleDisplay.variant}>{roleDisplay.label}</Badge>
-                            </TableCell>
-                            <TableCell>{user.onboardingCompleted ? (user.interview_quota ?? 0) : 'Pending'}</TableCell>
-                            <TableCell className="text-right">
-                                {user.onboardingCompleted && user.role !== 'admin' && <RechargeUserDialog user={user} />}
-                            </TableCell>
-                        </TableRow>
-                    );
-                })}
-                 {filteredUsers.length === 0 && (
-                    <TableRow>
-                        <TableCell colSpan={5} className="h-24 text-center">
-                            No users found.
-                        </TableCell>
-                    </TableRow>
-                )}
-            </TableBody>
-          </Table>
+          <UsersTable users={filteredUsers} sortBy={sortBy} order={order} userTypeFilter={userTypeFilter} />
         </CardContent>
       </Card>
     </div>
