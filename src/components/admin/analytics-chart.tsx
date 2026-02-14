@@ -65,11 +65,11 @@ export function AnalyticsChart({ data }: AnalyticsChartProps) {
                                 content={<ChartTooltipContent indicator="dot" />}
                             />
                             <Legend />
-                            <Line dataKey="Individual" stroke="var(--color-Individual)" strokeWidth={2} dot={false} />
-                            <Line dataKey="Invited" stroke="var(--color-Invited)" strokeWidth={2} dot={false} />
-                            <Line dataKey="Starter" stroke="var(--color-Starter)" strokeWidth={2} dot={false} />
-                            <Line dataKey="Standard" stroke="var(--color-Standard)" strokeWidth={2} dot={false} />
-                            <Line dataKey="Advanced" stroke="var(--color-Advanced)" strokeWidth={2} dot={false} />
+                            <Line dataKey="Individual" stroke="var(--color-Individual)" strokeWidth={2} />
+                            <Line dataKey="Invited" stroke="var(--color-Invited)" strokeWidth={2} />
+                            <Line dataKey="Starter" stroke="var(--color-Starter)" strokeWidth={2} />
+                            <Line dataKey="Standard" stroke="var(--color-Standard)" strokeWidth={2} />
+                            <Line dataKey="Advanced" stroke="var(--color-Advanced)" strokeWidth={2} />
                         </LineChart>
                     </ResponsiveContainer>
                 </ChartContainer>
