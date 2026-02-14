@@ -3,7 +3,7 @@
 
 import { Line, LineChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { ChartTooltipContent, ChartContainer, ChartConfig } from "@/components/ui/chart"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type AnalyticsChartProps = {
   data: {
@@ -30,9 +30,6 @@ export function AnalyticsChart({ data }: AnalyticsChartProps) {
     <Card>
         <CardHeader>
           <CardTitle>New Users Over Last 30 Days</CardTitle>
-          <CardDescription>
-            A visual breakdown of new user sign-ups per day.
-          </CardDescription>
         </CardHeader>
         <CardContent>
             <div className="h-96 w-full">
