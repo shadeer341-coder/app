@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -64,23 +63,27 @@ export function UserDetailsPanel({ user, onClose }: { user: User; onClose: () =>
                         </div>
                     </div>
 
-                    <Separator />
+                    {(user.role === 'individual' || user.role === 'student') && (
+                        <>
+                            <Separator />
+                            <div className="space-y-4 text-sm">
+                                <h4 className="font-medium text-base">Profile Details</h4>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-muted-foreground flex items-center gap-2"><UserIcon className="h-4 w-4" />Gender</span>
+                                    <span className="font-medium capitalize">{user.gender || 'N/A'}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-muted-foreground flex items-center gap-2"><Cake className="h-4 w-4" />Age</span>
+                                    <span className="font-medium">{user.age || 'N/A'}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-muted-foreground flex items-center gap-2"><Globe className="h-4 w-4" />Nationality</span>
+                                    <span className="font-medium">{user.nationality || 'N/A'}</span>
+                                </div>
+                            </div>
+                        </>
+                    )}
 
-                    <div className="space-y-4 text-sm">
-                        <h4 className="font-medium text-base">Profile Details</h4>
-                        <div className="flex justify-between items-center">
-                            <span className="text-muted-foreground flex items-center gap-2"><UserIcon className="h-4 w-4" />Gender</span>
-                            <span className="font-medium capitalize">{user.gender || 'N/A'}</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                            <span className="text-muted-foreground flex items-center gap-2"><Cake className="h-4 w-4" />Age</span>
-                            <span className="font-medium">{user.age || 'N/A'}</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                            <span className="text-muted-foreground flex items-center gap-2"><Globe className="h-4 w-4" />Nationality</span>
-                            <span className="font-medium">{user.nationality || 'N/A'}</span>
-                        </div>
-                    </div>
 
                     {user.role === 'individual' || user.role === 'student' ? (
                         <>
