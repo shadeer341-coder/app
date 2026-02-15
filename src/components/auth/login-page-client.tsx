@@ -74,8 +74,8 @@ export function LoginPageClient() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-secondary">
       <Card className="mx-auto max-w-sm w-full">
-        <CardHeader className="space-y-1 text-center">
-          <Link href="/" className="flex justify-center mb-4">
+        <CardHeader className="space-y-1 text-center pt-6">
+          <Link href="/" className="flex justify-center mb-2">
             <Image src="/precasprep-logo.webp" alt="Precasprep Logo" width={180} height={40} style={{ objectFit: 'contain' }} />
           </Link>
         </CardHeader>
