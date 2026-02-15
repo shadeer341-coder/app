@@ -31,7 +31,7 @@ export function DashboardLayoutProvider({
           <SidebarInset>
             <div className="flex min-h-screen flex-col">
               <Header user={user} />
-              <main className="flex-1 p-4 md:p-8 pt-6">
+              <main className="flex-1 p-4 md:p-8 pt-6 animate-fade-in-up">
                 {children}
               </main>
             </div>
