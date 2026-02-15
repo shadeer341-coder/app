@@ -80,11 +80,11 @@ export function SignupPageClient() {
   return (
     <div className="relative flex min-h-screen items-center justify-center">
        <Image
-          src="https://picsum.photos/seed/university/1920/1080"
+          src="https://images.pexels.com/photos/267885/pexels-photo-267885.jpeg"
           alt="University background"
           fill
           className="object-cover"
-          data-ai-hint="university campus"
+          data-ai-hint="graduation celebration"
       />
       <div className="absolute inset-0 bg-white/70" />
       <Card className="relative mx-auto max-w-sm w-full bg-card/90 backdrop-blur-sm">
@@ -105,7 +105,7 @@ export function SignupPageClient() {
                 name="fullName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Full name</FormLabel>
+                    <FormLabel>Full Name</FormLabel>
                     <FormControl>
                       <Input placeholder="Alex Johnson" {...field} />
                     </FormControl>

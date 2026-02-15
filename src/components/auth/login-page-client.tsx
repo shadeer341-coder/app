@@ -71,7 +71,7 @@ export function LoginPageClient() {
   return (
     <div className="relative flex min-h-screen items-center justify-center">
        <Image
-        src="https://picsum.photos/seed/grad/1920/1080"
+        src="https://images.pexels.com/photos/267885/pexels-photo-267885.jpeg"
         alt="Graduation background"
         fill
         className="object-cover"
@@ -79,8 +79,8 @@ export function LoginPageClient() {
       />
       <div className="absolute inset-0 bg-white/70" />
       <Card className="relative mx-auto max-w-sm w-full bg-card/90 backdrop-blur-sm">
-        <CardHeader className="space-y-1 text-center pt-8 pb-4">
-          <Link href="/" className="flex justify-center mb-2">
+        <CardHeader className="space-y-1 text-center pt-8">
+          <Link href="/" className="flex justify-center mb-2 mt-4">
             <Image src="/precasprep-logo.webp" alt="Precasprep Logo" width={180} height={40} style={{ objectFit: 'contain' }} />
           </Link>
         </CardHeader>
