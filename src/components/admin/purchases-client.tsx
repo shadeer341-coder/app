@@ -2,7 +2,7 @@
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { DollarSign, ShoppingCart, Landmark, ArrowRightLeft, ShieldCheck, UserPlus } from "lucide-react";
+import { DollarSign, ShoppingCart, Landmark, ArrowRightLeft, ShieldCheck, UserPlus, ShoppingBag } from "lucide-react";
 import { PurchasesControls } from "./purchases-controls";
 import { PurchasesPieChart } from "./purchases-pie-chart";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
