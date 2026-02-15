@@ -69,14 +69,16 @@ export function LoginPageClient() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center">
-       <Image
-        src="https://images.pexels.com/photos/267885/pexels-photo-267885.webp"
-        alt="Graduation background"
-        fill
-        className="object-cover"
-        data-ai-hint="graduation celebration"
-      />
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden">
+       <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="absolute top-1/2 left-1/2 w-full h-full min-w-full min-h-full object-cover transform -translate-x-1/2 -translate-y-1/2"
+      >
+        <source src="/login.mp4" type="video/mp4" />
+      </video>
       <div className="absolute inset-0 bg-[#ffffff1f]" />
       <Card className="relative mx-auto max-w-sm w-full bg-card/90 backdrop-blur-sm">
         <CardHeader className="space-y-1 text-center pt-8">
