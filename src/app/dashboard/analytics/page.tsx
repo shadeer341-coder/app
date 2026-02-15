@@ -2,12 +2,41 @@
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, UserCheck, Building } from "lucide-react";
+import { AnalyticsChart } from "@/components/admin/analytics-chart";
+import { AnalyticsControls } from "@/components/admin/analytics-controls";
+import { subDays, startOfDay, format, eachDayOfInterval, subMonths, subYears, parseISO } from 'date-fns';
 
 export const dynamic = 'force-dynamic';
 
+const getDateRange = (range?: string, from?: string, to?: string) => {
+    const toDate = to ? parseISO(to) : new Date();
+    let fromDate;
+
+    if (range === 'custom' && from) {
+        fromDate = parseISO(from);
+    } else {
+        switch (range) {
+            case '3m':
+                fromDate = subMonths(new Date(), 3);
+                break;
+            case '6m':
+                fromDate = subMonths(new Date(), 6);
+                break;
+            case '12m':
+                fromDate = subYears(new Date(), 1);
+                break;
+            case '30d':
+            default:
+                fromDate = subDays(new Date(), 29);
+                break;
+        }
+    }
+    return { startDate: startOfDay(fromDate), endDate: startOfDay(toDate) };
+}
+
 type UserCategory = 'Individual' | 'Invited' | 'Starter' | 'Standard' | 'Advanced' | null;
 
-export default async function AnalyticsPage() {
+export default async function AnalyticsPage({ searchParams }: { searchParams: { [key: string]: string | undefined } }) {
 
     const supabase = createSupabaseServiceRoleClient();
     
@@ -17,7 +46,7 @@ export default async function AnalyticsPage() {
     const allAuthUsers = authData?.users || [];
 
     const { data: profilesData, error: profilesError } = await supabase.from('profiles').select('id, role, agency_tier, from_agency');
-    if (profilesError) console.error("Error fetching profiles:", profilesError.message);
+    if (profilesError) console.error("Error fetching profiles for chart:", profilesError.message);
     const profilesMap = new Map(profilesData?.map(p => [p.id, p]));
 
     // --- STATS CARDS (TOTALS) ---
@@ -65,6 +94,37 @@ export default async function AnalyticsPage() {
         }
     });
 
+    // --- TIME-SERIES DATA FOR CHART ---
+    const { startDate, endDate } = getDateRange(searchParams.range, searchParams.from, searchParams.to);
+    const interval = eachDayOfInterval({ start: startDate, end: endDate });
+    const dailyData = new Map<string, { Individual: number, Invited: number, Starter: number, Standard: number, Advanced: number }>();
+    interval.forEach(day => {
+        dailyData.set(format(day, 'yyyy-MM-dd'), { Individual: 0, Invited: 0, Starter: 0, Standard: 0, Advanced: 0 });
+    });
+
+    const recentAuthUsers = allAuthUsers.filter(user => {
+        const createdAt = new Date(user.created_at);
+        return createdAt >= startDate && createdAt <= endDate;
+    });
+
+    for (const authUser of recentAuthUsers) {
+        const day = format(startOfDay(new Date(authUser.created_at)), 'yyyy-MM-dd');
+        const dayCounts = dailyData.get(day);
+        if (!dayCounts) continue;
+
+        const profile = profilesMap.get(authUser.id);
+        const userType = getUserCategory(authUser, profile);
+
+        if (userType && dayCounts[userType] !== undefined) {
+            dayCounts[userType]++;
+        }
+    }
+
+    const chartData = Array.from(dailyData.entries()).map(([date, counts]) => ({
+        date: format(new Date(date), 'MMM d'),
+        ...counts,
+    }));
+
   return (
     <div className="space-y-6">
        <div>
@@ -83,7 +143,7 @@ export default async function AnalyticsPage() {
             </CardHeader>
             <CardContent>
                 <div className="text-2xl font-bold">{individualCount || 0}</div>
-                <p className="text-xs text-muted-foreground">Standard individual sign-ups.</p>
+                <p className="text-xs text-muted-foreground">Total individual sign-ups.</p>
             </CardContent>
         </Card>
         <Card>
@@ -93,7 +153,7 @@ export default async function AnalyticsPage() {
             </CardHeader>
             <CardContent>
                 <div className="text-2xl font-bold">{invitedCount || 0}</div>
-                <p className="text-xs text-muted-foreground">Students created by agencies.</p>
+                <p className="text-xs text-muted-foreground">Total students created by agencies.</p>
             </CardContent>
         </Card>
         <Card>
@@ -103,7 +163,7 @@ export default async function AnalyticsPage() {
             </CardHeader>
             <CardContent>
                 <div className="text-2xl font-bold">{starterCount || 0}</div>
-                <p className="text-xs text-muted-foreground">Agencies on the Starter plan.</p>
+                <p className="text-xs text-muted-foreground">Total agencies on the Starter plan.</p>
             </CardContent>
         </Card>
         <Card>
@@ -113,7 +173,7 @@ export default async function AnalyticsPage() {
             </CardHeader>
             <CardContent>
                 <div className="text-2xl font-bold">{standardCount || 0}</div>
-                <p className="text-xs text-muted-foreground">Agencies on the Standard plan.</p>
+                <p className="text-xs text-muted-foreground">Total agencies on the Standard plan.</p>
             </CardContent>
         </Card>
         <Card>
@@ -123,10 +183,22 @@ export default async function AnalyticsPage() {
             </CardHeader>
             <CardContent>
                 <div className="text-2xl font-bold">{advancedCount || 0}</div>
-                <p className="text-xs text-muted-foreground">Agencies on the Advanced plan.</p>
+                <p className="text-xs text-muted-foreground">Total agencies on the Advanced plan.</p>
             </CardContent>
         </Card>
       </div>
+
+       <Card>
+          <CardHeader>
+            <CardTitle>New Users Trend</CardTitle>
+          </CardHeader>
+          <AnalyticsControls />
+          <CardContent className="pt-6">
+             <div className="h-96 w-full">
+               <AnalyticsChart data={chartData} />
+             </div>
+          </CardContent>
+      </Card>
     </div>
   );
 }

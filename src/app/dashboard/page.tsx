@@ -320,7 +320,7 @@ const AdminDashboard = () => (
         <Button asChild size="lg" variant="outline"><Link href="/dashboard/questions">Manage Questions</Link></Button>
         <Button asChild size="lg" variant="outline"><Link href="/dashboard/admin">Manage Users</Link></Button>
         <Button asChild size="lg" variant="outline"><Link href="/dashboard/admin/agencies">Manage Agencies</Link></Button>
-        <Button asChild size="lg" variant="outline"><Link href="/dashboard/admin/analytics">System Analytics</Link></Button>
+        <Button asChild size="lg" variant="outline"><Link href="/dashboard/analytics">System Analytics</Link></Button>
       </CardContent>
     </Card>
 );

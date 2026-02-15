@@ -1,3 +1,4 @@
+
 "use client"
 
 import Link from "next/link";
@@ -47,7 +48,7 @@ const adminLinks = [
   { href: "/dashboard/questions", label: "Questions", icon: HelpCircle },
   { href: "/dashboard/categories", label: "Categories", icon: FolderKanban },
   { href: "/dashboard/admin", label: "Users", icon: Users },
-  { href: "/dashboard/admin/analytics", label: "Analytics", icon: AreaChart },
+  { href: "/dashboard/analytics", label: "Analytics", icon: AreaChart },
 ];
 
 export function MainSidebar({ user }: { user: User }) {
