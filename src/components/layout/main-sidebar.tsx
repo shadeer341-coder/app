@@ -50,7 +50,7 @@ const adminLinks = [
   { href: "/dashboard/categories", label: "Categories", icon: FolderKanban },
   { href: "/dashboard/admin", label: "Users", icon: Users },
   { href: "/dashboard/analytics", label: "Analytics", icon: AreaChart },
-  { href: "/dashboard/admin/purchases", label: "Purchases", icon: DollarSign },
+  { href: "/dashboard/purchases", label: "Purchases", icon: DollarSign },
 ];
 
 export function MainSidebar({ user }: { user: User }) {
