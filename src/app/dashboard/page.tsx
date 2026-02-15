@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { InterviewSessionStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { format, formatDistanceToNow } from 'date-fns';
+import { format } from 'date-fns';
 
 export const dynamic = 'force-dynamic';
 
@@ -319,14 +319,12 @@ const AdminDashboard = async () => {
         { data: revenueData, error: revenueError },
         { count: interviewCount, error: interviewError },
         { data: recentSessionsData, error: sessionsError },
-        { data: authUsersData, error: authUsersError }
     ] = await Promise.all([
         supabaseService.from('profiles').select('*', { count: 'exact', head: true }),
         supabaseService.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'agency'),
         supabaseService.from('purchases').select('amount_spent'),
         supabaseService.from('interview_sessions').select('*', { count: 'exact', head: true }).eq('status', 'completed'),
         supabaseService.from('interview_sessions').select('id, created_at, overall_score, user_id, profiles(full_name, avatar_url)').eq('status', 'completed').order('created_at', { ascending: false }).limit(5),
-        supabaseService.auth.admin.listUsers({ page: 1, perPage: 5, sortBy: 'created_at', sortOrder: 'desc' })
     ]);
 
     if (userError) console.error("Admin DB: Error fetching user count:", userError.message);
@@ -334,13 +332,11 @@ const AdminDashboard = async () => {
     if (revenueError) console.error("Admin DB: Error fetching revenue:", revenueError.message);
     if (interviewError) console.error("Admin DB: Error fetching interview count:", interviewError.message);
     if (sessionsError) console.error("Admin DB: Error fetching recent sessions:", sessionsError.message);
-    if (authUsersError) console.error("Admin DB: Error fetching recent signups:", authUsersError.message);
     
     const totalRevenue = revenueData?.reduce((sum, p) => sum + (p.amount_spent || 0), 0) || 0;
     const formatCurrency = (value: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
 
     const recentSessions = recentSessionsData || [];
-    const recentSignups = authUsersData?.users || [];
 
     const quickActions = [
         { href: "/dashboard/questions", label: "Manage Questions" },
@@ -406,7 +402,6 @@ const AdminDashboard = async () => {
                                     <TableHead>Student</TableHead>
                                     <TableHead>Score</TableHead>
                                     <TableHead>Date</TableHead>
-                                    <TableHead className="text-right"></TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -423,12 +418,9 @@ const AdminDashboard = async () => {
                                         </TableCell>
                                         <TableCell><Badge variant="secondary">{session.overall_score}%</Badge></TableCell>
                                         <TableCell>{format(new Date(session.created_at), "PPP")}</TableCell>
-                                        <TableCell className="text-right">
-                                            <Button asChild size="sm" variant="outline"><Link href={`/dashboard/interviews/${session.id}`}>View</Link></Button>
-                                        </TableCell>
                                     </TableRow>
                                 )) : (
-                                    <TableRow><TableCell colSpan={4} className="text-center h-24">No recent interviews.</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={3} className="text-center h-24">No recent interviews.</TableCell></TableRow>
                                 )}
                             </TableBody>
                         </Table>
@@ -436,23 +428,6 @@ const AdminDashboard = async () => {
                 </Card>
                 
                 <div className="space-y-6">
-                    <Card>
-                        <CardHeader><CardTitle>Recent Signups</CardTitle></CardHeader>
-                        <CardContent className="space-y-4">
-                            {recentSignups.length > 0 ? recentSignups.map(user => (
-                                <div key={user.id} className="flex items-center gap-4">
-                                    <Avatar className="h-9 w-9">
-                                        <AvatarImage src={user.user_metadata.avatar_url} />
-                                        <AvatarFallback>{user.email?.charAt(0).toUpperCase()}</AvatarFallback>
-                                    </Avatar>
-                                    <div className="flex-1">
-                                        <p className="text-sm font-medium leading-none truncate">{user.email}</p>
-                                        <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(user.created_at), { addSuffix: true })}</p>
-                                    </div>
-                                </div>
-                            )) : <p className="text-sm text-muted-foreground text-center">No recent signups.</p>}
-                        </CardContent>
-                    </Card>
                      <Card>
                         <CardHeader><CardTitle>Quick Actions</CardTitle></CardHeader>
                         <CardContent className="grid grid-cols-2 gap-2">
