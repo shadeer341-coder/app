@@ -45,7 +45,7 @@ body {
   .dark {
     --background: 224 71% 4%;
     --foreground: 240 43% 98%;
-    --card: 224 71% 4%;
+    --card: 240 10% 15%;
     --card-foreground: 240 43% 98%;
     --popover: 224 71% 4%;
     --popover-foreground: 240 43% 98%;
