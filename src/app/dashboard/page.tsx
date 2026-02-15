@@ -471,7 +471,7 @@ export default async function DashboardPage() {
             Here's what's happening with your interview prep today.
           </p>
         </div>
-        {user.role !== 'agency' && (
+        {user.role !== 'admin' && user.role !== 'agency' && (
             <Button asChild size="lg" disabled={(user.interview_quota ?? 0) <= 0}>
             <Link href="/dashboard/practice">
                 <PlusCircle className="mr-2 h-5 w-5" />
