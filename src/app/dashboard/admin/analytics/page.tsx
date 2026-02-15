@@ -34,114 +34,89 @@ const getDateRange = (range?: string, from?: string, to?: string) => {
     return { startDate: startOfDay(fromDate), endDate: startOfDay(toDate) };
 }
 
+type UserCategory = 'Individual' | 'Invited' | 'Starter' | 'Standard' | 'Advanced' | null;
 
 export default async function AnalyticsPage({ searchParams }: { searchParams: { [key: string]: string | undefined } }) {
 
     const supabase = createSupabaseServiceRoleClient();
+    
+    // --- AUTH & PROFILE DATA FETCH ---
+    const { data: authData, error: authUsersError } = await supabase.auth.admin.listUsers({ perPage: 1000 }); 
+    if (authUsersError) console.error("Error fetching auth users:", authUsersError.message);
+    const allAuthUsers = authData?.users || [];
 
-    const { startDate, endDate } = getDateRange(searchParams.range, searchParams.from, searchParams.to);
+    const { data: profilesData, error: profilesError } = await supabase.from('profiles').select('id, role, agency_tier, from_agency');
+    if (profilesError) console.error("Error fetching profiles for chart:", profilesError.message);
+    const profilesMap = new Map(profilesData?.map(p => [p.id, p]));
 
     // --- STATS CARDS (TOTALS) ---
-    const { count: individualCount, error: individualError } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .eq('role', 'individual')
-        .eq('from_agency', false);
+    let individualCount = 0;
+    let invitedCount = 0;
+    let starterCount = 0;
+    let standardCount = 0;
+    let advancedCount = 0;
+    
+    const getUserCategory = (authUser: any, profile: any): UserCategory => {
+        const meta = authUser.user_metadata || {};
+        if (profile) { // User has a profile (onboarding completed)
+            if (profile.role === 'agency') {
+                if (profile.agency_tier === 'Standard') return 'Standard';
+                if (profile.agency_tier === 'Advanced') return 'Advanced';
+                return 'Starter';
+            } else if (profile.role !== 'admin' && profile.role !== 'super_admin') {
+                return profile.from_agency ? 'Invited' : 'Individual';
+            }
+        } else { // No profile yet, use metadata
+            if (String(meta.group_id) === '2') { // Is an Agency
+                const plan = (meta.plan || '').split(' - ')[1];
+                if (plan === 'Standard') return 'Standard';
+                if (plan === 'Advanced') return 'Advanced';
+                return 'Starter';
+            } else if (meta.agency_id) { // Is an invited student
+                return 'Invited';
+            } else if (String(meta.group_id) !== '1') { // Not an admin
+                return 'Individual';
+            }
+        }
+        return null;
+    };
+    
+    allAuthUsers.forEach(authUser => {
+        const profile = profilesMap.get(authUser.id);
+        const category = getUserCategory(authUser, profile);
 
-    const { count: invitedCount, error: invitedError } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .eq('role', 'individual')
-        .eq('from_agency', true);
-
-    const { count: starterCount, error: starterError } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .eq('role', 'agency')
-        .eq('agency_tier', 'Starter');
-
-    const { count: standardCount, error: standardError } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .eq('role', 'agency')
-        .eq('agency_tier', 'Standard');
-        
-    const { count: advancedCount, error: advancedError } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .eq('role', 'agency')
-        .eq('agency_tier', 'Advanced');
+        switch (category) {
+            case 'Individual': individualCount++; break;
+            case 'Invited': invitedCount++; break;
+            case 'Starter': starterCount++; break;
+            case 'Standard': standardCount++; break;
+            case 'Advanced': advancedCount++; break;
+        }
+    });
 
     // --- TIME-SERIES DATA FOR CHART ---
+    const { startDate, endDate } = getDateRange(searchParams.range, searchParams.from, searchParams.to);
     const interval = eachDayOfInterval({ start: startDate, end: endDate });
     const dailyData = new Map<string, { Individual: number, Invited: number, Starter: number, Standard: number, Advanced: number }>();
     interval.forEach(day => {
         dailyData.set(format(day, 'yyyy-MM-dd'), { Individual: 0, Invited: 0, Starter: 0, Standard: 0, Advanced: 0 });
     });
 
-    const { data: authData, error: authUsersError } = await supabase.auth.admin.listUsers({ perPage: 1000 }); 
-
-    if (authUsersError) {
-        console.error("Error fetching auth users:", authUsersError.message);
-    }
-
-    const recentAuthUsers = authData?.users.filter(user => {
+    const recentAuthUsers = allAuthUsers.filter(user => {
         const createdAt = new Date(user.created_at);
         return createdAt >= startDate && createdAt <= endDate;
-    }) || [];
-    
-    if (recentAuthUsers.length > 0) {
-        const userIds = recentAuthUsers.map(u => u.id);
+    });
 
-        const { data: profiles, error: profilesError } = await supabase
-            .from('profiles')
-            .select('id, role, agency_id, agency_tier, from_agency')
-            .in('id', userIds);
-        
-        if (profilesError) {
-            console.error("Error fetching profiles for chart:", profilesError.message);
-        } else {
-             const profilesMap = new Map(profiles.map(p => [p.id, p]));
+    for (const authUser of recentAuthUsers) {
+        const day = format(startOfDay(new Date(authUser.created_at)), 'yyyy-MM-dd');
+        const dayCounts = dailyData.get(day);
+        if (!dayCounts) continue;
 
-             for (const authUser of recentAuthUsers) {
-                const day = format(startOfDay(new Date(authUser.created_at)), 'yyyy-MM-dd');
-                const dayCounts = dailyData.get(day);
-                if (!dayCounts) continue;
+        const profile = profilesMap.get(authUser.id);
+        const userType = getUserCategory(authUser, profile);
 
-                const profile = profilesMap.get(authUser.id);
-                const meta = authUser.user_metadata || {};
-                
-                let userType: 'Individual' | 'Invited' | 'Starter' | 'Standard' | 'Advanced' | null = null;
-                
-                if (profile) { // User has a profile (onboarding completed)
-                    if (profile.role === 'agency') {
-                        if (profile.agency_tier === 'Standard') userType = 'Standard';
-                        else if (profile.agency_tier === 'Advanced') userType = 'Advanced';
-                        else userType = 'Starter';
-                    } else if (profile.role !== 'admin' && profile.role !== 'super_admin') {
-                        if (profile.from_agency) {
-                            userType = 'Invited';
-                        } else {
-                            userType = 'Individual';
-                        }
-                    }
-                } else { // No profile yet, use metadata
-                    if (String(meta.group_id) === '2') { // Is an Agency
-                        const plan = (meta.plan || '').split(' - ')[1];
-                        if (plan === 'Standard') userType = 'Standard';
-                        else if (plan === 'Advanced') userType = 'Advanced';
-                        else userType = 'Starter';
-                    } else if (meta.agency_id) { // Is an invited student
-                        userType = 'Invited';
-                    } else if (String(meta.group_id) !== '1') { // Not an admin
-                        userType = 'Individual';
-                    }
-                }
-
-                if (userType && dayCounts[userType] !== undefined) {
-                    dayCounts[userType]++;
-                }
-             }
+        if (userType && dayCounts[userType] !== undefined) {
+            dayCounts[userType]++;
         }
     }
 
@@ -149,13 +124,6 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: { 
         date: format(new Date(date), 'MMM d'),
         ...counts,
     }));
-
-
-    if (individualError) console.error("Error fetching individual users:", individualError);
-    if (invitedError) console.error("Error fetching invited users:", invitedError);
-    if (starterError) console.error("Error fetching starter agencies:", starterError);
-    if (standardError) console.error("Error fetching standard agencies:", standardError);
-    if (advancedError) console.error("Error fetching advanced agencies:", advancedError);
 
   return (
     <div className="space-y-6">

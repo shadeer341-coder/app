@@ -1,54 +1,69 @@
 
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, UserCheck, Building } from "lucide-react";
 
 export const dynamic = 'force-dynamic';
 
+type UserCategory = 'Individual' | 'Invited' | 'Starter' | 'Standard' | 'Advanced' | null;
+
 export default async function AnalyticsPage() {
 
     const supabase = createSupabaseServiceRoleClient();
+    
+    // --- AUTH & PROFILE DATA FETCH ---
+    const { data: authData, error: authUsersError } = await supabase.auth.admin.listUsers({ perPage: 1000 }); 
+    if (authUsersError) console.error("Error fetching auth users:", authUsersError.message);
+    const allAuthUsers = authData?.users || [];
 
-    // 1. Individual users (not associated with an agency)
-    const { count: individualCount, error: individualError } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .eq('role', 'individual')
-        .eq('from_agency', false);
+    const { data: profilesData, error: profilesError } = await supabase.from('profiles').select('id, role, agency_tier, from_agency');
+    if (profilesError) console.error("Error fetching profiles:", profilesError.message);
+    const profilesMap = new Map(profilesData?.map(p => [p.id, p]));
 
-    // 2. Individuals invited by an agency
-    const { count: invitedCount, error: invitedError } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .eq('role', 'individual')
-        .eq('from_agency', true);
+    // --- STATS CARDS (TOTALS) ---
+    let individualCount = 0;
+    let invitedCount = 0;
+    let starterCount = 0;
+    let standardCount = 0;
+    let advancedCount = 0;
+    
+    const getUserCategory = (authUser: any, profile: any): UserCategory => {
+        const meta = authUser.user_metadata || {};
+        if (profile) { // User has a profile (onboarding completed)
+            if (profile.role === 'agency') {
+                if (profile.agency_tier === 'Standard') return 'Standard';
+                if (profile.agency_tier === 'Advanced') return 'Advanced';
+                return 'Starter';
+            } else if (profile.role !== 'admin' && profile.role !== 'super_admin') {
+                return profile.from_agency ? 'Invited' : 'Individual';
+            }
+        } else { // No profile yet, use metadata
+            if (String(meta.group_id) === '2') { // Is an Agency
+                const plan = (meta.plan || '').split(' - ')[1];
+                if (plan === 'Standard') return 'Standard';
+                if (plan === 'Advanced') return 'Advanced';
+                return 'Starter';
+            } else if (meta.agency_id) { // Is an invited student
+                return 'Invited';
+            } else if (String(meta.group_id) !== '1') { // Not an admin
+                return 'Individual';
+            }
+        }
+        return null;
+    };
+    
+    allAuthUsers.forEach(authUser => {
+        const profile = profilesMap.get(authUser.id);
+        const category = getUserCategory(authUser, profile);
 
-    // 3. Agency - Starter
-    const { count: starterCount, error: starterError } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .eq('role', 'agency')
-        .eq('agency_tier', 'Starter');
-
-    // 4. Agency - Standard
-    const { count: standardCount, error: standardError } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .eq('role', 'agency')
-        .eq('agency_tier', 'Standard');
-        
-    // 5. Agency - Advanced
-    const { count: advancedCount, error: advancedError } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .eq('role', 'agency')
-        .eq('agency_tier', 'Advanced');
-
-    if (individualError) console.error("Error fetching individual users:", individualError);
-    if (invitedError) console.error("Error fetching invited users:", invitedError);
-    if (starterError) console.error("Error fetching starter agencies:", starterError);
-    if (standardError) console.error("Error fetching standard agencies:", standardError);
-    if (advancedError) console.error("Error fetching advanced agencies:", advancedError);
+        switch (category) {
+            case 'Individual': individualCount++; break;
+            case 'Invited': invitedCount++; break;
+            case 'Starter': starterCount++; break;
+            case 'Standard': standardCount++; break;
+            case 'Advanced': advancedCount++; break;
+        }
+    });
 
   return (
     <div className="space-y-6">
