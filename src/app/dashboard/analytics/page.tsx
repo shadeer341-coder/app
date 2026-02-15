@@ -13,15 +13,15 @@ export default async function AnalyticsPage() {
     const { count: individualCount, error: individualError } = await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true })
-        .not('role', 'in', '("agency", "admin", "super_admin")')
-        .is('agency_id', null);
+        .eq('role', 'individual')
+        .eq('from_agency', false);
 
     // 2. Individuals invited by an agency
     const { count: invitedCount, error: invitedError } = await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true })
-        .not('role', 'in', '("agency", "admin", "super_admin")')
-        .not('agency_id', 'is', null);
+        .eq('role', 'individual')
+        .eq('from_agency', true);
 
     // 3. Agency - Starter
     const { count: starterCount, error: starterError } = await supabase

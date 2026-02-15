@@ -45,14 +45,14 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: { 
     const { count: individualCount, error: individualError } = await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true })
-        .not('role', 'in', '("agency", "admin", "super_admin")')
-        .is('agency_id', null);
+        .eq('role', 'individual')
+        .eq('from_agency', false);
 
     const { count: invitedCount, error: invitedError } = await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true })
-        .not('role', 'in', '("agency", "admin", "super_admin")')
-        .not('agency_id', 'is', null);
+        .eq('role', 'individual')
+        .eq('from_agency', true);
 
     const { count: starterCount, error: starterError } = await supabase
         .from('profiles')
@@ -95,7 +95,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: { 
 
         const { data: profiles, error: profilesError } = await supabase
             .from('profiles')
-            .select('id, role, agency_id, agency_tier')
+            .select('id, role, agency_id, agency_tier, from_agency')
             .in('id', userIds);
         
         if (profilesError) {
@@ -119,7 +119,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: { 
                         else if (profile.agency_tier === 'Advanced') userType = 'Advanced';
                         else userType = 'Starter';
                     } else if (profile.role !== 'admin' && profile.role !== 'super_admin') {
-                        if (profile.agency_id) {
+                        if (profile.from_agency) {
                             userType = 'Invited';
                         } else {
                             userType = 'Individual';
