@@ -1,6 +1,6 @@
 
 import Link from "next/link";
-import { ArrowRight, Bot, Building, HardHat, PlusCircle, Video, Repeat, Users, FileText, BarChart, Hourglass, Loader2, CheckCircle, ServerCrash } from "lucide-react";
+import { ArrowRight, Bot, Building, HardHat, PlusCircle, Video, Repeat, Users, FileText, BarChart, Hourglass, Loader2, CheckCircle, ServerCrash, DollarSign } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { InterviewSessionStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 
 export const dynamic = 'force-dynamic';
 
@@ -310,20 +310,165 @@ const AgencyDashboard = async ({ user }: { user: any }) => {
     );
 };
 
-const AdminDashboard = () => (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2"><HardHat /> Admin Control Panel</CardTitle>
-        <CardDescription>Manage system-wide settings and content.</CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-4 md:grid-cols-2">
-        <Button asChild size="lg" variant="outline"><Link href="/dashboard/questions">Manage Questions</Link></Button>
-        <Button asChild size="lg" variant="outline"><Link href="/dashboard/admin">Manage Users</Link></Button>
-        <Button asChild size="lg" variant="outline"><Link href="/dashboard/admin/agencies">Manage Agencies</Link></Button>
-        <Button asChild size="lg" variant="outline"><Link href="/dashboard/analytics">System Analytics</Link></Button>
-      </CardContent>
-    </Card>
-);
+const AdminDashboard = async () => {
+    const supabaseService = createSupabaseServiceRoleClient();
+
+    const [
+        { count: userCount, error: userError },
+        { count: agencyCount, error: agencyError },
+        { data: revenueData, error: revenueError },
+        { count: interviewCount, error: interviewError },
+        { data: recentSessionsData, error: sessionsError },
+        { data: authUsersData, error: authUsersError }
+    ] = await Promise.all([
+        supabaseService.from('profiles').select('*', { count: 'exact', head: true }),
+        supabaseService.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'agency'),
+        supabaseService.from('purchases').select('amount_spent'),
+        supabaseService.from('interview_sessions').select('*', { count: 'exact', head: true }).eq('status', 'completed'),
+        supabaseService.from('interview_sessions').select('id, created_at, overall_score, user_id, profiles(full_name, avatar_url)').eq('status', 'completed').order('created_at', { ascending: false }).limit(5),
+        supabaseService.auth.admin.listUsers({ page: 1, perPage: 5, sortBy: 'created_at', sortOrder: 'desc' })
+    ]);
+
+    if (userError) console.error("Admin DB: Error fetching user count:", userError.message);
+    if (agencyError) console.error("Admin DB: Error fetching agency count:", agencyError.message);
+    if (revenueError) console.error("Admin DB: Error fetching revenue:", revenueError.message);
+    if (interviewError) console.error("Admin DB: Error fetching interview count:", interviewError.message);
+    if (sessionsError) console.error("Admin DB: Error fetching recent sessions:", sessionsError.message);
+    if (authUsersError) console.error("Admin DB: Error fetching recent signups:", authUsersError.message);
+    
+    const totalRevenue = revenueData?.reduce((sum, p) => sum + (p.amount_spent || 0), 0) || 0;
+    const formatCurrency = (value: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+
+    const recentSessions = recentSessionsData || [];
+    const recentSignups = authUsersData?.users || [];
+
+    const quickActions = [
+        { href: "/dashboard/questions", label: "Manage Questions" },
+        { href: "/dashboard/categories", label: "Manage Categories" },
+        { href: "/dashboard/admin", label: "Manage Users" },
+        { href: "/dashboard/analytics", label: "System Analytics" },
+    ];
+
+    return (
+         <div className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+                        <DollarSign className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{formatCurrency(totalRevenue)}</div>
+                        <p className="text-xs text-muted-foreground">From all registrations and purchases.</p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{userCount ?? '...'}</div>
+                        <p className="text-xs text-muted-foreground">All registered users in the system.</p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Agencies</CardTitle>
+                        <Building className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{agencyCount ?? '...'}</div>
+                        <p className="text-xs text-muted-foreground">Total registered agency accounts.</p>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Interviews Completed</CardTitle>
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{interviewCount ?? '...'}</div>
+                        <p className="text-xs text-muted-foreground">Total sessions successfully processed.</p>
+                    </CardContent>
+                </Card>
+            </div>
+             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                <Card className="lg:col-span-2">
+                    <CardHeader>
+                        <CardTitle>Recent Interviews</CardTitle>
+                        <CardDescription>The last 5 completed interview sessions.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Student</TableHead>
+                                    <TableHead>Score</TableHead>
+                                    <TableHead>Date</TableHead>
+                                    <TableHead className="text-right"></TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {recentSessions.length > 0 ? recentSessions.map(session => (
+                                    <TableRow key={session.id}>
+                                        <TableCell>
+                                            <div className="flex items-center gap-3">
+                                                <Avatar className="h-9 w-9">
+                                                    <AvatarImage src={session.profiles?.avatar_url} />
+                                                    <AvatarFallback>{session.profiles?.full_name?.charAt(0) || 'U'}</AvatarFallback>
+                                                </Avatar>
+                                                <div className="font-medium">{session.profiles?.full_name || 'N/A'}</div>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell><Badge variant="secondary">{session.overall_score}%</Badge></TableCell>
+                                        <TableCell>{format(new Date(session.created_at), "PPP")}</TableCell>
+                                        <TableCell className="text-right">
+                                            <Button asChild size="sm" variant="outline"><Link href={`/dashboard/interviews/${session.id}`}>View</Link></Button>
+                                        </TableCell>
+                                    </TableRow>
+                                )) : (
+                                    <TableRow><TableCell colSpan={4} className="text-center h-24">No recent interviews.</TableCell></TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+                
+                <div className="space-y-6">
+                    <Card>
+                        <CardHeader><CardTitle>Recent Signups</CardTitle></CardHeader>
+                        <CardContent className="space-y-4">
+                            {recentSignups.length > 0 ? recentSignups.map(user => (
+                                <div key={user.id} className="flex items-center gap-4">
+                                    <Avatar className="h-9 w-9">
+                                        <AvatarImage src={user.user_metadata.avatar_url} />
+                                        <AvatarFallback>{user.email?.charAt(0).toUpperCase()}</AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex-1">
+                                        <p className="text-sm font-medium leading-none truncate">{user.email}</p>
+                                        <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(user.created_at), { addSuffix: true })}</p>
+                                    </div>
+                                </div>
+                            )) : <p className="text-sm text-muted-foreground text-center">No recent signups.</p>}
+                        </CardContent>
+                    </Card>
+                     <Card>
+                        <CardHeader><CardTitle>Quick Actions</CardTitle></CardHeader>
+                        <CardContent className="grid grid-cols-2 gap-2">
+                             {quickActions.map(action => (
+                                <Button key={action.href} asChild variant="outline">
+                                    <Link href={action.href}>{action.label}</Link>
+                                </Button>
+                            ))}
+                        </CardContent>
+                    </Card>
+                </div>
+            </div>
+        </div>
+    )
+};
+
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
