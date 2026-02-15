@@ -1,6 +1,6 @@
 
 import { createSupabaseServiceRoleClient } from "@/lib/supabase/server";
-import { subDays, startOfDay, parseISO, subMonths, subYears } from 'date-fns';
+import { subDays, startOfDay, parseISO, subMonths, subYears, format } from 'date-fns';
 import { PurchasesClient } from "@/components/admin/purchases-client";
 import { getCurrentUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
@@ -87,6 +87,7 @@ export default async function PurchasesPage({ searchParams }: { searchParams: { 
         ...p,
         purchaser: p.user_id ? profilesMap.get(p.user_id) : null,
         recipient: p.given_to ? profilesMap.get(p.given_to) : null,
+        formatted_date: format(new Date(p.created_at), "d MMM yyyy"),
     })) || [];
 
 

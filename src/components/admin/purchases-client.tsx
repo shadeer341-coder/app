@@ -10,7 +10,6 @@ import { AlertCircle } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { format } from 'date-fns';
 import { PaginationControls } from "@/components/ui/pagination";
 
 type PieChartData = {
@@ -183,7 +182,7 @@ export function PurchasesClient({
                                                 </TableCell>
                                                 <TableCell className="text-sm">{details}</TableCell>
                                                 <TableCell className="text-right font-mono">{formatCurrency(p.amount_spent || 0)}</TableCell>
-                                                <TableCell className="text-right text-muted-foreground text-xs">{format(new Date(p.created_at), "d MMM yyyy")}</TableCell>
+                                                <TableCell className="text-right text-muted-foreground text-xs">{p.formatted_date}</TableCell>
                                             </TableRow>
                                         )
                                     }) : (
