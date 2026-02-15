@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from 'react';
@@ -13,9 +12,7 @@ import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
-  CardTitle,
 } from '@/components/ui/card';
 import {
   Form,
@@ -72,9 +69,17 @@ export function LoginPageClient() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-secondary">
-      <Card className="mx-auto max-w-sm w-full">
-        <CardHeader className="space-y-1 text-center pt-6">
+    <div className="relative flex min-h-screen items-center justify-center">
+       <Image
+        src="https://picsum.photos/seed/grad/1920/1080"
+        alt="Graduation background"
+        fill
+        className="object-cover"
+        data-ai-hint="graduation celebration"
+      />
+      <div className="absolute inset-0 bg-white/70" />
+      <Card className="relative mx-auto max-w-sm w-full bg-card/90 backdrop-blur-sm">
+        <CardHeader className="space-y-1 text-center pt-8 pb-4">
           <Link href="/" className="flex justify-center mb-2">
             <Image src="/precasprep-logo.webp" alt="Precasprep Logo" width={180} height={40} style={{ objectFit: 'contain' }} />
           </Link>

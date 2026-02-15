@@ -78,8 +78,16 @@ export function SignupPageClient() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-secondary">
-      <Card className="mx-auto max-w-sm w-full">
+    <div className="relative flex min-h-screen items-center justify-center">
+       <Image
+          src="https://picsum.photos/seed/university/1920/1080"
+          alt="University background"
+          fill
+          className="object-cover"
+          data-ai-hint="university campus"
+      />
+      <div className="absolute inset-0 bg-white/70" />
+      <Card className="relative mx-auto max-w-sm w-full bg-card/90 backdrop-blur-sm">
         <CardHeader className="space-y-1 text-center">
           <Link href="/" className="flex justify-center mb-4">
             <Image src="/precasprep-logo.webp" alt="Precasprep Logo" width={180} height={40} style={{ objectFit: 'contain' }} />
