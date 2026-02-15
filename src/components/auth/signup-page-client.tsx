@@ -86,7 +86,7 @@ export function SignupPageClient() {
           className="object-cover"
           data-ai-hint="graduation celebration"
       />
-      <div className="absolute inset-0 bg-white/70" />
+      <div className="absolute inset-0 bg-[#ffffff1f]" />
       <Card className="relative mx-auto max-w-sm w-full bg-card/90 backdrop-blur-sm">
         <CardHeader className="space-y-1 text-center">
           <Link href="/" className="flex justify-center mb-4">
