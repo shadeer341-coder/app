@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -77,10 +78,6 @@ export function LoginPageClient() {
           <Link href="/" className="flex justify-center mb-4">
             <Image src="/precasprep-logo.webp" alt="Precasprep Logo" width={180} height={40} style={{ objectFit: 'contain' }} />
           </Link>
-          <CardTitle className="text-2xl font-headline">Login</CardTitle>
-          <CardDescription>
-            Enter your email below to login to your account
-          </CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
