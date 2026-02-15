@@ -71,7 +71,7 @@ export function LoginPageClient() {
   return (
     <div className="relative flex min-h-screen items-center justify-center">
        <Image
-        src="https://images.pexels.com/photos/267885/pexels-photo-267885.jpeg"
+        src="https://images.pexels.com/photos/267885/pexels-photo-267885.webp"
         alt="Graduation background"
         fill
         className="object-cover"
