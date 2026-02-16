@@ -27,6 +27,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import Image from 'next/image';
+import { ForgotPasswordDialog } from './forgot-password-dialog';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address.' }),
@@ -109,12 +110,16 @@ export function LoginPageClient() {
                   <FormItem>
                      <div className="flex items-center">
                         <Label htmlFor="password">Password</Label>
-                        <Link
-                          href="#"
-                          className="ml-auto inline-block text-sm underline"
-                        >
-                          Forgot your password?
-                        </Link>
+                        <ForgotPasswordDialog
+                            trigger={
+                                <button
+                                type="button"
+                                className="ml-auto inline-block text-sm underline"
+                                >
+                                Forgot your password?
+                                </button>
+                            }
+                        />
                       </div>
                     <FormControl>
                       <Input type="password" {...field} />
