@@ -131,7 +131,7 @@ export function LoginPageClient() {
           </Form>
           <div className="mt-4 text-center text-sm">
             Don&apos;t have an account?{" "}
-            <Link href="/signup" className="underline">
+            <Link href="https://www.precasprep.com/#pricing" className="underline">
               Sign up
             </Link>
           </div>
