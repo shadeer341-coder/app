@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { createSupabaseServiceRoleClient, createSupabaseServerActionClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { getCurrentUser } from '@/lib/auth';
+import { sendWelcomeEmail } from '@/lib/email';
 
 
 const createStudentSchema = z.object({
@@ -73,6 +74,8 @@ export async function createStudentByAgency(formData: FormData) {
     return { success: false, message: authError.message };
   }
 
+  let successMessage = `Student account for ${full_name} has been created.`;
+
   // Per your request, skip the profiles row. Since a trigger automatically
   // creates it, we will now delete it to keep the table clean.
   if (authData.user) {
@@ -99,11 +102,24 @@ export async function createStudentByAgency(formData: FormData) {
       // We can't easily roll back the auth user creation, so we log and proceed.
       console.error(`CRITICAL: Student created for agency ${agencyUser.id}, but failed to decrement quota. Error: ${quotaError.message}`);
     }
+
+    // Send welcome email
+    const emailResult = await sendWelcomeEmail({
+        name: full_name,
+        email: email,
+        plan: "Student",
+        tempPassword: password,
+    });
+
+    if (!emailResult.success) {
+        successMessage += " However, the welcome email could not be sent. Please share the temporary password with them manually."
+        console.error(`Failed to send welcome email to ${email}: ${emailResult.message}`);
+    }
   }
 
 
   revalidatePath('/dashboard/students');
-  return { success: true, message: `Student account for ${full_name} has been created.` };
+  return { success: true, message: successMessage };
 }
 
 

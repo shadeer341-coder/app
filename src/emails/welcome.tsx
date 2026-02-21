@@ -19,7 +19,7 @@ interface WelcomeEmailProps {
   tempPassword?: string;
 }
 
-const baseUrl = 'https://precasprep.com';
+const baseUrl = 'https://app.precasprep.com';
 
 export const WelcomeEmail = ({
   name,

@@ -17,7 +17,7 @@ interface ResetPasswordEmailProps {
   resetLink: string;
 }
 
-const baseUrl = 'https://precasprep.com';
+const baseUrl = 'https://app.precasprep.com';
 
 export const ResetPasswordEmail = ({
   name,

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -29,6 +30,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import Image from 'next/image';
+import { requestPasswordReset } from '@/app/actions/auth';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address.' }),
@@ -82,15 +84,13 @@ export function LoginPageClient() {
   
   async function onForgotPasswordSubmit(values: z.infer<typeof forgotPasswordSchema>) {
     setLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(values.email, {
-        redirectTo: `${window.location.origin}/update-password`,
-    });
+    const result = await requestPasswordReset(values.email);
     setLoading(false);
-    if (error) {
+    if (!result.success) {
         toast({
             variant: 'destructive',
             title: 'Error',
-            description: error.message,
+            description: result.message,
         });
     } else {
         setView('email-sent');
