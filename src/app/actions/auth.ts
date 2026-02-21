@@ -15,36 +15,41 @@ export async function requestPasswordReset(email: string) {
 
     const supabase = createSupabaseServiceRoleClient();
     
+    // This is the correct production URL for the password update page.
     const redirectTo = 'https://app.precasprep.com/update-password';
     
-    // Generate single-use recovery link
-    // This also serves to check if the user exists.
+    // Generate a single-use recovery link from Supabase.
     const { data, error: linkError } = await supabase.auth.admin.generateLink({
         type: 'recovery',
         email: userEmail,
-        options: { redirectTo }
+        options: { redirectTo } // We still pass redirectTo here as a fallback.
     });
 
     if (linkError) {
-        // Don't reveal if user exists or not for security reasons.
-        // Log the error server-side and return a generic success message.
         console.error(`Error generating password reset link for ${userEmail}:`, linkError.message);
         return { success: true, message: "If an account with this email exists, a password reset link has been sent." };
     }
 
     const { properties, user } = data;
-    const resetLink = properties.action_link;
+    const originalResetLink = properties.action_link;
     const userName = user.user_metadata?.full_name || 'User';
 
-    // Send email via Resend
+    // Manually ensure the 'redirect_to' parameter in the link is correct.
+    // This provides an extra layer of certainty that the link will work in production,
+    // even if there are misconfigurations in the Supabase project's URL settings.
+    const url = new URL(originalResetLink);
+    url.searchParams.set('redirect_to', redirectTo);
+    const finalResetLink = url.toString();
+
+
+    // Send the email with the corrected link.
     const emailResult = await sendPasswordResetEmail({
         name: userName,
         email: userEmail,
-        resetLink,
+        resetLink: finalResetLink,
     });
 
     if (!emailResult.success) {
-        // If email fails, the user won't get the link. Return an error.
         return { success: false, message: emailResult.message };
     }
 
