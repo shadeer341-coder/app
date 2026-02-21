@@ -14,19 +14,19 @@ import * as React from 'react';
 
 interface ResetPasswordEmailProps {
   name: string;
-  resetLink: string;
+  code: string;
 }
 
 const baseUrl = 'https://app.precasprep.com';
 
 export const ResetPasswordEmail = ({
   name,
-  resetLink,
+  code,
 }: ResetPasswordEmailProps) => (
   <Html>
     <Head />
     <Preview>
-      Reset your precasprep password
+      Your precasprep password reset code
     </Preview>
     <Body style={main}>
       <Container style={container}>
@@ -39,18 +39,13 @@ export const ResetPasswordEmail = ({
         />
         <Text style={paragraph}>Hi {name},</Text>
         <Text style={paragraph}>
-          Someone recently requested a password change for your precasprep account. If this was you, you can set a new password here:
+          Someone recently requested a password change for your precasprep account. If this was you, use the code below to reset your password.
         </Text>
-        <Section style={btnContainer}>
-          <Button style={button} href={resetLink}>
-            Reset Password
-          </Button>
+        <Section style={codeContainer}>
+          <Text style={codeStyle}>{code}</Text>
         </Section>
         <Text style={paragraph}>
-          If you don't want to change your password or didn't request this, just ignore and delete this message.
-        </Text>
-        <Text style={paragraph}>
-          To keep your account secure, please don't forward this email to anyone.
+          This code will expire in 10 minutes. If you did not request a password reset, please ignore this email.
         </Text>
         <Text style={paragraph}>
           Best,
@@ -89,21 +84,6 @@ const paragraph = {
   lineHeight: '26px',
 };
 
-const btnContainer = {
-  textAlign: 'center' as const,
-};
-
-const button = {
-  backgroundColor: '#5e6ad2',
-  borderRadius: '3px',
-  color: '#fff',
-  fontSize: '16px',
-  textDecoration: 'none',
-  textAlign: 'center' as const,
-  display: 'block',
-  padding: '12px',
-};
-
 const hr = {
   borderColor: '#cccccc',
   margin: '20px 0',
@@ -112,4 +92,19 @@ const hr = {
 const footer = {
   color: '#8898aa',
   fontSize: '12px',
+};
+
+const codeContainer = {
+  background: '#f2f3f3',
+  borderRadius: '4px',
+  margin: '20px 0',
+  padding: '20px',
+  textAlign: 'center' as const,
+};
+
+const codeStyle = {
+  fontSize: '32px',
+  fontWeight: 'bold' as const,
+  letterSpacing: '8px',
+  color: '#333',
 };

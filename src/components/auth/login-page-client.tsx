@@ -30,7 +30,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import Image from 'next/image';
-import { requestPasswordReset } from '@/app/actions/auth';
+import { requestPasswordReset, resetPassword } from '@/app/actions/auth';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address.' }),
@@ -41,26 +41,32 @@ const forgotPasswordSchema = z.object({
     email: z.string().email({ message: 'Please enter a valid email.' }),
 });
 
+const codeResetSchema = z.object({
+    code: z.string().min(6, { message: 'Code must be 6 digits.' }),
+    password: z.string().min(8, { message: 'Password must be at least 8 characters.' }),
+});
+
 export function LoginPageClient() {
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [view, setView] = useState<'login' | 'forgot-password' | 'email-sent'>('login');
+  const [view, setView] = useState<'login' | 'forgot-password' | 'code-entry' | 'email-sent'>('login');
+  const [resetEmail, setResetEmail] = useState('');
   const supabase = createSupabaseClient();
 
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: '',
-      password: '',
-    },
+    defaultValues: { email: '', password: '' },
   });
   
   const forgotPasswordForm = useForm<z.infer<typeof forgotPasswordSchema>>({
     resolver: zodResolver(forgotPasswordSchema),
-    defaultValues: {
-      email: '',
-    },
+    defaultValues: { email: '' },
+  });
+
+  const codeResetForm = useForm<z.infer<typeof codeResetSchema>>({
+      resolver: zodResolver(codeResetSchema),
+      defaultValues: { code: '', password: '' },
   });
 
   async function onLoginSubmit(values: z.infer<typeof loginSchema>) {
@@ -93,8 +99,23 @@ export function LoginPageClient() {
             description: result.message,
         });
     } else {
-        setView('email-sent');
+        setResetEmail(values.email);
+        setView('code-entry');
     }
+  }
+
+  async function onCodeResetSubmit(values: z.infer<typeof codeResetSchema>) {
+      setLoading(true);
+      const result = await resetPassword({ ...values, email: resetEmail });
+      setLoading(false);
+      if (!result.success) {
+        toast({ variant: 'destructive', title: 'Error', description: result.message });
+      } else {
+        toast({ title: 'Success!', description: 'Your password has been reset. Please log in.' });
+        setView('login');
+        codeResetForm.reset();
+        loginForm.reset();
+      }
   }
 
   return (
@@ -121,15 +142,15 @@ export function LoginPageClient() {
                 <>
                     <CardTitle className="text-2xl font-headline">Forgot Password</CardTitle>
                     <CardDescription>
-                        Enter your email and we&apos;ll send a reset link.
+                        Enter your email and we&apos;ll send a 6-digit code.
                     </CardDescription>
                 </>
             )}
-            {view === 'email-sent' && (
+            {view === 'code-entry' && (
                 <>
-                    <CardTitle className="text-2xl font-headline">Check your email</CardTitle>
+                    <CardTitle className="text-2xl font-headline">Reset Your Password</CardTitle>
                     <CardDescription>
-                        A password reset link has been sent. It might be in your spam folder.
+                        Enter the code sent to {resetEmail} and a new password.
                     </CardDescription>
                 </>
             )}
@@ -207,7 +228,7 @@ export function LoginPageClient() {
                             />
                             <Button type="submit" className="w-full" disabled={loading}>
                                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Send Reset Link
+                                Send Code
                             </Button>
                         </form>
                     </Form>
@@ -218,10 +239,48 @@ export function LoginPageClient() {
                     </div>
                 </>
             )}
-            {view === 'email-sent' && (
-                 <Button onClick={() => setView('login')} className="w-full">
-                    Back to login
-                </Button>
+            {view === 'code-entry' && (
+                 <>
+                    <Form {...codeResetForm}>
+                        <form onSubmit={codeResetForm.handleSubmit(onCodeResetSubmit)} className="grid gap-4">
+                            <FormField
+                                control={codeResetForm.control}
+                                name="code"
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>6-Digit Code</FormLabel>
+                                    <FormControl>
+                                    <Input placeholder="123456" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={codeResetForm.control}
+                                name="password"
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>New Password</FormLabel>
+                                    <FormControl>
+                                    <Input type="password" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
+                            <Button type="submit" className="w-full" disabled={loading}>
+                                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Reset Password
+                            </Button>
+                        </form>
+                    </Form>
+                     <div className="mt-4 text-center text-sm">
+                        <button onClick={() => setView('login')} className="underline">
+                            Back to login
+                        </button>
+                    </div>
+                </>
             )}
         </CardContent>
       </Card>

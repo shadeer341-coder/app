@@ -30,7 +30,7 @@ export async function sendWelcomeEmail({ name, email, plan, tempPassword }: { na
   }
 }
 
-export async function sendPasswordResetEmail({ name, email, resetLink }: { name: string, email: string, resetLink: string }) {
+export async function sendPasswordResetEmail({ name, email, code }: { name: string, email: string, code: string }) {
     if (!process.env.RESEND_API_KEY) {
         console.warn("RESEND_API_KEY is not set. Skipping sending password reset email.");
         return { success: false, message: 'Email provider is not configured.' };
@@ -40,8 +40,8 @@ export async function sendPasswordResetEmail({ name, email, resetLink }: { name:
         await resend.emails.send({
             from: fromEmail,
             to: [email],
-            subject: 'Reset your precasprep password',
-            html: render(React.createElement(ResetPasswordEmail, { name, resetLink })),
+            subject: 'Your precasprep Password Reset Code',
+            html: render(React.createElement(ResetPasswordEmail, { name, code })),
         });
         return { success: true, message: 'Password reset email sent.' };
     } catch (error: any) {
