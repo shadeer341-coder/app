@@ -15,34 +15,27 @@ export async function requestPasswordReset(email: string) {
 
     const supabase = createSupabaseServiceRoleClient();
     
-    // This is the correct production URL for the password update page.
     const redirectTo = 'https://app.precasprep.com/update-password';
     
-    // Generate a single-use recovery link from Supabase.
+    // Generate a single-use recovery link from Supabase, relying on the `redirectTo` option.
+    // This is the standard method and should be respected if the Supabase project's
+    // URL allow-list is configured correctly.
     const { data, error: linkError } = await supabase.auth.admin.generateLink({
         type: 'recovery',
         email: userEmail,
-        options: { redirectTo } // We still pass redirectTo here as a fallback.
+        options: { redirectTo }
     });
 
     if (linkError) {
         console.error(`Error generating password reset link for ${userEmail}:`, linkError.message);
+        // Do not leak information about whether a user exists.
         return { success: true, message: "If an account with this email exists, a password reset link has been sent." };
     }
 
     const { properties, user } = data;
-    const originalResetLink = properties.action_link;
+    const finalResetLink = properties.action_link;
     const userName = user.user_metadata?.full_name || 'User';
 
-    // Manually ensure the 'redirect_to' parameter in the link is correct.
-    // This provides an extra layer of certainty that the link will work in production,
-    // even if there are misconfigurations in the Supabase project's URL settings.
-    const url = new URL(originalResetLink);
-    url.searchParams.set('redirect_to', redirectTo);
-    const finalResetLink = url.toString();
-
-
-    // Send the email with the corrected link.
     const emailResult = await sendPasswordResetEmail({
         name: userName,
         email: userEmail,
