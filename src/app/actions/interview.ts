@@ -124,9 +124,12 @@ export async function submitInterview(sessionId: string, interviewData: AttemptD
         
         if (updateError) throw new Error(`Could not schedule interview for processing: ${updateError.message}`);
 
-        // 3. Send confirmation email
+        // 3. Fetch user profile to get the user's name for the email
+        const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user.id).single();
+
+        // 4. Send confirmation email
         const emailResult = await sendInterviewSubmittedEmail({
-            name: user.user_metadata?.full_name || 'User',
+            name: profile?.full_name || user.user_metadata?.full_name || 'User',
             email: user.email!,
             sessionId: sessionId,
         });

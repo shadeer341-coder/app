@@ -77,8 +77,9 @@ export async function processInterviewInBackground(sessionId: string) {
         if (userError) throw userError;
 
         if (user && user.email) {
+            const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', userId).single();
             await sendInterviewCompletedEmail({
-                name: user.user_metadata?.full_name || 'User',
+                name: profile?.full_name || user.user_metadata?.full_name || 'User',
                 email: user.email,
                 sessionId: sessionId,
                 overallScore: overallScore,
