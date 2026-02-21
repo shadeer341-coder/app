@@ -23,8 +23,14 @@ export async function requestPasswordReset(email: string) {
         .eq('email', userEmail)
         .single();
     
-    // Always return a success message to prevent user enumeration attacks
-    if (userError || !user) {
+    // If there's an actual DB error, we should log it and inform the user.
+    if (userError) {
+        console.error('Error finding user for password reset:', userError);
+        return { success: false, message: 'A database error occurred. Please try again later.' };
+    }
+
+    // If no user is found but there's no DB error, we proceed silently for security.
+    if (!user) {
         console.warn(`Password reset requested for non-existent user: ${userEmail}`);
         return { success: true, message: "If an account with this email exists, a password reset code has been sent." };
     }
