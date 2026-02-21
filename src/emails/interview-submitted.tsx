@@ -28,7 +28,7 @@ export const InterviewSubmittedEmail = ({
   <Html>
     <Head />
     <Preview>
-      Your precasprep interview has been submitted for analysis
+      Your precasprep interview has been submitted
     </Preview>
     <Body style={main}>
       <Container style={container}>
@@ -41,10 +41,10 @@ export const InterviewSubmittedEmail = ({
         />
         <Text style={paragraph}>Hi {name},</Text>
         <Text style={paragraph}>
-          We've successfully received your interview submitted on {submittedAt.toLocaleString()}. It is now being processed by our AI for feedback.
+          We've successfully received your interview submitted on {submittedAt.toLocaleString()}. It is now being processed for feedback.
         </Text>
         <Text style={paragraph}>
-          You will be able to view your results in your dashboard shortly.
+          You will be able to view your results in your dashboard shortly. Please note that it can take approximately 5 hours to receive your detailed feedback.
         </Text>
         <Section style={btnContainer}>
           <Button style={button} href={`${baseUrl}/dashboard/interviews/${sessionId}`}>
