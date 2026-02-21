@@ -1,4 +1,3 @@
-
 'use server';
 
 import { z } from 'zod';
@@ -16,12 +15,7 @@ export async function requestPasswordReset(email: string) {
 
     const supabase = createSupabaseServiceRoleClient();
     
-    const redirectTo = process.env.NEXT_PUBLIC_SITE_URL ? `${process.env.NEXT_PUBLIC_SITE_URL}/update-password` : undefined;
-
-    if (!redirectTo) {
-        console.error('NEXT_PUBLIC_SITE_URL is not set. Cannot generate password reset link.');
-        return { success: false, message: 'Site URL is not configured.' };
-    }
+    const redirectTo = 'https://app.precasprep.com/update-password';
     
     // Generate single-use recovery link
     // This also serves to check if the user exists.
