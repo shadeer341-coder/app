@@ -16,24 +16,22 @@ export async function requestPasswordReset(email: string) {
 
     const supabase = createSupabaseServiceRoleClient();
     
-    // Find the user by email
-    const { data: user, error: userError } = await supabase
-        .from('users')
-        .select('id, raw_user_meta_data')
-        .eq('email', userEmail)
-        .single();
+    // Find the user by email using the admin API
+    const { data: { users }, error: usersError } = await supabase.auth.admin.listUsers();
     
-    // If there's an actual DB error, we should log it and inform the user.
-    if (userError) {
-        console.error('Error finding user for password reset:', userError);
+    if (usersError) {
+        console.error('Error listing users for password reset:', usersError);
         return { success: false, message: 'A database error occurred. Please try again later.' };
     }
 
-    // If no user is found but there's no DB error, we proceed silently for security.
+    const user = users.find(u => u.email === userEmail);
+    
+    // If no user is found, we proceed silently for security.
     if (!user) {
         console.warn(`Password reset requested for non-existent user: ${userEmail}`);
         return { success: true, message: "If an account with this email exists, a password reset code has been sent." };
     }
+
 
     // Generate a 6-digit code
     const code = Math.floor(100000 + Math.random() * 900000).toString();
@@ -53,7 +51,7 @@ export async function requestPasswordReset(email: string) {
         return { success: false, message: 'Could not generate a reset code. Please try again.' };
     }
     
-    const userName = (user.raw_user_meta_data as any)?.full_name || 'User';
+    const userName = (user.user_metadata as any)?.full_name || 'User';
 
     // Send the email with the code
     const emailResult = await sendPasswordResetEmail({
@@ -86,13 +84,16 @@ export async function resetPassword(input: z.infer<typeof resetPasswordSchema>) 
     const supabase = createSupabaseServiceRoleClient();
 
     // 1. Find user by email
-    const { data: user, error: userError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('email', email)
-        .single();
+    const { data: { users }, error: usersError } = await supabase.auth.admin.listUsers();
+    
+    if (usersError) {
+        console.error("Failed to list users to reset password:", usersError);
+        return { success: false, message: "An error occurred while trying to find your account." };
+    }
 
-    if (userError || !user) {
+    const user = users.find(u => u.email === email);
+
+    if (!user) {
         return { success: false, message: "Invalid code or email." };
     }
 
