@@ -2,6 +2,7 @@
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { generateInterviewFeedback } from '@/ai/flows/generate-interview-feedback';
 import { summarizeInterviewPerformance } from '@/ai/flows/summarize-interview-performance';
+import { sendInterviewCompletedEmail } from '@/lib/email';
 import type { InterviewAttempt } from '@/lib/types';
 
 export async function processInterviewInBackground(sessionId: string) {
@@ -66,5 +67,25 @@ export async function processInterviewInBackground(sessionId: string) {
 
     if (sessionUpdateError) {
         throw new Error(`Failed to update final session ${sessionId}: ${sessionUpdateError.message}`);
+    }
+
+    // 5. Send completion email
+    try {
+        const userId = attempts[0].user_id;
+        const { data: { user }, error: userError } = await supabase.auth.admin.getUserById(userId);
+
+        if (userError) throw userError;
+
+        if (user && user.email) {
+            await sendInterviewCompletedEmail({
+                name: user.user_metadata?.full_name || 'User',
+                email: user.email,
+                sessionId: sessionId,
+                overallScore: overallScore,
+            });
+        }
+    } catch (emailError: any) {
+        // Log the error but don't fail the entire process if email fails
+        console.error(`Failed to send completion email for session ${sessionId}:`, emailError.message);
     }
 }

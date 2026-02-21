@@ -7,6 +7,7 @@ import WelcomeEmail from '@/emails/welcome';
 import ResetPasswordEmail from '@/emails/reset-password';
 import InterviewSubmittedEmail from '@/emails/interview-submitted';
 import RechargeConfirmationEmail from '@/emails/recharge-confirmation';
+import InterviewCompletedEmail from '@/emails/interview-completed';
 import * as React from 'react';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -88,6 +89,26 @@ export async function sendRechargeConfirmationEmail({ name, email, attemptsAdded
     return { success: true, message: 'Recharge confirmation sent.' };
   } catch (error: any) {
     console.error("Failed to send recharge confirmation email:", error);
+    return { success: false, message: error.message };
+  }
+}
+
+export async function sendInterviewCompletedEmail({ name, email, sessionId, overallScore }: { name: string; email: string; sessionId: string; overallScore: number; }) {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn("RESEND_API_KEY is not set. Skipping sending interview completion email.");
+    return { success: false, message: 'Email provider is not configured.' };
+  }
+
+  try {
+    await resend.emails.send({
+      from: fromEmail,
+      to: [email],
+      subject: 'Your Interview Feedback is Ready!',
+      html: render(React.createElement(InterviewCompletedEmail, { name, sessionId, overallScore })),
+    });
+    return { success: true, message: 'Interview completion email sent.' };
+  } catch (error: any) {
+    console.error("Failed to send interview completion email:", error);
     return { success: false, message: error.message };
   }
 }
