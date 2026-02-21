@@ -133,7 +133,7 @@ export async function rechargeAgencyQuota(attemptsToAdd: number, amountSpent: nu
       return { success: false, message: "Invalid number of attempts provided." };
   }
 
-  const supabase = createSupabaseServerActionClient();
+  const supabase = createSupabaseServiceRoleClient();
   
   const currentQuota = agencyUser.interview_quota || 0;
   const newQuota = currentQuota + attemptsToAdd;

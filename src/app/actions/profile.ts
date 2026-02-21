@@ -2,7 +2,7 @@
 'use server';
 
 import { z } from 'zod';
-import { createSupabaseServerActionClient } from '@/lib/supabase/server';
+import { createSupabaseServerActionClient, createSupabaseServiceRoleClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { getCurrentUser } from '@/lib/auth';
 import { sendRechargeConfirmationEmail } from '@/lib/email';
@@ -56,7 +56,7 @@ export async function rechargeUserQuota(attemptsToAdd: number, amountSpent: numb
       return { success: false, message: "Invalid number of attempts provided." };
   }
 
-  const supabase = createSupabaseServerActionClient();
+  const supabase = createSupabaseServiceRoleClient();
   
   const currentQuota = user.interview_quota || 0;
   const newQuota = currentQuota + attemptsToAdd;
