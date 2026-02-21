@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { createSupabaseServiceRoleClient, createSupabaseServerActionClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { getCurrentUser } from '@/lib/auth';
-import { sendWelcomeEmail } from '@/lib/email';
+import { sendWelcomeEmail, sendRechargeConfirmationEmail } from '@/lib/email';
 
 
 const createStudentSchema = z.object({
@@ -162,6 +162,15 @@ export async function rechargeAgencyQuota(attemptsToAdd: number, amountSpent: nu
   if (purchaseLogError) {
       console.error(`Failed to log agency purchase for agency ${agencyUser.id}. Error: ${purchaseLogError.message}`);
   }
+
+  // Send confirmation email
+  await sendRechargeConfirmationEmail({
+    name: agencyUser.name,
+    email: agencyUser.email,
+    attemptsAdded: attemptsToAdd,
+    newQuota: newQuota,
+    isAgency: true,
+  });
 
   revalidatePath('/dashboard/recharge');
   revalidatePath('/dashboard');

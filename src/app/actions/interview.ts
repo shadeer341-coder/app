@@ -3,6 +3,7 @@
 
 import { createSupabaseServerActionClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { sendInterviewSubmittedEmail } from "@/lib/email";
 
 type AttemptDataItem = {
     questionId: number;
@@ -122,6 +123,17 @@ export async function submitInterview(sessionId: string, interviewData: AttemptD
             .eq('id', sessionId);
         
         if (updateError) throw new Error(`Could not schedule interview for processing: ${updateError.message}`);
+
+        // 3. Send confirmation email
+        const emailResult = await sendInterviewSubmittedEmail({
+            name: user.user_metadata?.full_name || 'User',
+            email: user.email!,
+            sessionId: sessionId,
+        });
+
+        if (!emailResult.success) {
+            console.warn(`Interview submitted, but confirmation email failed to send for session ${sessionId}. Reason: ${emailResult.message}`);
+        }
 
         revalidatePath('/dashboard/interviews');
         return { success: true, message: "Interview submitted for processing.", sessionId: sessionId };

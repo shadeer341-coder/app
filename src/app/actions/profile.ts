@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { createSupabaseServerActionClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { getCurrentUser } from '@/lib/auth';
+import { sendRechargeConfirmationEmail } from '@/lib/email';
 
 const profileSchema = z.object({
   full_name: z.string().min(2, "Full name is required."),
@@ -84,6 +85,15 @@ export async function rechargeUserQuota(attemptsToAdd: number, amountSpent: numb
   if (purchaseLogError) {
     console.error(`Failed to log individual purchase for user ${user.id}. Error: ${purchaseLogError.message}`);
   }
+
+  // Send confirmation email
+  await sendRechargeConfirmationEmail({
+    name: user.name,
+    email: user.email,
+    attemptsAdded: attemptsToAdd,
+    newQuota: newQuota,
+    isAgency: false,
+  });
 
   revalidatePath('/dashboard/recharge');
   revalidatePath('/dashboard');
