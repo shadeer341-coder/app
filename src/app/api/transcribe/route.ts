@@ -3,14 +3,6 @@ import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { promises as fs } from 'fs';
 
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '10mb',
-    },
-  },
-};
-
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
