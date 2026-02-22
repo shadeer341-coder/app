@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -38,6 +39,7 @@ import Image from 'next/image';
 type University = { name: string; country: string; };
 
 const formSchema = z.object({
+  user_type: z.string(), // 'student' or 'agency'
   // Common / Student
   full_name: z.string().min(2, "Full name is required."),
   gender: z.string().optional(),
@@ -53,6 +55,23 @@ const formSchema = z.object({
   agency_job_title: z.string().optional(), // Occupation
   mobile_number: z.string().optional(),
   email: z.string().email().optional(),
+}).superRefine((data, ctx) => {
+  if (data.user_type === 'student') {
+    if (!data.program || data.program.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Please select a program.',
+        path: ['program'],
+      });
+    }
+    if (!data.university || data.university.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Please select a university.',
+        path: ['university'],
+      });
+    }
+  }
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -98,6 +117,7 @@ export function OnboardingPageClient() {
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      user_type: '',
       full_name: '',
       gender: '',
       age: undefined,
@@ -126,14 +146,17 @@ export function OnboardingPageClient() {
             }
         }
 
+        let type: 'student' | 'agency';
         if (String(user?.user_metadata?.group_id) === '2') {
-            setUserType('agency');
+            type = 'agency';
             const planString = user?.user_metadata?.plan || ''; // e.g., "Agency - Advanced"
             const plan = planString.split(' - ')[1] || null; // e.g., "Advanced"
             setDetectedAgencyPlan(plan);
         } else {
-            setUserType('student');
+            type = 'student';
         }
+        setUserType(type);
+        form.setValue('user_type', type);
     };
     determineUserTypeAndEmail();
   }, [supabase, form]);
@@ -469,7 +492,12 @@ export function OnboardingPageClient() {
                                                 onValueChange={setUniversitySearch}
                                             />
                                             <CommandList>
-                                                {isSearching && <CommandItem>Searching...</CommandItem>}
+                                                {isSearching && (
+                                                    <div className="p-4 text-sm flex items-center justify-center text-muted-foreground">
+                                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                        Searching...
+                                                    </div>
+                                                )}
                                                 {!isSearching && universities.length === 0 && universitySearch.length > 2 && <CommandEmpty>No university found.</CommandEmpty>}
                                                 <CommandGroup>
                                                 {universities.map((uni) => (
@@ -625,3 +653,5 @@ export function OnboardingPageClient() {
     </div>
   );
 }
+
+    
