@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
@@ -840,7 +839,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     return (
         <div className="relative aspect-video w-full max-w-3xl rounded-lg overflow-hidden border-2 border-white/20 shadow-2xl bg-black">
             {showPreview && <video ref={previewVideoRef} className="w-full h-full object-cover" autoPlay muted playsInline />}
-            {showReview && <video ref={reviewVideoRef} src={videoRecordings[currentQuestionIndex]!} className="w-full h-full object-cover" controls autoPlay playsInline />}
+            {showReview && <video ref={reviewVideoRef} src={videoRecordings[currentQuestionIndex]!} className="w-full h-full object-cover" controls controlsList="nodownload" playsInline />}
             {showLive && <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />}
             
             {stage === 'question_ready' && (
