@@ -228,22 +228,18 @@ async function transcribeAudio(audioBlob: Blob): Promise<string> {
     });
 
     if (!response.ok) {
-        let errorMessage = `Transcription failed: ${response.statusText}`;
-        try {
-            // First, try to parse the error as JSON, which is the expected format for our API errors
-            const errorBody = await response.json();
-            errorMessage = `Transcription failed: ${errorBody.error || response.statusText}`;
-        } catch (e) {
-            // If JSON parsing fails, it's likely an HTML error page from the server (e.g., for 413)
-            if (response.status === 413) {
-                 errorMessage = "The recorded file is too large to process. This may be due to a poor network connection during upload. Please try again.";
-            } else {
-                 const textBody = await response.text();
-                 console.error("Transcription API returned non-JSON error:", textBody);
-                 errorMessage = "Transcription failed due to an unexpected server error.";
-            }
+        if (response.status === 413) {
+            throw new Error("The recorded file is too large to process. This may be due to a poor network connection during upload. Please try again.");
         }
-        throw new Error(errorMessage);
+        
+        let errorMessage;
+        try {
+            const errorBody = await response.json();
+            errorMessage = errorBody.error || response.statusText;
+        } catch (e) {
+            errorMessage = `An unexpected error occurred: ${response.statusText}`;
+        }
+        throw new Error(`Transcription failed: ${errorMessage}`);
     }
 
     const result = await response.json();
@@ -997,5 +993,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     </div>
   );
 }
+
+    
 
     
