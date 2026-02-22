@@ -221,25 +221,38 @@ const InterviewAgenda = ({
 async function transcribeAudio(audioBlob: Blob): Promise<string> {
     const formData = new FormData();
     formData.append('audio', audioBlob, 'interview-answer.webm');
-    
+
     const response = await fetch(`/api/transcribe`, {
         method: 'POST',
         body: formData,
     });
 
     if (!response.ok) {
+        let errorMessage = `Transcription failed: ${response.statusText}`;
+        // Vercel Hobby tier has a 4.5MB limit for request bodies.
         if (response.status === 413) {
-            throw new Error("The recorded file is too large to process. This may be due to a poor network connection during upload. Please try again.");
+            errorMessage = "The recording is too large to upload. This can be caused by a long answer or a slow network connection. Please try answering more concisely.";
+        } else {
+            try {
+                // Try to read the error response from the server.
+                const errorBody = await response.text();
+                // Check for Vercel's specific error code for oversized functions
+                if (errorBody.includes('FUNCTION_PAYLOAD_TOO_LARGE')) {
+                     errorMessage = "The recording is too large to process. Please try a shorter answer.";
+                } else {
+                    // Try to parse it as JSON, if not, use the raw text.
+                    try {
+                        const errorJson = JSON.parse(errorBody);
+                        errorMessage = `Transcription failed: ${errorJson.error || errorBody}`;
+                    } catch {
+                        errorMessage = `Transcription failed: An unexpected server error occurred.`;
+                    }
+                }
+            } catch {
+                // Ignore if reading the body fails, stick with the original status text.
+            }
         }
-        
-        let errorMessage;
-        try {
-            const errorBody = await response.json();
-            errorMessage = errorBody.error || response.statusText;
-        } catch (e) {
-            errorMessage = `An unexpected error occurred: ${response.statusText}`;
-        }
-        throw new Error(`Transcription failed: ${errorMessage}`);
+        throw new Error(errorMessage);
     }
 
     const result = await response.json();
@@ -534,7 +547,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     
     const audioOptions = {
         mimeType: 'audio/webm;codecs=opus',
-        audioBitsPerSecond: 64000,
+        audioBitsPerSecond: 32000,
     };
 
     try {
@@ -832,7 +845,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
             
             {stage === 'question_ready' && (
                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 text-center p-6 bg-black/70 text-white">
-                    <p className="text-lg text-white/80">Video Response &bull; {currentQuestion.answer_time_seconds || 60} seconds</p>
+                    <p className="text-lg text-white/80">Video Response • {currentQuestion.answer_time_seconds || 60} seconds</p>
                     <h3 className="text-3xl font-bold font-headline">You will have {currentQuestion.read_time_seconds || 15} seconds to prepare your answer.</h3>
                     <Button size="lg" onClick={() => setStage('question_reading')}>
                         Start
@@ -1027,6 +1040,8 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     </div>
   );
 }
+
+    
 
     
 
