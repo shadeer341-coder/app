@@ -278,6 +278,9 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
+  
+  const audioRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   const { toast } = useToast();
   const router = useRouter();
@@ -510,8 +513,8 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
 
     setCurrentSnapshots([]);
     recordedChunksRef.current = [];
+    audioChunksRef.current = [];
   
-    // Only take snapshots for the "Pre-Interview Checks" ID question
     if (currentQuestion?.categoryName === 'Pre-Interview Checks' && currentQuestion?.text.includes('passport')) {
       setTimeout(() => {
         const snapshot1 = captureSnapshot();
@@ -523,21 +526,24 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
       }, 4000);
     }
   
-    const options = {
+    const videoOptions = {
         mimeType: 'video/webm;codecs=vp8,opus',
-        videoBitsPerSecond: 300000, // 300 kbps
-        audioBitsPerSecond: 48000,  // 48 kbps
+        videoBitsPerSecond: 300000,
+        audioBitsPerSecond: 48000,
+    };
+    
+    const audioOptions = {
+        mimeType: 'audio/webm;codecs=opus',
+        audioBitsPerSecond: 64000,
     };
 
     try {
-        if (MediaRecorder.isTypeSupported(options.mimeType)) {
-            mediaRecorderRef.current = new MediaRecorder(streamRef.current, options);
+        if (MediaRecorder.isTypeSupported(videoOptions.mimeType)) {
+            mediaRecorderRef.current = new MediaRecorder(streamRef.current, videoOptions);
         } else {
-            console.warn('VP8/Opus codec not supported, falling back to default.');
             mediaRecorderRef.current = new MediaRecorder(streamRef.current, { mimeType: 'video/webm' });
         }
     } catch (e) {
-        console.error('Error creating MediaRecorder, falling back to default.', e);
         mediaRecorderRef.current = new MediaRecorder(streamRef.current, { mimeType: 'video/webm' });
     }
   
@@ -551,18 +557,43 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
       const blob = new Blob(recordedChunksRef.current, { type: 'video/webm' });
       const url = URL.createObjectURL(blob);
       setVideoRecordings(prev => ({...prev, [currentQuestionIndex]: url}));
-      setCurrentAudioBlob(blob);
-  
       setStage('question_review');
       stopCamera();
     };
-  
+    
+    try {
+      const audioStream = new MediaStream(streamRef.current.getAudioTracks());
+      if (MediaRecorder.isTypeSupported(audioOptions.mimeType)) {
+          audioRecorderRef.current = new MediaRecorder(audioStream, audioOptions);
+      } else {
+          audioRecorderRef.current = new MediaRecorder(audioStream, { mimeType: 'audio/webm' });
+      }
+    } catch(e) {
+      console.error("Could not create audio recorder", e);
+      return;
+    }
+
+    audioRecorderRef.current.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+            audioChunksRef.current.push(event.data);
+        }
+    };
+
+    audioRecorderRef.current.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        setCurrentAudioBlob(audioBlob);
+    };
+
     mediaRecorderRef.current.start();
+    audioRecorderRef.current.start();
   };
 
   const stopRecording = () => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop();
+    }
+    if (audioRecorderRef.current && audioRecorderRef.current.state === 'recording') {
+        audioRecorderRef.current.stop();
     }
   };
 
@@ -712,6 +743,9 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
         }
         if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
             mediaRecorderRef.current.stop();
+        }
+        if (audioRecorderRef.current && audioRecorderRef.current.state !== 'inactive') {
+            audioRecorderRef.current.stop();
         }
         Object.values(videoRecordings).forEach(url => {
             if (url) URL.revokeObjectURL(url);
@@ -993,6 +1027,8 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     </div>
   );
 }
+
+    
 
     
 
