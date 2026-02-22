@@ -9,7 +9,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const apiResponse = await fetch(`http://universities.hipolabs.com/search?name=${encodeURIComponent(name)}`);
+    const apiResponse = await fetch(`http://universities.hipolabs.com/search?country=United%20Kingdom&name=${encodeURIComponent(name)}`);
     
     if (!apiResponse.ok) {
       // Forward the error from the external API
