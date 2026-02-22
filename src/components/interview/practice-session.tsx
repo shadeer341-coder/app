@@ -140,8 +140,8 @@ const CircularTimer = ({ duration, remaining }: { duration: number; remaining: n
                     strokeLinecap="round"
                     strokeDasharray={circumference}
                     strokeDashoffset={strokeDashoffset}
-                    transform="rotate(-90 60 60)"
                     style={{ transition: 'stroke-dashoffset 0.5s linear' }}
+                    transform="rotate(-90 60 60)"
                 />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -228,8 +228,22 @@ async function transcribeAudio(audioBlob: Blob): Promise<string> {
     });
 
     if (!response.ok) {
-        const errorBody = await response.json();
-        throw new Error(`Transcription failed: ${errorBody.error || response.statusText}`);
+        let errorMessage = `Transcription failed: ${response.statusText}`;
+        try {
+            // First, try to parse the error as JSON, which is the expected format for our API errors
+            const errorBody = await response.json();
+            errorMessage = `Transcription failed: ${errorBody.error || response.statusText}`;
+        } catch (e) {
+            // If JSON parsing fails, it's likely an HTML error page from the server (e.g., for 413)
+            if (response.status === 413) {
+                 errorMessage = "The recorded file is too large to process. This may be due to a poor network connection during upload. Please try again.";
+            } else {
+                 const textBody = await response.text();
+                 console.error("Transcription API returned non-JSON error:", textBody);
+                 errorMessage = "Transcription failed due to an unexpected server error.";
+            }
+        }
+        throw new Error(errorMessage);
     }
 
     const result = await response.json();
@@ -513,7 +527,23 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
       }, 4000);
     }
   
-    mediaRecorderRef.current = new MediaRecorder(streamRef.current, { mimeType: 'video/webm' });
+    const options = {
+        mimeType: 'video/webm;codecs=vp8,opus',
+        videoBitsPerSecond: 300000, // 300 kbps
+        audioBitsPerSecond: 48000,  // 48 kbps
+    };
+
+    try {
+        if (MediaRecorder.isTypeSupported(options.mimeType)) {
+            mediaRecorderRef.current = new MediaRecorder(streamRef.current, options);
+        } else {
+            console.warn('VP8/Opus codec not supported, falling back to default.');
+            mediaRecorderRef.current = new MediaRecorder(streamRef.current, { mimeType: 'video/webm' });
+        }
+    } catch (e) {
+        console.error('Error creating MediaRecorder, falling back to default.', e);
+        mediaRecorderRef.current = new MediaRecorder(streamRef.current, { mimeType: 'video/webm' });
+    }
   
     mediaRecorderRef.current.ondataavailable = (event) => {
       if (event.data.size > 0) {
