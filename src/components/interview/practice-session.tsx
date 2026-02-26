@@ -291,7 +291,6 @@ export function PracticeSession({
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const previewVideoRef = useRef<HTMLVideoElement>(null);
-  const reviewVideoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
@@ -831,7 +830,17 @@ export function PracticeSession({
     return (
         <div className="relative aspect-video w-full max-w-3xl rounded-lg overflow-hidden border-2 border-white/20 shadow-2xl bg-black">
             {showPreview && <video ref={previewVideoRef} className="w-full h-full object-cover" autoPlay muted playsInline />}
-            {showReview && <video ref={reviewVideoRef} src={videoRecordings[currentQuestionIndex]!} className="w-full h-full object-cover" controls controlsList="nodownload" playsInline />}
+            {showReview && (
+                <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-900 text-white gap-4">
+                    <div className="bg-green-500/20 p-6 rounded-full">
+                        <CheckCircle className="w-16 h-16 text-green-500" />
+                    </div>
+                    <div className="text-center px-4">
+                        <h3 className="text-2xl font-bold font-headline">Recording Captured</h3>
+                        <p className="text-zinc-400">Your response has been saved and is ready for the next step.</p>
+                    </div>
+                </div>
+            )}
             {showLive && <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />}
             
             {stage === 'question_ready' && (
