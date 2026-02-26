@@ -94,20 +94,57 @@ export async function startInterview() {
  * This allows the user to resume if they disconnect.
  */
 export async function saveInterviewAttempt(sessionId: string, attempt: AttemptDataItem) {
-    const supabase = createSupabaseServerActionClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const supabaseUser = createSupabaseServerActionClient();
+    const { data: { user } } = await supabaseUser.auth.getUser();
 
     if (!user) return { success: false, message: "Unauthenticated" };
 
-    const { error } = await supabase
+    // Use service role client to ensure write success regardless of RLS settings
+    // But first, double check the session belongs to this user
+    const { data: sessionCheck } = await supabaseUser
+        .from('interview_sessions')
+        .select('user_id')
+        .eq('id', sessionId)
+        .single();
+    
+    if (!sessionCheck || sessionCheck.user_id !== user.id) {
+        return { success: false, message: "Unauthorized session access." };
+    }
+
+    const supabaseService = createSupabaseServerActionClient({ service: true });
+
+    // We check if an attempt for this question already exists in this session
+    const { data: existingAttempt } = await supabaseService
         .from('interview_attempts')
-        .upsert({
-            user_id: user.id,
-            session_id: sessionId,
-            question_id: attempt.questionId,
-            transcript: attempt.transcript,
-            snapshots: attempt.snapshots,
-        }, { onConflict: 'session_id, question_id' });
+        .select('id')
+        .eq('session_id', sessionId)
+        .eq('question_id', attempt.questionId)
+        .single();
+
+    let error;
+    if (existingAttempt) {
+        // Update existing attempt
+        const { error: updateError } = await supabaseService
+            .from('interview_attempts')
+            .update({
+                transcript: attempt.transcript,
+                snapshots: attempt.snapshots,
+            })
+            .eq('id', existingAttempt.id);
+        error = updateError;
+    } else {
+        // Insert new attempt
+        const { error: insertError } = await supabaseService
+            .from('interview_attempts')
+            .insert({
+                user_id: user.id,
+                session_id: sessionId,
+                question_id: attempt.questionId,
+                transcript: attempt.transcript,
+                snapshots: attempt.snapshots,
+            });
+        error = insertError;
+    }
 
     if (error) {
         console.error("Error saving incremental attempt:", error.message);

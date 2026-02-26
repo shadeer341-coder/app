@@ -648,7 +648,15 @@ export function PracticeSession({
         };
 
         // Save this attempt incrementally to the database
-        await saveInterviewAttempt(sessionId, newAttempt);
+        const saveResult = await saveInterviewAttempt(sessionId, newAttempt);
+        
+        if (!saveResult.success) {
+            toast({
+                variant: "destructive",
+                title: "Progress Sync Failed",
+                description: "Your answer was recorded but could not be saved to our servers. You can continue, but you might not be able to resume if you disconnect.",
+            });
+        }
 
         const newAttemptData = [...attemptData, newAttempt];
         setAttemptData(newAttemptData);
@@ -771,7 +779,7 @@ export function PracticeSession({
 
     if (stage === 'question_reading') {
         return (
-            <div className="w-full max-w-md flex flex-col items-center justify-center h-full py-8 text-center">
+            <div className="w-full max-md flex flex-col items-center justify-center h-full py-8 text-center">
                 <CircularTimer
                     duration={currentQuestion.read_time_seconds || 15}
                     remaining={countdown}
@@ -790,7 +798,7 @@ export function PracticeSession({
     
     if (stage === 'question_review') {
         return (
-            <div className="w-full max-w-md flex flex-col justify-center h-full py-8 text-left">
+            <div className="w-full max-md flex flex-col justify-center h-full py-8 text-left">
                 <div className="w-full space-y-4">
                     <p className="text-2xl font-semibold mb-8">{currentQuestion.text}</p>
                     <Button size="lg" onClick={processAndAdvance} disabled={isTranscribing} className="w-full">
