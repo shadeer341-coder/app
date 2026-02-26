@@ -19,6 +19,21 @@ export async function startInterview() {
         return { success: false, message: "User not authenticated." };
     }
 
+    // 1. Check if there is already a pending session that hasn't been scheduled for processing
+    const { data: existingSession } = await supabase
+        .from('interview_sessions')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('status', 'pending')
+        .is('process_at', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+    if (existingSession) {
+        return { success: true, sessionId: existingSession.id, resumed: true };
+    }
+
     const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('interview_quota, role')
@@ -59,8 +74,6 @@ export async function startInterview() {
             .single();
         
         if (sessionError) {
-            // Ideally, we'd roll back the quota decrement here.
-            // For now, log a critical error.
             console.error(`CRITICAL: Quota consumed for user ${user.id} but session creation failed.`, sessionError);
             throw new Error(`Could not create interview session: ${sessionError.message}`);
         }
@@ -68,7 +81,7 @@ export async function startInterview() {
         revalidatePath('/dashboard/practice');
         revalidatePath('/dashboard');
         
-        return { success: true, sessionId: session.id };
+        return { success: true, sessionId: session.id, resumed: false };
 
     } catch (error: any) {
         console.error("An error occurred during interview start:", error);
@@ -76,9 +89,37 @@ export async function startInterview() {
     }
 }
 
+/**
+ * Saves a single attempt incrementally during the interview.
+ * This allows the user to resume if they disconnect.
+ */
+export async function saveInterviewAttempt(sessionId: string, attempt: AttemptDataItem) {
+    const supabase = createSupabaseServerActionClient();
+    const { data: { user } } = await supabase.auth.getUser();
 
-// This function now takes a session ID and saves the raw data.
-export async function submitInterview(sessionId: string, interviewData: AttemptDataItem[]) {
+    if (!user) return { success: false, message: "Unauthenticated" };
+
+    const { error } = await supabase
+        .from('interview_attempts')
+        .upsert({
+            user_id: user.id,
+            session_id: sessionId,
+            question_id: attempt.questionId,
+            transcript: attempt.transcript,
+            snapshots: attempt.snapshots,
+        }, { onConflict: 'session_id, question_id' });
+
+    if (error) {
+        console.error("Error saving incremental attempt:", error.message);
+        return { success: false, message: error.message };
+    }
+
+    return { success: true };
+}
+
+
+// This function now marks the session as complete and schedules processing.
+export async function submitInterview(sessionId: string) {
     const supabase = createSupabaseServerActionClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -86,36 +127,18 @@ export async function submitInterview(sessionId: string, interviewData: AttemptD
         return { success: false, message: "User not authenticated." };
     }
 
-    // Verify session ownership
-     const { data: session, error: sessionError } = await supabase
-        .from('interview_sessions')
-        .select('id, user_id')
-        .eq('id', sessionId)
-        .single();
-    
-    if (sessionError || !session || session.user_id !== user.id) {
-        return { success: false, message: "Invalid session or permission denied." };
+    // Verify session ownership and ensure it has attempts
+    const { data: attempts } = await supabase
+        .from('interview_attempts')
+        .select('id')
+        .eq('session_id', sessionId);
+
+    if (!attempts || attempts.length === 0) {
+        return { success: false, message: "Cannot submit an empty interview." };
     }
 
     try {
-        // 1. Save each attempt linked to the session
-        for (const attempt of interviewData) {
-            const { error: attemptError } = await supabase
-                .from('interview_attempts')
-                .insert({
-                    user_id: user.id,
-                    session_id: sessionId,
-                    question_id: attempt.questionId,
-                    transcript: attempt.transcript,
-                    snapshots: attempt.snapshots,
-                });
-
-            if (attemptError) {
-                console.error(`Error saving attempt for question ID ${attempt.questionId}:`, attemptError.message);
-            }
-        }
-        
-        // 2. Schedule the session for processing by setting `process_at`
+        // Schedule the session for processing by setting `process_at`
         const twentyMinutesFromNow = new Date(Date.now() + 20 * 60 * 1000).toISOString();
         const { error: updateError } = await supabase
             .from('interview_sessions')
@@ -124,10 +147,10 @@ export async function submitInterview(sessionId: string, interviewData: AttemptD
         
         if (updateError) throw new Error(`Could not schedule interview for processing: ${updateError.message}`);
 
-        // 3. Fetch user profile to get the user's name for the email
+        // Fetch user profile to get the user's name for the email
         const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', user.id).single();
 
-        // 4. Send confirmation email
+        // Send confirmation email
         const emailResult = await sendInterviewSubmittedEmail({
             name: profile?.full_name || user.user_metadata?.full_name || 'User',
             email: user.email!,

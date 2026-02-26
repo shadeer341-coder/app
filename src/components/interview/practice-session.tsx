@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
@@ -6,9 +7,8 @@ import type { Question, User } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Video, StopCircle, RefreshCw, Send, AlertTriangle, ArrowRight, PartyPopper, Camera, CheckCircle, Wifi, Mic, Play, Circle } from 'lucide-react';
-import { startInterview, submitInterview } from '@/app/actions/interview';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Loader2, StopCircle, RefreshCw, Send, AlertTriangle, ArrowRight, PartyPopper, Camera, CheckCircle, Wifi, Mic, Play, Circle } from 'lucide-react';
+import { startInterview, submitInterview, saveInterviewAttempt } from '@/app/actions/interview';
 import { cn } from '@/lib/utils';
 import {
   Select,
@@ -22,9 +22,18 @@ import { ScrollArea } from '../ui/scroll-area';
 
 type InterviewQuestion = Pick<Question, 'id' | 'text' | 'category_id' | 'audio_url' | 'tags' | 'read_time_seconds' | 'answer_time_seconds'> & { categoryName: string };
 
+type AttemptData = {
+  questionId: number;
+  transcript: string;
+  snapshots: string[];
+};
+
 type PracticeSessionProps = {
   questions: InterviewQuestion[];
   user: User | null;
+  initialSessionId?: string;
+  initialQuestionIndex?: number;
+  initialAttemptData?: AttemptData[];
 };
 
 type Stage = 
@@ -36,11 +45,6 @@ type Stage =
     | 'submitting' 
     | 'finished';
 
-type AttemptData = {
-  questionId: number;
-  transcript: string;
-  snapshots: string[];
-};
 
 const MicrophoneVisualizer = ({ stream }: { stream: MediaStream | null }) => {
     const [volume, setVolume] = useState(0);
@@ -112,7 +116,6 @@ const MicrophoneVisualizer = ({ stream }: { stream: MediaStream | null }) => {
 const CircularTimer = ({ duration, remaining }: { duration: number; remaining: number }) => {
     const radius = 50;
     const circumference = 2 * Math.PI * radius;
-    // Ensure progress doesn't go below 0
     const progress = Math.max(0, remaining) / Math.max(1, duration);
     const strokeDashoffset = circumference * (1 - progress);
 
@@ -228,18 +231,14 @@ async function transcribeAudio(audioBlob: Blob): Promise<string> {
 
     if (!response.ok) {
         let errorMessage = `Transcription failed: ${response.statusText}`;
-        // Vercel Hobby tier has a 4.5MB limit for request bodies.
         if (response.status === 413) {
-            errorMessage = "The recording is too large to upload. This can be caused by a long answer or a slow network connection. Please try answering more concisely.";
+            errorMessage = "The recording is too large to upload. Please try answering more concisely.";
         } else {
             try {
-                // Try to read the error response from the server.
                 const errorBody = await response.text();
-                // Check for Vercel's specific error code for oversized functions
                 if (errorBody.includes('FUNCTION_PAYLOAD_TOO_LARGE')) {
                      errorMessage = "The recording is too large to process. Please try a shorter answer.";
                 } else {
-                    // Try to parse it as JSON, if not, use the raw text.
                     try {
                         const errorJson = JSON.parse(errorBody);
                         errorMessage = `Transcription failed: ${errorJson.error || errorBody}`;
@@ -248,7 +247,7 @@ async function transcribeAudio(audioBlob: Blob): Promise<string> {
                     }
                 }
             } catch {
-                // Ignore if reading the body fails, stick with the original status text.
+                // Ignore
             }
         }
         throw new Error(errorMessage);
@@ -258,19 +257,25 @@ async function transcribeAudio(audioBlob: Blob): Promise<string> {
     return result.transcript;
 }
 
-export function PracticeSession({ questions, user }: PracticeSessionProps) {
+export function PracticeSession({ 
+    questions, 
+    user, 
+    initialSessionId, 
+    initialQuestionIndex = 0, 
+    initialAttemptData = [] 
+}: PracticeSessionProps) {
   const [stage, setStage] = useState<Stage>('introduction');
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(initialQuestionIndex);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   
   const [videoRecordings, setVideoRecordings] = useState<Record<number, string | null>>({});
-  const [attemptData, setAttemptData] = useState<AttemptData[]>([]);
+  const [attemptData, setAttemptData] = useState<AttemptData[]>(initialAttemptData);
   const [currentAudioBlob, setCurrentAudioBlob] = useState<Blob | null>(null);
   const [currentSnapshots, setCurrentSnapshots] = useState<string[]>([]);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [countdown, setCountdown] = useState(0);
-  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(initialSessionId || null);
 
   const [cameraCheck, setCameraCheck] = useState<'pending' | 'success' | 'error'>('pending');
   const [micCheck, setMicCheck] = useState<'pending' | 'success' | 'error'>('pending');
@@ -359,8 +364,8 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
         const durationMs = endTime - startTime;
         setDownloadDuration(durationMs);
 
-        if (durationMs < 1) { // Avoid division by zero
-            setInternetSpeed(1000); // Assume very fast if it's too quick to measure
+        if (durationMs < 1) {
+            setInternetSpeed(1000);
         } else {
           const duration = durationMs / 1000;
           const bitsLoaded = fileSizeInBytes * 8;
@@ -372,22 +377,16 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
 
     } catch (error) {
         console.error('Internet speed test failed:', error);
-        setInternetSpeed(null);
-        setDownloadDuration(null);
         setInternetCheckStatus('error');
     }
   }, []);
 
 
-  // Combined effect for introduction stage device setup and preview
   useEffect(() => {
     if (stage !== 'introduction') {
       if (previewStream) {
         previewStream.getTracks().forEach((track) => track.stop());
         setPreviewStream(null);
-        if (previewVideoRef.current) {
-          previewVideoRef.current.srcObject = null;
-        }
       }
       return;
     }
@@ -416,7 +415,6 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
   
       } catch (error) {
         if (isCancelled) return;
-        console.error('Permission check failed:', error);
         setHasCameraPermission(false);
         setCameraCheck('error');
         setMicCheck('error');
@@ -456,7 +454,6 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
         setHasCameraPermission(true);
       } catch (error) {
         if (isCancelled) return;
-        console.error('Failed to start preview stream:', error);
         setHasCameraPermission(false);
         setCameraCheck('error');
       }
@@ -470,28 +467,22 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
         currentStream.getTracks().forEach(track => track.stop());
       }
       setPreviewStream(null);
-      if (previewVideoRef.current) {
-        previewVideoRef.current.srcObject = null;
-      }
     }
   }, [stage, selectedAudioDeviceId, selectedVideoDeviceId]);
 
 
-  // Separate small effect for the internet check
   useEffect(() => {
     if (stage === 'introduction' && internetCheckStatus === 'pending') {
       checkInternetSpeed();
     }
   }, [stage, internetCheckStatus, checkInternetSpeed]);
 
-  // Prevent accidental tab closure during interview
   useEffect(() => {
     const isInterviewInProgress = !['introduction', 'finished'].includes(stage);
 
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       event.preventDefault();
-      // Most browsers show a generic message and ignore this custom one for security reasons.
-      event.returnValue = 'Are you sure you want to leave? Your interview progress will be lost.';
+      event.returnValue = 'Are you sure you want to leave? Your current question progress will be lost, but you can resume from where you left off later.';
     };
 
     if (isInterviewInProgress) {
@@ -644,7 +635,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
   }, [stage, currentQuestionIndex]);
 
   const processAndAdvance = async () => {
-    if (!currentAudioBlob) return;
+    if (!currentAudioBlob || !sessionId) return;
     
     setIsTranscribing(true);
     try {
@@ -656,6 +647,9 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
           snapshots: currentSnapshots,
         };
 
+        // Save this attempt incrementally to the database
+        await saveInterviewAttempt(sessionId, newAttempt);
+
         const newAttemptData = [...attemptData, newAttempt];
         setAttemptData(newAttemptData);
         setCurrentAudioBlob(null);
@@ -665,7 +659,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
         
         if (isFinalQuestion) {
             setStage('submitting');
-            await handleSubmit(newAttemptData);
+            await handleSubmit();
         } else {
             setCurrentQuestionIndex(prev => prev + 1);
             setStage('question_ready');
@@ -684,17 +678,8 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
   }
 
 
-  const handleSubmit = async (finalInterviewData: AttemptData[]) => {
-      if (!sessionId) {
-        toast({
-            variant: "destructive",
-            title: "Session Error",
-            description: "No active session ID found. Cannot submit interview.",
-        });
-        setIsSubmitting(false);
-        setStage('question_review');
-        return;
-      }
+  const handleSubmit = async () => {
+      if (!sessionId) return;
 
       setIsSubmitting(true);
       toast({
@@ -702,11 +687,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
       });
 
       try {
-        if (finalInterviewData.length === 0) {
-            throw new Error("No answers were recorded.");
-        }
-        
-        const result = await submitInterview(sessionId, finalInterviewData);
+        const result = await submitInterview(sessionId);
 
         if (result.success && result.sessionId) {
             toast({
@@ -724,7 +705,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
             title: "Submission Failed",
             description: error.message || "Could not submit your interview for analysis.",
         });
-        setStage('question_review'); // Go back to review stage on failure
+        setStage('question_review');
       } finally {
         setIsSubmitting(false);
       }
@@ -737,6 +718,9 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
         setSessionId(result.sessionId);
         setStage('question_ready');
         getCameraPermission();
+        if (result.resumed) {
+            toast({ title: "Welcome back!", description: "Continuing your previous session." });
+        }
     } else {
         toast({
             variant: "destructive",
@@ -890,7 +874,9 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
         <Card className="w-full max-w-2xl">
             <CardHeader className="text-center">
                 <CardTitle className="font-headline text-3xl md:text-4xl">Your Interview is Ready</CardTitle>
-                <CardDescription>First, let's check your setup. You'll be asked {questions.length} questions.</CardDescription>
+                <CardDescription>
+                    {sessionId ? "You have a session in progress. Click below to resume." : "First, let's check your setup. You'll be asked 4 questions."}
+                </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                 <ul className="space-y-3">
@@ -951,7 +937,6 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
                             {internetCheckStatus === 'success' && (
                                 <>
                                     {internetSpeed !== null && <span className="text-sm font-bold text-green-500">{internetSpeed} Mbps</span>}
-                                    {downloadDuration !== null && <span className="text-xs text-muted-foreground">({downloadDuration}ms)</span>}
                                     <CheckCircle className="w-5 h-5 text-green-500" />
                                 </>
                             )}
@@ -968,7 +953,7 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
             </CardContent>
             <CardFooter className="flex-col items-center gap-4">
                 <Button size="lg" onClick={handleStartInterview} disabled={cameraCheck !== 'success' || micCheck !== 'success' || internetCheckStatus !== 'success'}>
-                    Start Interview
+                    {sessionId ? "Resume Interview" : "Start Interview"}
                 </Button>
                 {(cameraCheck !== 'success' || micCheck !== 'success' || internetCheckStatus !== 'success') && (
                     <p className="text-xs text-muted-foreground">Please resolve the issues above to begin.</p>
@@ -997,22 +982,12 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
                     </CardHeader>
                     <CardContent className="flex flex-col items-center justify-center gap-4">
                         <Loader2 className="w-12 h-12 animate-spin" />
-                        <p>Please wait, this may take a moment.</p>
+                        <p>Submitting your interview for analysis.</p>
                     </CardContent>
                 </Card>
             </div>
         )
     }
-
-    // Question reading and recording stages have dynamic left panes
-    if (stage === 'question_reading' || stage === 'question_recording' || stage === 'question_review') {
-        return (
-            <div className="w-full md:w-[40%] flex flex-col items-center justify-center p-4 sm:p-8 bg-secondary">
-                {renderLeftPaneContent()}
-            </div>
-        )
-    }
-
 
     return (
         <div className="w-full md:w-[40%] flex flex-col items-center justify-center p-4 sm:p-8 bg-secondary">
@@ -1039,11 +1014,3 @@ export function PracticeSession({ questions, user }: PracticeSessionProps) {
     </div>
   );
 }
-
-    
-
-    
-
-    
-
-    

@@ -1,14 +1,10 @@
 
-
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import type { Question, QuestionCategory } from '@/lib/types';
 import { PracticeSession } from '@/components/interview/practice-session';
 import { getCurrentUser } from '@/lib/auth';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { redirect } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import Link from 'next/link';
-import { AlertCircle, FilePlus, Repeat } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,9 +25,27 @@ export default async function PracticePage() {
         redirect('/');
     }
 
-    // The check for interview quota is now handled in the `startInterview` server action
-    // to prevent a double-decrement issue. Users will be able to see the setup screen
-    // but will receive a toast notification if they have no quota when they try to start.
+    // Check for an existing pending session to resume
+    const { data: pendingSession } = await supabase
+        .from('interview_sessions')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('status', 'pending')
+        .is('process_at', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+    let initialAttempts: any[] = [];
+    if (pendingSession) {
+        const { data: attempts } = await supabase
+            .from('interview_attempts')
+            .select('question_id, transcript, snapshots')
+            .eq('session_id', pendingSession.id);
+        initialAttempts = attempts || [];
+    }
+
+    const answeredQuestionIdsInSession = new Set(initialAttempts.map(a => a.question_id));
 
     type QuestionQueueItem = Pick<Question, 'id' | 'text' | 'category_id' | 'audio_url' | 'tags' | 'read_time_seconds' | 'answer_time_seconds'> & { categoryName: string };
 
@@ -39,7 +53,7 @@ export default async function PracticePage() {
     const [
         { data: categoriesData, error: categoriesError },
         { data: questionsData, error: questionsError },
-        { data: answeredAttempts, error: answeredError }
+        { data: allPastAttempts, error: answeredError }
     ] = await Promise.all([
         supabase.from('question_categories').select('*').order('sort_order', { ascending: true }),
         supabase.from('questions').select('id, text, category_id, audio_url, tags, read_time_seconds, answer_time_seconds'),
@@ -56,31 +70,23 @@ export default async function PracticePage() {
                     </CardHeader>
                     <CardContent>
                         <p>There was a problem fetching the necessary data from the database. Please try again later.</p>
-                        <p className="text-sm text-muted-foreground mt-4">
-                            {categoriesError?.message} {questionsError?.message}
-                        </p>
                     </CardContent>
                 </Card>
             </div>
         );
     }
 
-    if (answeredError) {
-        console.error("Could not fetch user's answered questions, proceeding without filtering.", answeredError.message);
-    }
-    
     const categories = (categoriesData as QuestionCategory[] | null) || [];
     const questions = (questionsData as any[] | null) || [];
-    const answeredQuestionIds = new Set(answeredAttempts?.map(a => a.question_id) || []);
+    const overallAnsweredIds = new Set(allPastAttempts?.map(a => a.question_id) || []);
 
     // Generate the question queue
     let interviewQueue: QuestionQueueItem[] = [];
 
     const preInterviewCheckCategory = categories.find(c => c.name === 'Pre-Interview Checks');
-    const defaultCategory = categories.find(c => c.name.toLowerCase() === 'default');
-    const otherCategories = categories.filter(c => c.name.toLowerCase() !== 'default' && c.name !== 'Pre-Interview Checks');
+    const otherCategories = categories.filter(c => c.name !== 'Pre-Interview Checks');
 
-    // 1. Add "Pre-Interview Checks" questions first. They are mandatory.
+    // 1. Add "Pre-Interview Checks" questions first.
     if (preInterviewCheckCategory) {
         const checkQuestions = questions.filter(q => q.category_id === preInterviewCheckCategory.id);
         checkQuestions.forEach(q => {
@@ -88,45 +94,49 @@ export default async function PracticePage() {
         });
     }
 
-    // 2. Add "Default" questions next, if they exist
-    if (defaultCategory) {
-        const defaultQuestions = questions.filter(q => q.category_id === defaultCategory.id);
-        const shuffledDefault = shuffle(defaultQuestions);
-        shuffledDefault.slice(0, defaultCategory.question_limit).forEach(q => {
-            interviewQueue.push({ ...q, categoryName: defaultCategory.name });
-        });
-    }
-
-    // 3. Then add questions from other categories
+    // 2. Add questions from other categories
     otherCategories.forEach(category => {
         if (category.question_limit > 0) {
             const allCategoryQuestions = questions.filter(q => q.category_id === category.id);
             
-            const unseenQuestions = allCategoryQuestions.filter(q => !answeredQuestionIds.has(q.id));
-            const seenQuestions = allCategoryQuestions.filter(q => answeredQuestionIds.has(q.id));
+            // If resuming, we MUST include questions already answered in THIS session
+            const sessionAnswered = allCategoryQuestions.filter(q => answeredQuestionIdsInSession.has(q.id));
+            
+            // For the rest, prioritize unseen questions
+            const unseen = allCategoryQuestions.filter(q => !overallAnsweredIds.has(q.id) && !answeredQuestionIdsInSession.has(q.id));
+            const seen = allCategoryQuestions.filter(q => overallAnsweredIds.has(q.id) && !answeredQuestionIdsInSession.has(q.id));
 
-            const shuffledUnseen = shuffle(unseenQuestions);
-            const shuffledSeen = shuffle(seenQuestions);
+            let selected: typeof questions = [...sessionAnswered];
+            const remainingNeeded = category.question_limit - selected.length;
 
-            let selectedQuestions: typeof questions = [];
+            if (remainingNeeded > 0) {
+                const shuffledUnseen = shuffle(unseen);
+                selected = selected.concat(shuffledUnseen.slice(0, remainingNeeded));
+            }
 
-            selectedQuestions = shuffledUnseen.slice(0, category.question_limit);
-
-            if (selectedQuestions.length < category.question_limit) {
-                const needed = category.question_limit - selectedQuestions.length;
-                selectedQuestions = selectedQuestions.concat(shuffledSeen.slice(0, needed));
+            if (selected.length < category.question_limit) {
+                const stillNeeded = category.question_limit - selected.length;
+                const shuffledSeen = shuffle(seen);
+                selected = selected.concat(shuffledSeen.slice(0, stillNeeded));
             }
             
-            selectedQuestions.forEach(q => {
+            selected.forEach(q => {
                 interviewQueue.push({ ...q, categoryName: category.name });
             });
         }
     });
+
+    // Determine starting index: the first question in the queue that hasn't been answered in this session
+    const startingIndex = interviewQueue.findIndex(q => !answeredQuestionIdsInSession.has(q.id));
+    const finalStartingIndex = startingIndex === -1 ? 0 : startingIndex;
     
     return (
         <PracticeSession 
             questions={interviewQueue.slice(0, 4)}
             user={user}
+            initialSessionId={pendingSession?.id}
+            initialQuestionIndex={finalStartingIndex}
+            initialAttemptData={initialAttempts}
         />
     );
 }
