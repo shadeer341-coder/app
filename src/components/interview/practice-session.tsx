@@ -832,8 +832,9 @@ export function PracticeSession({
             {showReview && (
                 <video 
                     src={videoRecordings[currentQuestionIndex] || undefined} 
-                    className="w-full h-full object-cover" 
+                    className="w-full h-full object-cover pointer-events-none" 
                     playsInline 
+                    controls={false}
                 />
             )}
             {showLive && <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />}
@@ -849,8 +850,16 @@ export function PracticeSession({
             )}
 
             {stage === 'question_reading' && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-8 bg-black/80 text-white text-center">
-                    <p className="text-3xl font-bold font-headline mb-4 flex-1 flex items-center">{currentQuestion.text}</p>
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 p-8 bg-black/80 text-white text-center">
+                    <p className="text-3xl font-bold font-headline flex-1 flex items-center">{currentQuestion.text}</p>
+                    <Button 
+                        size="lg" 
+                        variant="secondary" 
+                        onClick={() => setStage('question_recording')}
+                        className="mb-8"
+                    >
+                        Answer Now
+                    </Button>
                 </div>
             )}
             
