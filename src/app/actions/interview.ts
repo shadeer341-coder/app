@@ -175,14 +175,13 @@ export async function submitInterview(sessionId: string) {
     }
 
     try {
-        // Schedule the session for processing by setting `process_at` to NOW.
-        // We use the service client to ensure the update isn't blocked by RLS policies.
+        // Schedule the session for processing by setting `process_at` to 5 hours from now.
         const supabaseService = createSupabaseServerActionClient({ service: true });
-        const now = new Date().toISOString();
+        const processAt = new Date(Date.now() + 5 * 60 * 60 * 1000).toISOString();
         
         const { error: updateError } = await supabaseService
             .from('interview_sessions')
-            .update({ process_at: now })
+            .update({ process_at: processAt })
             .eq('id', sessionId);
         
         if (updateError) throw new Error(`Could not schedule interview for processing: ${updateError.message}`);
