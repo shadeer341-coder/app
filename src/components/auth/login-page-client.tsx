@@ -28,7 +28,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Eye, EyeOff } from 'lucide-react';
 import Image from 'next/image';
 import { requestPasswordReset, resetPassword } from '@/app/actions/auth';
 
@@ -52,6 +52,8 @@ export function LoginPageClient() {
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState<'login' | 'forgot-password' | 'code-entry' | 'email-sent'>('login');
   const [resetEmail, setResetEmail] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
   const supabase = createSupabaseClient();
 
   const loginForm = useForm<z.infer<typeof loginSchema>>({
@@ -189,7 +191,16 @@ export function LoginPageClient() {
                                     </button>
                                 </div>
                                 <FormControl>
-                                <Input type="password" {...field} />
+                                  <div className="relative">
+                                    <Input type={showPassword ? "text" : "password"} {...field} />
+                                    <button
+                                      type="button"
+                                      onClick={() => setShowPassword(!showPassword)}
+                                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground flex items-center justify-center p-0 m-0 bg-transparent border-0"
+                                    >
+                                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                    </button>
+                                  </div>
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -263,7 +274,16 @@ export function LoginPageClient() {
                                 <FormItem>
                                     <FormLabel>New Password</FormLabel>
                                     <FormControl>
-                                    <Input type="password" {...field} />
+                                      <div className="relative">
+                                        <Input type={showNewPassword ? "text" : "password"} {...field} />
+                                        <button
+                                          type="button"
+                                          onClick={() => setShowNewPassword(!showNewPassword)}
+                                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground flex items-center justify-center p-0 m-0 bg-transparent border-0"
+                                        >
+                                          {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                        </button>
+                                      </div>
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
