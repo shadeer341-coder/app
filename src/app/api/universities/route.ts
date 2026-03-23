@@ -16,11 +16,29 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: `API responded with status: ${apiResponse.status}` }, { status: apiResponse.status });
     }
 
+    // Hardcoded custom universities to supplement the API
+    const customUniversities = [
+      { name: "Global University Systems (GUS)", country: "United Kingdom" },
+      { name: "The University of Law", country: "United Kingdom" },
+      // Add more manual universities here if needed
+    ];
+
     const data = await apiResponse.json();
     
     // Ensure unique university names and limit results
     const uniqueNames = new Set<string>();
     const uniqueUniversities: { name: string; country: string }[] = [];
+
+    // 1. First, check and add our custom universities if they match the search
+    const lowerName = name.toLowerCase();
+    for (const uni of customUniversities) {
+      if (uni.name.toLowerCase().includes(lowerName)) {
+        uniqueNames.add(uni.name);
+        uniqueUniversities.push(uni);
+      }
+    }
+
+    // 2. Then, add the API results
     for (const uni of data) {
         if (uni.name && !uniqueNames.has(uni.name)) {
             uniqueNames.add(uni.name);
