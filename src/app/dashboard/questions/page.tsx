@@ -1,7 +1,7 @@
 
 
 import { revalidatePath } from 'next/cache';
-import { createSupabaseServerActionClient, createSupabaseServerClient, SupabaseClient } from '@/lib/supabase/server';
+import { createSupabaseServerActionClient, createSupabaseServerClient } from '@/lib/supabase/server';
 import type { Question, QuestionCategory, QuestionLevel } from '@/lib/types';
 import {
   Card,
@@ -43,6 +43,7 @@ async function createQuestion(formData: FormData) {
     tags: tags.length > 0 ? tags : null,
     read_time_seconds: Number(formData.get('read-time')),
     answer_time_seconds: Number(formData.get('answer-time')),
+    is_active: formData.get('question-active') === 'true',
   };
 
   const { data, error } = await supabase.from('questions').insert(questionData).select().single();
@@ -79,6 +80,7 @@ async function updateQuestion(formData: FormData) {
       tags: tags.length > 0 ? tags : null,
       read_time_seconds: Number(formData.get('read-time')),
       answer_time_seconds: Number(formData.get('answer-time')),
+      is_active: formData.get('question-active') === 'true',
     };
 
     const { error } = await supabase.from('questions').update(questionData).eq('id', questionId);

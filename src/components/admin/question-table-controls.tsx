@@ -337,7 +337,7 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                                         </Select>
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="read-time">Read Time (sec)</Label>
                                         <Input id="read-time" name="read-time" type="number" placeholder="e.g., 15" defaultValue="15" required />
@@ -345,6 +345,18 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                                     <div className="space-y-2">
                                         <Label htmlFor="answer-time">Answer Time (sec)</Label>
                                         <Input id="answer-time" name="answer-time" type="number" placeholder="e.g., 60" defaultValue="60" required />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="question-active">Status</Label>
+                                        <Select name="question-active" defaultValue="true" required>
+                                            <SelectTrigger id="question-active">
+                                                <SelectValue placeholder="Select status" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="true">Active</SelectItem>
+                                                <SelectItem value="false">Inactive</SelectItem>
+                                            </SelectContent>
+                                        </Select>
                                     </div>
                                 </div>
                                 <Button type="submit" disabled={isPending}>
@@ -400,6 +412,7 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                     <TableHead>Level</TableHead>
                     <TableHead>Tags</TableHead>
                     <TableHead>Timers</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead className="w-[100px] text-right">Actions</TableHead>
                     </TableRow>
                 </TableHeader>
@@ -438,6 +451,11 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                                     Answer: {q.answer_time_seconds || 60}s
                                 </div>
                             </div>
+                        </TableCell>
+                        <TableCell>
+                           <Badge variant={q.is_active !== false ? 'default' : 'secondary'}>
+                               {q.is_active !== false ? 'Active' : 'Inactive'}
+                           </Badge>
                         </TableCell>
                         <TableCell className="text-right">
                            <div className="inline-flex items-center">
@@ -532,7 +550,7 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                                     </Select>
                                 </div>
                             </div>
-                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="read-time-edit">Read Time (sec)</Label>
                                     <Input id="read-time-edit" name="read-time" type="number" placeholder="e.g., 15" defaultValue={editingQuestion.read_time_seconds || 15} required />
@@ -540,6 +558,18 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                                 <div className="space-y-2">
                                     <Label htmlFor="answer-time-edit">Answer Time (sec)</Label>
                                     <Input id="answer-time-edit" name="answer-time" type="number" placeholder="e.g., 60" defaultValue={editingQuestion.answer_time_seconds || 60} required />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="question-active-edit">Status</Label>
+                                    <Select name="question-active" defaultValue={editingQuestion.is_active !== false ? "true" : "false"} required>
+                                        <SelectTrigger id="question-active-edit">
+                                            <SelectValue placeholder="Select status" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="true">Active</SelectItem>
+                                            <SelectItem value="false">Inactive</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                             </div>
                             <div className="flex gap-2">

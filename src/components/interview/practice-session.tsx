@@ -160,10 +160,17 @@ const InterviewAgenda = ({
   questions: InterviewQuestion[];
   currentQuestionIndex: number;
 }) => {
+  useEffect(() => {
+    const el = document.getElementById(`agenda-question-${currentQuestionIndex}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [currentQuestionIndex]);
+
   return (
-    <div className="w-full max-w-md flex flex-col justify-center h-full py-8">
-        <h2 className="font-headline text-2xl font-bold mb-4 px-3">Interview Agenda</h2>
-        <ScrollArea className="h-full -mx-4">
+    <div className="w-full max-w-md flex flex-col justify-center py-8">
+        <h2 className="font-headline text-2xl font-bold mb-4 px-3 shrink-0">Interview Agenda</h2>
+        <ScrollArea className="max-h-[50vh] md:max-h-[60vh] -mx-4 overflow-y-auto">
             <ul className="space-y-2 px-4">
                 {questions.map((question, index) => {
                 const status: 'completed' | 'current' | 'upcoming' =
@@ -177,6 +184,7 @@ const InterviewAgenda = ({
                 return (
                     <li
                         key={index}
+                        id={`agenda-question-${index}`}
                         className={cn('p-3 rounded-lg transition-colors', {
                             'bg-primary/10': isCurrent,
                         })}
@@ -985,47 +993,54 @@ export function PracticeSession({
   }
 
   const renderMainContent = () => {
+    const paneClasses = "w-full md:w-[40%] md:h-screen md:overflow-hidden flex flex-col items-center p-4 sm:p-8 bg-secondary";
     if (stage === 'introduction') {
         return (
-            <div className="w-full md:w-[40%] flex flex-col items-center justify-center p-4 sm:p-8 bg-secondary">
-                {renderIntroduction()}
+            <div className={paneClasses}>
+                <div className="my-auto w-full flex justify-center">
+                    {renderIntroduction()}
+                </div>
             </div>
         )
     }
 
     if (stage === 'submitting') {
       return (
-            <div className="w-full md:w-[40%] flex flex-col items-center justify-center p-4 sm:p-8 bg-secondary">
-                <Card className="w-full max-w-md text-center">
-                    <CardHeader className="items-center">
-                        <PartyPopper className="w-16 h-16 text-primary" />
-                        <CardTitle className="mt-4 text-2xl">Finishing up...</CardTitle>
-                    </CardHeader>
-                    <CardContent className="flex flex-col items-center justify-center gap-4">
-                        <Loader2 className="w-12 h-12 animate-spin" />
-                        <p>Submitting your interview for analysis.</p>
-                    </CardContent>
-                </Card>
+            <div className={paneClasses}>
+                <div className="my-auto w-full flex justify-center">
+                    <Card className="w-full max-w-md text-center">
+                        <CardHeader className="items-center">
+                            <PartyPopper className="w-16 h-16 text-primary" />
+                            <CardTitle className="mt-4 text-2xl">Finishing up...</CardTitle>
+                        </CardHeader>
+                        <CardContent className="flex flex-col items-center justify-center gap-4">
+                            <Loader2 className="w-12 h-12 animate-spin" />
+                            <p>Submitting your interview for analysis.</p>
+                        </CardContent>
+                    </Card>
+                </div>
             </div>
         )
     }
 
     return (
-        <div className="w-full md:w-[40%] flex flex-col items-center justify-center p-4 sm:p-8 bg-secondary">
-            {renderLeftPaneContent()}
+        <div className={paneClasses}>
+            <div className="my-auto w-full flex justify-center">
+                {renderLeftPaneContent()}
+            </div>
         </div>
     )
   }
 
 
   return (
-    <div className="flex min-h-screen w-full bg-background font-sans flex-col md:flex-row">
+    <div className="flex min-h-screen md:h-screen w-full bg-background font-sans flex-col md:flex-row md:overflow-hidden">
       {/* Left Pane */}
       {renderMainContent()}
 
       {/* Right Pane */}
       <div 
-        className="w-full md:w-[60%] relative bg-cover bg-center min-h-96 md:min-h-screen" 
+        className="w-full md:w-[60%] h-full relative bg-cover bg-center min-h-96" 
         style={{ backgroundImage: 'url(/cas-cam.webp)' }}
       >
         <div className="absolute inset-0 bg-black/50 flex items-center justify-center p-8">

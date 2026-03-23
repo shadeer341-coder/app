@@ -56,7 +56,7 @@ export default async function PracticePage() {
         { data: allPastAttempts, error: answeredError }
     ] = await Promise.all([
         supabase.from('question_categories').select('*').order('sort_order', { ascending: true }),
-        supabase.from('questions').select('id, text, category_id, audio_url, tags, read_time_seconds, answer_time_seconds'),
+        supabase.from('questions').select('id, text, category_id, audio_url, tags, read_time_seconds, answer_time_seconds').eq('is_active', true),
         supabase.from('interview_attempts').select('question_id').eq('user_id', user.id)
     ]);
 
@@ -98,10 +98,10 @@ export default async function PracticePage() {
     otherCategories.forEach(category => {
         if (category.question_limit > 0) {
             const allCategoryQuestions = questions.filter(q => q.category_id === category.id);
-            
+
             // If resuming, we MUST include questions already answered in THIS session
             const sessionAnswered = allCategoryQuestions.filter(q => answeredQuestionIdsInSession.has(q.id));
-            
+
             // For the rest, prioritize unseen questions
             const unseen = allCategoryQuestions.filter(q => !overallAnsweredIds.has(q.id) && !answeredQuestionIdsInSession.has(q.id));
             const seen = allCategoryQuestions.filter(q => overallAnsweredIds.has(q.id) && !answeredQuestionIdsInSession.has(q.id));
@@ -119,7 +119,7 @@ export default async function PracticePage() {
                 const shuffledSeen = shuffle(seen);
                 selected = selected.concat(shuffledSeen.slice(0, stillNeeded));
             }
-            
+
             selected.forEach(q => {
                 interviewQueue.push({ ...q, categoryName: category.name });
             });
@@ -129,10 +129,10 @@ export default async function PracticePage() {
     // Determine starting index: the first question in the queue that hasn't been answered in this session
     const startingIndex = interviewQueue.findIndex(q => !answeredQuestionIdsInSession.has(q.id));
     const finalStartingIndex = startingIndex === -1 ? 0 : startingIndex;
-    
+
     return (
-        <PracticeSession 
-            questions={interviewQueue.slice(0, 4)}
+        <PracticeSession
+            questions={interviewQueue}
             user={user}
             initialSessionId={pendingSession?.id}
             initialQuestionIndex={finalStartingIndex}

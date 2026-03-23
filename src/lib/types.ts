@@ -47,6 +47,7 @@ export type Question = {
   audio_url?: string;
   read_time_seconds?: number;
   answer_time_seconds?: number;
+  is_active?: boolean;
   question_categories: { name: string }; // For joining data
 };
 
