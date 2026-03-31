@@ -82,14 +82,14 @@ export default async function RechargePage() {
                         Recharge Quota
                     </h1>
                     <p className="text-muted-foreground">
-                       You currently have <strong>{user.interview_quota ?? 0}</strong> attempts. Purchase a bundle to add more to your agency's balance.
+                       You currently have enough quota for <strong>{Math.floor((user.interview_quota ?? 0) / 3)}</strong> students. Purchase a bundle to add more to your agency's balance.
                     </p>
                 </div>
                 <Card>
                     <CardHeader>
-                        <CardTitle>Purchase Attempt Bundles</CardTitle>
+                        <CardTitle>Purchase Student Bundles</CardTitle>
                          <CardDescription>
-                            Select any bundle to add attempts to your agency's quota.
+                            Select any bundle to add students to your agency's quota.
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
