@@ -30,15 +30,11 @@ export function AgencyRechargeCard({ bundle }: { bundle: Bundle }) {
             <CardHeader className="items-center text-center">
                 <div className="p-4 bg-primary/10 rounded-full mb-2"><Icon className="w-8 h-8 text-primary" /></div>
                 <CardTitle>{bundle.name}</CardTitle>
-                <p className="text-4xl font-bold">{bundle.attempts}</p>
-                <CardDescription>Interview Attempts</CardDescription>
+                <p className="text-4xl font-bold">{Math.floor(bundle.attempts / 3)}</p>
+                <CardDescription>Students</CardDescription>
             </CardHeader>
             <CardContent className="flex-1 text-center space-y-4">
                 <p className="text-3xl font-bold">${bundle.price}</p>
-                 <div className="flex items-center justify-center gap-2 text-muted-foreground">
-                    <Users className="w-4 h-4"/>
-                    <span>{bundle.studentLimit}</span>
-                </div>
             </CardContent>
             <CardFooter className="flex-col items-stretch">
                  {showPayment ? (

@@ -27,7 +27,7 @@ export function AgencyRechargeButton({ attempts, price }: { attempts: number, pr
         return actions.order.create({
             purchase_units: [
                 {
-                    description: `${attempts} Interview Attempts for Agency`,
+                    description: `${Math.floor(attempts / 3)} Students for Agency (${attempts} Attempts)`,
                     amount: {
                         value: numericPrice,
                         currency_code: "USD",
@@ -53,7 +53,7 @@ export function AgencyRechargeButton({ attempts, price }: { attempts: number, pr
             if (result.success) {
                 toast({
                     title: "Recharge Successful!",
-                    description: `${attempts} attempts have been added to your agency account.`,
+                    description: `${Math.floor(attempts / 3)} students have been added to your agency account.`,
                 });
                 router.refresh();
             } else {
