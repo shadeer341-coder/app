@@ -3,6 +3,8 @@
 import { revalidatePath } from 'next/cache';
 import { createSupabaseServerActionClient, createSupabaseServerClient } from '@/lib/supabase/server';
 import type { Question, QuestionCategory, QuestionLevel } from '@/lib/types';
+import { generateInterviewFeedback, type GenerateInterviewFeedbackOutput } from '@/ai/flows/generate-interview-feedback';
+import { generateQuestionEvaluationSchema } from '@/lib/question-evaluation-schema';
 import {
   Card,
   CardContent,
@@ -11,15 +13,14 @@ import {
 } from '@/components/ui/card';
 import { QuestionTableControls } from '@/components/admin/question-table-controls';
 import { PaginationControls } from '@/components/ui/pagination';
-import OpenAI from 'openai';
 
 export const dynamic = 'force-dynamic';
 
 const ITEMS_PER_PAGE = 10;
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+function isMissingEvaluationSchemaColumnError(message?: string) {
+  return Boolean(message && message.toLowerCase().includes('evaluation_schema'));
+}
 
 async function createQuestion(formData: FormData) {
   'use server';
@@ -36,17 +37,29 @@ async function createQuestion(formData: FormData) {
   }
 
   const questionText = String(formData.get('question-text'));
+  const evaluationSchema = await generateQuestionEvaluationSchema({
+    questionText,
+    questionTags: tags,
+  });
+
   const questionData = {
     text: questionText,
     category_id: Number(formData.get('question-category')),
     level: String(formData.get('question-level')) as QuestionLevel,
     tags: tags.length > 0 ? tags : null,
+    evaluation_schema: evaluationSchema,
     read_time_seconds: Number(formData.get('read-time')),
     answer_time_seconds: Number(formData.get('answer-time')),
     is_active: formData.get('question-active') === 'true',
   };
 
-  const { data, error } = await supabase.from('questions').insert(questionData).select().single();
+  let { error } = await supabase.from('questions').insert(questionData).select().single();
+
+  if (error && isMissingEvaluationSchemaColumnError(error.message)) {
+    const { evaluation_schema, ...legacyQuestionData } = questionData;
+    const fallbackResult = await supabase.from('questions').insert(legacyQuestionData).select().single();
+    error = fallbackResult.error;
+  }
 
   if (error) {
     console.error('Error creating question:', error.message);
@@ -73,17 +86,29 @@ async function updateQuestion(formData: FormData) {
     }
 
     const questionText = String(formData.get('question-text'));
+    const evaluationSchema = await generateQuestionEvaluationSchema({
+      questionText,
+      questionTags: tags,
+    });
+
     const questionData = {
       text: questionText,
       category_id: Number(formData.get('question-category')),
       level: String(formData.get('question-level')) as QuestionLevel,
       tags: tags.length > 0 ? tags : null,
+      evaluation_schema: evaluationSchema,
       read_time_seconds: Number(formData.get('read-time')),
       answer_time_seconds: Number(formData.get('answer-time')),
       is_active: formData.get('question-active') === 'true',
     };
 
-    const { error } = await supabase.from('questions').update(questionData).eq('id', questionId);
+    let { error } = await supabase.from('questions').update(questionData).eq('id', questionId);
+
+    if (error && isMissingEvaluationSchemaColumnError(error.message)) {
+      const { evaluation_schema, ...legacyQuestionData } = questionData;
+      const fallbackResult = await supabase.from('questions').update(legacyQuestionData).eq('id', questionId);
+      error = fallbackResult.error;
+    }
 
     if (error) {
         console.error('Error updating question:', error.message);
@@ -109,6 +134,66 @@ async function deleteQuestion(formData: FormData) {
         revalidatePath('/dashboard/questions');
         return { success: true, message: "Question deleted successfully." };
     }
+}
+
+async function testQuestionFeedback(formData: FormData): Promise<{
+  success: boolean;
+  message: string;
+  feedback?: GenerateInterviewFeedbackOutput;
+  questionText?: string;
+  tags?: string[];
+}> {
+  'use server';
+
+  const supabase = createSupabaseServerActionClient();
+  const questionId = Number(formData.get('question-id'));
+  const transcript = String(formData.get('sample-answer') || '').trim();
+
+  if (!Number.isFinite(questionId)) {
+    return { success: false, message: 'Invalid question selected.' };
+  }
+
+  if (!transcript) {
+    return { success: false, message: 'Please provide a sample answer to test this question.' };
+  }
+
+  let { data: question, error } = await supabase
+    .from('questions')
+    .select('text, tags, evaluation_schema')
+    .eq('id', questionId)
+    .single();
+
+  if (error && isMissingEvaluationSchemaColumnError(error.message)) {
+    const fallbackResult = await supabase
+      .from('questions')
+      .select('text, tags')
+      .eq('id', questionId)
+      .single();
+
+    question = fallbackResult.data as typeof question;
+    error = fallbackResult.error;
+  }
+
+  if (error || !question) {
+    console.error('Error fetching question for feedback test:', error?.message);
+    return { success: false, message: error?.message || 'Could not find the selected question.' };
+  }
+
+  const feedback = await generateInterviewFeedback({
+    transcript,
+    questionText: question.text,
+    questionTags: question.tags || [],
+    questionEvaluationSchema: question.evaluation_schema,
+    snapshots: [],
+  });
+
+  return {
+    success: true,
+    message: 'Feedback generated successfully.',
+    feedback,
+    questionText: question.text,
+    tags: question.tags || [],
+  };
 }
 
 
@@ -189,6 +274,7 @@ export default async function QuestionsPage({ searchParams }: { searchParams: { 
               createAction={createQuestion}
               updateAction={updateQuestion}
               deleteAction={deleteQuestion}
+              testAction={testQuestionFeedback}
             />
           <div className="mt-6 flex justify-center">
             <PaginationControls

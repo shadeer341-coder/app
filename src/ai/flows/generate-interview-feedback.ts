@@ -3,11 +3,14 @@
 
 import OpenAI from 'openai';
 import { z } from 'zod';
+import type { QuestionEvaluationSchema } from '@/lib/types';
+import { generateQuestionEvaluationSchema, parseStoredEvaluationSchema } from '@/lib/question-evaluation-schema';
 
 const FeedbackInputSchema = z.object({
   transcript: z.string().describe("The user's transcribed answer to the interview question."),
   questionText: z.string().describe("The text of the interview question that was asked."),
   questionTags: z.array(z.string()).optional().nullable().describe("A list of keywords or concepts expected in the answer."),
+  questionEvaluationSchema: z.unknown().optional().nullable().describe("Optional stored internal evaluation schema for the question."),
   snapshots: z.array(z.string()).optional().describe("A list of image snapshots (as data URIs) captured during the answer for visual analysis."),
 });
 
@@ -27,30 +30,72 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-async function analyzeTranscript(transcript: string, questionText: string, questionTags: string[] | undefined | null) {
+function formatEvaluationSchema(schema: QuestionEvaluationSchema) {
+    if (schema.questionType === 'direct') {
+        return `
+Question type: direct
+Always required tags:
+${schema.alwaysRequiredTags.map((tag) => `- ${tag}`).join('\n') || '- none'}
+Branches: none
+`;
+    }
+
+    return `
+Question type: conditional
+Always required tags:
+${schema.alwaysRequiredTags.map((tag) => `- ${tag}`).join('\n') || '- none'}
+Branches:
+${schema.branches.map((branch) => `- ${branch.label}: applies when ${branch.appliesWhen}. Required tags: ${branch.requiredTags.length > 0 ? branch.requiredTags.join(', ') : 'none'}`).join('\n')}
+`;
+}
+
+async function analyzeTranscript(
+    transcript: string,
+    questionText: string,
+    evaluationSchema: QuestionEvaluationSchema,
+    questionTags: string[] | undefined | null
+) {
     const hasTags = questionTags && questionTags.length > 0;
     const prompt = `
-        You are a strict interview evaluator. Your primary goal is to check if the user's answer includes specific concepts from a list of tags.
+        You are a strict interview evaluator. Your job is to evaluate an answer against the admin-approved tags organized by an internal question evaluation schema.
         The user was asked: "${questionText}"
         The user's answer: "${transcript}"
-        ${hasTags ? `The answer *must* include and elaborate on the following concepts: **${questionTags!.join(', ')}**.` : "Analyze the answer for general quality and clarity."}
+        ${hasTags ? `Admin tags for context only: ${questionTags!.join(', ')}.` : ''}
+
+        Internal evaluation schema:
+        ${formatEvaluationSchema(evaluationSchema)}
 
         Your task:
-        1.  Analyze the transcript to see if it explicitly discusses all required concepts from the tags.
-        2.  For the "strengths" field: 
-            - If the answer covers all required concepts, state: "The answer perfectly covered all key points: ${questionTags!.join(', ')}."
-            - Otherwise, mention which concepts were well-explained.
-        3.  For the "weaknesses" field: 
-            - If the answer is missing any of the required concepts, you MUST list the specific concepts the user failed to mention.
-            - If all concepts are covered, this field MUST be an empty string "". This is critical.
-        4.  For the "score" field: Base this score almost entirely on how many of the required concepts were successfully covered. A perfect answer that misses the keywords should get a low score. An answer that hits all keywords should get a high score.
+        1. Determine which branch applies based on the user's answer. If the question is direct, there is no branch.
+        2. Evaluate the answer only against the always-required tags plus the required tags for the applicable branch.
+        3. Never penalize the user for tags that belong only to a non-applicable branch.
+        4. If the user correctly answers that a condition does not apply, do not ask them for details from the "yes" branch.
+        5. You must not invent new required points beyond the admin tags in the schema.
+        6. If the schema contains no tags at all, fall back to a general quality evaluation focused on relevance, clarity, and completeness.
+        7. For the "strengths" field:
+           - Mention what the user answered correctly in natural interview-feedback language.
+           - Do not mention internal evaluation logic such as "branch", "condition applies", "condition does not apply", "schema", "applicable branch", or similar phrasing.
+           - Keep this concise and user-facing.
+        8. For the "weaknesses" field:
+           - When tags exist, list only applicable missing tags or genuinely important clarity gaps related to those tags.
+           - Do not list non-applicable branch tags.
+           - If all applicable tags are covered, this field MUST be an empty string "".
+           - Do not mention internal evaluation logic such as "branch", "condition applies", "condition does not apply", or "schema".
+        9. For the "score" field:
+           - Score only against the applicable requirements.
+           - A concise but fully correct "no" answer for a conditional question can still deserve a high score.
+           - If there are no tags, score based on overall answer quality rather than a checklist.
+        10. For all user-facing text fields:
+           - Write as concise coaching feedback for the candidate.
+           - Avoid meta-analysis about how the evaluator decided what was required.
+           - Prefer plain statements like "You answered clearly and directly." over explanatory evaluator language.
         
         Provide the feedback in a JSON object with the following fields:
-        - "strengths": "Positive feedback based on tag coverage."
-        - "weaknesses": "If tags are missing, list them. If all tags are present, this MUST be an empty string."
+        - "strengths": "Positive feedback based on the applicable schema requirements."
+        - "weaknesses": "Only applicable missing items. If nothing applicable is missing, this MUST be an empty string."
         - "grammarFeedback": "Feedback on grammar, clarity, and use of filler words."
-        - "overallPerformance": "A summary of the performance, focused on tag coverage."
-        - "score": A score from 0 to 100, primarily based on keyword coverage.
+        - "overallPerformance": "A summary of the performance, focused on whether the applicable requirements were met."
+        - "score": A score from 0 to 100 based on the applicable requirements only.
 
         Do not include any other text or formatting.
     `;
@@ -119,10 +164,16 @@ export async function generateInterviewFeedback(
     throw new Error('OpenAI API key is not configured.');
   }
 
-  const { transcript, questionText, questionTags, snapshots } = FeedbackInputSchema.parse(input);
+  const { transcript, questionText, questionTags, questionEvaluationSchema, snapshots } = FeedbackInputSchema.parse(input);
 
   try {
-    const transcriptResult = await analyzeTranscript(transcript, questionText, questionTags);
+    const storedSchema = parseStoredEvaluationSchema(questionEvaluationSchema);
+    const evaluationSchema = storedSchema || await generateQuestionEvaluationSchema({
+      questionText,
+      questionTags,
+    });
+
+    const transcriptResult = await analyzeTranscript(transcript, questionText, evaluationSchema, questionTags);
 
     let passportAnalysisResult: { passportFeedback: string, passportScore: number } | null = null;
     let finalScore = transcriptResult.score;

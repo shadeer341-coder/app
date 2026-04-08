@@ -45,6 +45,19 @@ export type CategoryAttemptConfig = {
 
 export type QuestionLevel = string;
 
+export type QuestionEvaluationBranch = {
+  label: string;
+  appliesWhen: string;
+  requiredTags: string[];
+};
+
+export type QuestionEvaluationSchema = {
+  version: 1;
+  questionType: 'direct' | 'conditional';
+  alwaysRequiredTags: string[];
+  branches: QuestionEvaluationBranch[];
+};
+
 export type Question = {
   id: number;
   text: string;
@@ -52,6 +65,7 @@ export type Question = {
   level: QuestionLevel;
   created_at: string;
   tags?: string[];
+  evaluation_schema?: QuestionEvaluationSchema | null;
   audio_url?: string;
   read_time_seconds?: number;
   answer_time_seconds?: number;
@@ -84,6 +98,7 @@ export type InterviewAttempt = {
   questions?: { // For joining data
     text: string;
     tags: string[];
+    evaluation_schema?: QuestionEvaluationSchema | null;
     question_categories: { name: string };
   };
 };
