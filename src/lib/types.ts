@@ -33,6 +33,14 @@ export type QuestionCategory = {
   question_limit: number;
   created_at: string;
   sort_order: number;
+  attempt_configs?: CategoryAttemptConfig[];
+};
+
+export type CategoryAttemptConfig = {
+  category_id: number;
+  attempt_number: number;
+  question_count: number;
+  created_at?: string;
 };
 
 export type QuestionLevel = string;

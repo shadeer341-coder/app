@@ -22,6 +22,8 @@ import { PlusCircle, Edit, Trash2, Loader2, ArrowUp, ArrowDown } from 'lucide-re
 import type { QuestionCategory } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
+const CONFIGURED_ATTEMPT_NUMBERS = [1, 2, 3] as const;
+
 type CategoryTableControlsProps = {
   categories: QuestionCategory[];
   createAction: (formData: FormData) => Promise<{ success: boolean, message: string }>;
@@ -66,6 +68,16 @@ export function CategoryTableControls({ categories, createAction, updateAction, 
            }
       });
   }
+
+  const getAttemptQuestionCount = (category: QuestionCategory, attemptNumber: number) => {
+    const configuredCount = category.attempt_configs?.find((config) => config.attempt_number === attemptNumber)?.question_count;
+
+    if (configuredCount !== undefined) {
+      return configuredCount;
+    }
+
+    return category.question_limit ?? 0;
+  };
   
   if (!isTable) {
     return (
@@ -85,9 +97,23 @@ export function CategoryTableControls({ categories, createAction, updateAction, 
                 <Label htmlFor="category-name">Category Name</Label>
                 <Input id="category-name" name="category-name" placeholder="e.g., About United Kingdom" required />
                 </div>
-                <div className="space-y-2">
-                <Label htmlFor="question-limit">Question Limit</Label>
-                <Input id="question-limit" name="question-limit" type="number" placeholder="e.g., 1" defaultValue="1" required className="w-24" />
+                <div className="space-y-3">
+                <Label>Questions Per Attempt</Label>
+                <div className="grid grid-cols-3 gap-3">
+                  {CONFIGURED_ATTEMPT_NUMBERS.map((attemptNumber) => (
+                    <div className="space-y-2" key={attemptNumber}>
+                      <Label htmlFor={`attempt-${attemptNumber}-count`}>Attempt {attemptNumber}</Label>
+                      <Input
+                        id={`attempt-${attemptNumber}-count`}
+                        name={`attempt-${attemptNumber}-count`}
+                        type="number"
+                        min="0"
+                        defaultValue="1"
+                        required
+                      />
+                    </div>
+                  ))}
+                </div>
                 </div>
                 <Button type="submit" disabled={isPending}>
                 {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -108,7 +134,9 @@ export function CategoryTableControls({ categories, createAction, updateAction, 
             <TableRow>
               <TableHead className="w-[80px]">Order</TableHead>
               <TableHead>Name</TableHead>
-              <TableHead>Question Limit</TableHead>
+              <TableHead>Attempt 1</TableHead>
+              <TableHead>Attempt 2</TableHead>
+              <TableHead>Attempt 3</TableHead>
               <TableHead className="w-[100px] text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -136,7 +164,9 @@ export function CategoryTableControls({ categories, createAction, updateAction, 
                     </div>
                 </TableCell>
                 <TableCell className="font-medium">{cat.name}</TableCell>
-                <TableCell>{cat.question_limit}</TableCell>
+                <TableCell>{getAttemptQuestionCount(cat, 1)}</TableCell>
+                <TableCell>{getAttemptQuestionCount(cat, 2)}</TableCell>
+                <TableCell>{getAttemptQuestionCount(cat, 3)}</TableCell>
                 <TableCell className="text-right">
                   <div className="inline-flex items-center">
                     <Button variant="ghost" size="icon" onClick={() => handleEditClick(cat)}>
@@ -176,7 +206,7 @@ export function CategoryTableControls({ categories, createAction, updateAction, 
             ))}
             {(!categories || categories.length === 0) && (
               <TableRow>
-                <TableCell colSpan={4} className="text-center">No categories found.</TableCell>
+                <TableCell colSpan={6} className="text-center">No categories found.</TableCell>
               </TableRow>
             )}
           </TableBody>
@@ -195,9 +225,23 @@ export function CategoryTableControls({ categories, createAction, updateAction, 
                 <Label htmlFor="category-name-edit">Category Name</Label>
                 <Input id="category-name-edit" name="category-name" defaultValue={editingCategory.name} required />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="question-limit-edit">Question Limit</Label>
-                <Input id="question-limit-edit" name="question-limit" type="number" defaultValue={editingCategory.question_limit} required className="w-24" />
+              <div className="space-y-3">
+                <Label>Questions Per Attempt</Label>
+                <div className="grid grid-cols-3 gap-3">
+                  {CONFIGURED_ATTEMPT_NUMBERS.map((attemptNumber) => (
+                    <div className="space-y-2" key={attemptNumber}>
+                      <Label htmlFor={`attempt-${attemptNumber}-count-edit`}>Attempt {attemptNumber}</Label>
+                      <Input
+                        id={`attempt-${attemptNumber}-count-edit`}
+                        name={`attempt-${attemptNumber}-count`}
+                        type="number"
+                        min="0"
+                        defaultValue={getAttemptQuestionCount(editingCategory, attemptNumber)}
+                        required
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
               <Button type="submit" disabled={isPending}>
                 {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

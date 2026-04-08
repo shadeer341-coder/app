@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import type { QuestionCategory } from '@/lib/types';
+import type { CategoryAttemptConfig, QuestionCategory } from '@/lib/types';
 import {
   Card,
   CardContent,
@@ -13,11 +13,40 @@ import { CategoryTableControls } from '@/components/admin/category-table-control
 
 export const dynamic = 'force-dynamic';
 
+const CONFIGURED_ATTEMPT_NUMBERS = [1, 2, 3] as const;
+
+function parseAttemptConfigCounts(formData: FormData) {
+  const configs = CONFIGURED_ATTEMPT_NUMBERS.map((attemptNumber) => {
+    const rawValue = Number(formData.get(`attempt-${attemptNumber}-count`));
+
+    if (!Number.isInteger(rawValue) || rawValue < 0) {
+      return { attempt_number: attemptNumber, question_count: NaN };
+    }
+
+    return {
+      attempt_number: attemptNumber,
+      question_count: rawValue,
+    };
+  });
+
+  if (configs.some((config) => Number.isNaN(config.question_count))) {
+    return { success: false as const, message: 'Attempt question counts must be whole numbers greater than or equal to 0.' };
+  }
+
+  return { success: true as const, configs };
+}
+
 async function createCategory(formData: FormData) {
   'use server';
 
   const name = String(formData.get('category-name'));
-  const limit = Number(formData.get('question-limit'));
+  const parsedConfigs = parseAttemptConfigCounts(formData);
+
+  if (!parsedConfigs.success) {
+    return parsedConfigs;
+  }
+
+  const limit = Math.max(...parsedConfigs.configs.map((config) => config.question_count), 0);
 
   const supabase = createSupabaseServerClient();
   
@@ -36,17 +65,44 @@ async function createCategory(formData: FormData) {
 
   const newSortOrder = (maxOrderData?.sort_order || 0) + 1;
 
-  const { error } = await supabase
+  const { data: createdCategory, error } = await supabase
     .from('question_categories')
-    .insert({ name: name, question_limit: limit, sort_order: newSortOrder });
+    .insert({ name: name, question_limit: limit, sort_order: newSortOrder })
+    .select('id')
+    .single();
 
   if (error) {
     console.error('Error creating category:', error.message);
     return { success: false, message: error.message };
-  } else {
-    revalidatePath('/dashboard/categories');
-    return { success: true, message: "Category created successfully." };
   }
+
+  if (!createdCategory) {
+    return { success: false, message: 'Category was created, but its attempt configuration could not be initialized.' };
+  }
+
+  const { error: configError } = await supabase
+    .from('category_attempt_config')
+    .insert(
+      parsedConfigs.configs.map((config) => ({
+        category_id: createdCategory.id,
+        attempt_number: config.attempt_number,
+        question_count: config.question_count,
+      }))
+    );
+
+  if (configError) {
+    console.error('Error creating category attempt configs:', configError.message);
+
+    await supabase
+      .from('question_categories')
+      .delete()
+      .eq('id', createdCategory.id);
+
+    return { success: false, message: configError.message };
+  }
+
+  revalidatePath('/dashboard/categories');
+  return { success: true, message: "Category created successfully." };
 }
 
 async function updateCategory(formData: FormData) {
@@ -54,7 +110,13 @@ async function updateCategory(formData: FormData) {
 
     const id = Number(formData.get('category-id'));
     const name = String(formData.get('category-name'));
-    const limit = Number(formData.get('question-limit'));
+    const parsedConfigs = parseAttemptConfigCounts(formData);
+
+    if (!parsedConfigs.success) {
+        return parsedConfigs;
+    }
+
+    const limit = Math.max(...parsedConfigs.configs.map((config) => config.question_count), 0);
 
     const supabase = createSupabaseServerClient();
     const { error } = await supabase
@@ -65,10 +127,26 @@ async function updateCategory(formData: FormData) {
     if (error) {
         console.error('Error updating category:', error.message);
         return { success: false, message: error.message };
-    } else {
-        revalidatePath('/dashboard/categories');
-        return { success: true, message: "Category updated successfully." };
     }
+
+    const { error: configError } = await supabase
+        .from('category_attempt_config')
+        .upsert(
+            parsedConfigs.configs.map((config) => ({
+                category_id: id,
+                attempt_number: config.attempt_number,
+                question_count: config.question_count,
+            })),
+            { onConflict: 'category_id,attempt_number' }
+        );
+
+    if (configError) {
+        console.error('Error updating category attempt configs:', configError.message);
+        return { success: false, message: configError.message };
+    }
+
+    revalidatePath('/dashboard/categories');
+    return { success: true, message: "Category updated successfully." };
 }
 
 async function deleteCategory(formData: FormData) {
@@ -94,6 +172,16 @@ async function deleteCategory(formData: FormData) {
         const errorMessage = "Cannot delete category: it is currently associated with one or more questions.";
         console.error(errorMessage);
         return { success: false, message: errorMessage };
+    }
+
+    const { error: configDeleteError } = await supabase
+        .from('category_attempt_config')
+        .delete()
+        .eq('category_id', id);
+
+    if (configDeleteError) {
+        console.error('Error deleting category attempt configs:', configDeleteError.message);
+        return { success: false, message: configDeleteError.message };
     }
 
     // If no questions, proceed with deletion
@@ -185,8 +273,35 @@ export default async function CategoriesPage() {
   if (categoriesError) {
       console.error('Error fetching categories:', categoriesError.message);
   }
-    
-  const categories = (categoriesData as QuestionCategory[] | null) || [];
+
+  const categoryIds = (categoriesData || []).map((category) => category.id);
+
+  let attemptConfigs: CategoryAttemptConfig[] = [];
+  if (categoryIds.length > 0) {
+    const { data: configsData, error: configsError } = await supabase
+      .from('category_attempt_config')
+      .select('*')
+      .in('category_id', categoryIds)
+      .order('attempt_number', { ascending: true });
+
+    if (configsError) {
+      console.error('Error fetching category attempt configs:', configsError.message);
+    } else {
+      attemptConfigs = (configsData as CategoryAttemptConfig[] | null) || [];
+    }
+  }
+
+  const attemptConfigsByCategoryId = new Map<number, CategoryAttemptConfig[]>();
+  for (const config of attemptConfigs) {
+    const existingConfigs = attemptConfigsByCategoryId.get(config.category_id) || [];
+    existingConfigs.push(config);
+    attemptConfigsByCategoryId.set(config.category_id, existingConfigs);
+  }
+
+  const categories = ((categoriesData as QuestionCategory[] | null) || []).map((category) => ({
+    ...category,
+    attempt_configs: attemptConfigsByCategoryId.get(category.id) || [],
+  }));
 
   return (
     <div className="space-y-6">
@@ -195,7 +310,7 @@ export default async function CategoriesPage() {
           Question Categories
         </h1>
         <p className="text-muted-foreground">
-          Create, view, and manage categories for organizing questions. Drag and drop to reorder.
+          Create, view, and manage categories and per-attempt question counts for organizing interviews.
         </p>
       </div>
 

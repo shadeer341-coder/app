@@ -175,9 +175,9 @@ export async function submitInterview(sessionId: string) {
     }
 
     try {
-        // Schedule the session for processing by setting `process_at` to 5 hours from now.
+        // Schedule the session for processing by setting `process_at` to 2 minutes from now.
         const supabaseService = createSupabaseServerActionClient({ service: true });
-        const processAt = new Date(Date.now() + 5 * 60 * 60 * 1000).toISOString();
+        const processAt = new Date(Date.now() + 2 * 60 * 1000).toISOString();
         
         const { error: updateError } = await supabaseService
             .from('interview_sessions')
