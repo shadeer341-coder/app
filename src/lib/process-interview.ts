@@ -11,7 +11,7 @@ export async function processInterviewInBackground(sessionId: string) {
     // 1. Fetch all attempts for the session
     const { data: attempts, error: attemptsError } = await supabase
         .from('interview_attempts')
-        .select('*, questions (text, tags)')
+        .select('*, questions (text, tags, evaluation_schema)')
         .eq('session_id', sessionId)
         .order('created_at', { ascending: true });
 
@@ -28,6 +28,7 @@ export async function processInterviewInBackground(sessionId: string) {
             transcript: attempt.transcript,
             questionText: attempt.questions?.text || '',
             questionTags: attempt.questions?.tags || [],
+            questionEvaluationSchema: attempt.questions?.evaluation_schema,
             snapshots: attempt.snapshots,
         });
         

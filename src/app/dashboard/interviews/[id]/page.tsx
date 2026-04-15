@@ -173,7 +173,9 @@ export default async function InterviewFeedbackPage({ params }: InterviewFeedbac
                         <Accordion type="single" collapsible className="w-full" defaultValue="item-0">
                              {attempts && attempts.map((attempt, index) => {
                                 const feedback = attempt.feedback as any;
-                                const isPerfect = feedback?.weaknesses === '';
+                                const isPerfect = Array.isArray(feedback?.missingTags)
+                                    ? feedback.missingTags.length === 0
+                                    : feedback?.weaknesses === '';
                                 const firstAttemptWithSnapshots = attempts.find(a => a.snapshots && a.snapshots.length > 0);
                                 return (
                                     <AccordionItem value={`item-${index}`} key={attempt.id}>

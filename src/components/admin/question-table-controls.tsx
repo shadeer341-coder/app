@@ -892,7 +892,9 @@ export function QuestionTableControls({ questions, categories, createAction, upd
                                                 </CardDescription>
                                             </CardHeader>
                                             <CardContent className="space-y-4">
-                                                {testFeedback.weaknesses === '' ? (
+                                                {(Array.isArray(testFeedback.missingTags)
+                                                    ? testFeedback.missingTags.length === 0
+                                                    : testFeedback.weaknesses === '') ? (
                                                     <Alert className="border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/50">
                                                         <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
                                                         <AlertTitle className="text-green-800 dark:text-green-300">Answered Perfectly</AlertTitle>
