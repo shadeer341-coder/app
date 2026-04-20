@@ -109,6 +109,76 @@ function buildWeaknessesFromMissingTags(missingTags: string[]) {
     return `${prefix} ${missingTags.join('; ')}`;
 }
 
+const numberWordMap: Record<string, string> = {
+    one: '1',
+    two: '2',
+    three: '3',
+    four: '4',
+    five: '5',
+    six: '6',
+    seven: '7',
+    eight: '8',
+    nine: '9',
+    ten: '10',
+    eleven: '11',
+    twelve: '12',
+    thirteen: '13',
+    fourteen: '14',
+    fifteen: '15',
+    sixteen: '16',
+    seventeen: '17',
+    eighteen: '18',
+    nineteen: '19',
+    twenty: '20',
+    thirty: '30',
+    forty: '40',
+    fifty: '50',
+    sixty: '60',
+    seventy: '70',
+    eighty: '80',
+    ninety: '90',
+};
+
+function extractNumberReferences(text: string) {
+    const references = new Set<string>();
+    const lowerText = text.toLowerCase();
+
+    lowerText.match(/\b\d+(?:\.\d+)?\b/g)?.forEach((value) => references.add(value));
+
+    for (const [word, value] of Object.entries(numberWordMap)) {
+        if (new RegExp(`\\b${word}\\b`, 'i').test(lowerText)) {
+            references.add(value);
+        }
+    }
+
+    return references;
+}
+
+function hasRequiredNumberReferences(tag: string, transcript: string) {
+    const tagNumbers = extractNumberReferences(tag);
+    if (tagNumbers.size === 0) {
+        return true;
+    }
+
+    const transcriptNumbers = extractNumberReferences(transcript);
+    return [...tagNumbers].every((number) => transcriptNumbers.has(number));
+}
+
+function calculateCoverageScore(coverage: TranscriptCoverage, modelScore: number) {
+    const totalRequiredTags = coverage.applicableRequiredTags.length;
+
+    if (totalRequiredTags === 0) {
+        return modelScore;
+    }
+
+    if (coverage.missingTags.length === 0) {
+        return Math.max(modelScore, 85);
+    }
+
+    const coveredRatio = coverage.coveredTags.length / totalRequiredTags;
+    return Math.min(modelScore, Math.round(coveredRatio * 100));
+}
+
 async function analyzeTagCoverage(
     transcript: string,
     questionText: string,
@@ -177,8 +247,10 @@ async function analyzeTagCoverage(
     const applicableRequiredTags = getApplicableRequiredTags(evaluationSchema, parsed.appliedBranch);
     const coverageByTag = new Map(parsed.assessments.map((assessment) => [assessment.tag, assessment.covered]));
 
-    const coveredTags = applicableRequiredTags.filter((tag) => coverageByTag.get(tag) === true);
-    const missingTags = applicableRequiredTags.filter((tag) => coverageByTag.get(tag) !== true);
+    const coveredTags = applicableRequiredTags.filter((tag) => (
+        coverageByTag.get(tag) === true && hasRequiredNumberReferences(tag, transcript)
+    ));
+    const missingTags = applicableRequiredTags.filter((tag) => !coveredTags.includes(tag));
 
     return {
         appliedBranch: parsed.appliedBranch,
@@ -361,6 +433,7 @@ export async function generateInterviewFeedback(
         transcriptResult = {
             ...schemaFeedback,
             weaknesses: buildWeaknessesFromMissingTags(coverage.missingTags),
+            score: calculateCoverageScore(coverage, schemaFeedback.score),
             appliedBranch: coverage.appliedBranch || undefined,
             coveredTags: coverage.coveredTags,
             missingTags: coverage.missingTags,

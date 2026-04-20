@@ -174,8 +174,8 @@ export default async function InterviewFeedbackPage({ params }: InterviewFeedbac
                              {attempts && attempts.map((attempt, index) => {
                                 const feedback = attempt.feedback as any;
                                 const isPerfect = Array.isArray(feedback?.missingTags)
-                                    ? feedback.missingTags.length === 0
-                                    : feedback?.weaknesses === '';
+                                    ? feedback.missingTags.length === 0 && Number(attempt.score || feedback?.score || 0) >= 80
+                                    : feedback?.weaknesses === '' && Number(attempt.score || feedback?.score || 0) >= 80;
                                 const firstAttemptWithSnapshots = attempts.find(a => a.snapshots && a.snapshots.length > 0);
                                 return (
                                     <AccordionItem value={`item-${index}`} key={attempt.id}>
@@ -244,7 +244,7 @@ export default async function InterviewFeedbackPage({ params }: InterviewFeedbac
                                                 </CardContent>
                                                  {user.role === 'admin' && attempt.id === firstAttemptWithSnapshots?.id && firstAttemptWithSnapshots.snapshots && firstAttemptWithSnapshots.snapshots.length > 0 && (
                                                     <CardFooter className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                        {firstAttemptWithSnapshots.snapshots.map((snapshot, i) => (
+                                                        {firstAttemptWithSnapshots.snapshots.map((snapshot: string, i: number) => (
                                                             <div key={i} className="aspect-video relative rounded-md overflow-hidden border">
                                                                 <Image 
                                                                     src={snapshot} 
